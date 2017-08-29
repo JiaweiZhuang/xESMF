@@ -62,7 +62,7 @@ Issues & Plans
 - Dump offline regridding weights. 
   Currently the regridding weights are hided in the Fortran level and invisible in the Python level.
 
-- For multi-tiled grids like `Cubed-Sphere <http://acmg.seas.harvard.edu/geos/cubed_sphere.html>`_,
+- For multi-tiled grids like `Cubed-Sphere <https://github.com/JiaweiZhuang/cubedsphere>`_,
   Conservative regridding will work correcly by just regridding each tile and adding up the results. 
   But other methods don't not correctly handle tile edges.
 

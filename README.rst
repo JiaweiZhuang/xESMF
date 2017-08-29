@@ -69,8 +69,8 @@ Issues & Plans
 Additional Links
 ----------------
 - A modern tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial, 
-which is much more accessible than `the official tutorial 
-<http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/examples.html>`_.
+  which is much more accessible than `the official tutorial
+  <http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/examples.html>`_.
 
 
 .. _ESMF: https://www.earthsystemcog.org/projects/esmf/

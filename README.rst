@@ -20,7 +20,7 @@ Installation
 ------------
 
 Building ESMF/ESMPy from the source code is very daunting. Fortunately,
-NEISS_ provides a pre-compiled, Python3.6-compatible `anaconda package
+NESII_ provides a pre-compiled, Python3.6-compatible `anaconda package
 <https://anaconda.org/NESII/esmpy>`_ for ESMPy::
 
     $ conda config --add channels conda-forge  

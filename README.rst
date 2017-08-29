@@ -5,6 +5,7 @@ xESMF aims to combine ESMF_/ESMPy_'s regridding power and xarray_'s elegance.
 
 Supports all `ESMF regridding algorithms <https://www.earthsystemcog.org/projects/esmf/regridding>`_,
 including: 
+
 - bilinear
 - first-order conservative 
 - nearest neighbour (either source- or destination-based)
@@ -62,14 +63,14 @@ Issues & Plans
   Currently the regridding weights is hided in the Fortran level and invisible in the Python level.
 
 - For multi-tiled grids like `Cubed-Sphere <http://acmg.seas.harvard.edu/geos/cubed_sphere.html>`_,
-  Conservative regridding will work correcly by just regridding each tile and add up the results. 
+  Conservative regridding will work correcly by just regridding each tile and adding up the results. 
   But other methods don't not correctly handle tile edges.
 
 Additional Links
 ----------------
 - A modern tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial, 
-which is much more accessible than _`the official tutorial 
-<http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/examples.html>`.
+which is much more accessible than `the official tutorial 
+<http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/examples.html>`_.
 
 
 .. _ESMF: https://www.earthsystemcog.org/projects/esmf/

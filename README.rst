@@ -66,7 +66,10 @@ Issues & Plans
   Conservative regridding will work correcly by just regridding each tile and adding up the results. 
   But other methods don't not correctly handle tile edges.
 
-- Masking. np.nan will be mapped to np.nan, but masking created by np.ma will be ignored.
+- Improve Masking. Currently, np.nan will be mapped to np.nan, but masking created by np.ma will be ignored.
+
+- Improve API design. Current API is just experimental, more like a proof-of-concept. 
+  The trickest part is matching xarray's coordinate dimension with ESMPy's expectation.
 
 Additional Links
 ----------------

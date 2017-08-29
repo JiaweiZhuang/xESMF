@@ -29,7 +29,7 @@ NESII_ provides a pre-compiled, Python3.6-compatible `anaconda package
 It is on NESII's own channel but it also needs to pull dependencies from conda-forge.
 
 **This Python3-compatible ESMPy is currently only available on Linux.** Mac or Windows users can
-use `docker-miniconda <https://hub.docker.com/r/continuumio/miniconda/>`_ as a temporary solution.
+use `docker-miniconda <https://hub.docker.com/r/continuumio/miniconda3/>`_ as a temporary solution.
 
 Installing the rest of packages is straightforward::
 

@@ -60,7 +60,7 @@ Issues & Plans
   With dask, parallelizing over other dimensions (e.g. lev, time) would be a much better option.
 
 - Dump offline regridding weights. 
-  Currently the regridding weights is hided in the Fortran level and invisible in the Python level.
+  Currently the regridding weights are hided in the Fortran level and invisible in the Python level.
 
 - For multi-tiled grids like `Cubed-Sphere <http://acmg.seas.harvard.edu/geos/cubed_sphere.html>`_,
   Conservative regridding will work correcly by just regridding each tile and adding up the results. 

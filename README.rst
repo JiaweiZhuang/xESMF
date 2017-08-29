@@ -64,7 +64,7 @@ Issues & Plans
 
 - For multi-tiled grids like `Cubed-Sphere <https://github.com/JiaweiZhuang/cubedsphere>`_,
   Conservative regridding will work correcly by just regridding each tile and adding up the results. 
-  But other methods don't not correctly handle tile edges.
+  But other methods do not correctly handle tile edges.
 
 - Improve Masking. Currently, np.nan will be mapped to np.nan, but masking created by np.ma will be ignored.
 

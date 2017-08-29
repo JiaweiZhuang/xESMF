@@ -66,6 +66,8 @@ Issues & Plans
   Conservative regridding will work correcly by just regridding each tile and adding up the results. 
   But other methods don't not correctly handle tile edges.
 
+- Masking. np.nan will be mapped to np.nan, but masking created by np.ma will be ignored.
+
 Additional Links
 ----------------
 - A modern tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial, 

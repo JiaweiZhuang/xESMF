@@ -57,7 +57,7 @@ Note for developrs:
   and `highlevel.py <xesmf/highlevel.py>`_ for current implementation. 
 
 - To modify the low-level wrapper,
-  See this tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial
+  see this tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial
   (much more accessible than `ESMPy's official tutorial
   <http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/examples.html>`_)
   and `lowlevel.py <xesmf/lowlevel.py>` for current implementation.

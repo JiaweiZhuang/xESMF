@@ -46,12 +46,21 @@ Design Idea
 
 ESMF -> ESMPy -> low-level numpy wrapper -> high-level xarray wrapper
 
-Using low-level numpy wrapper is still much easier than using the original ESMPy.
-See `this module <xesmf/lowlevel.py>`_. 
-
 The numpy wrapper just simplifies ESMPy's API without adding too many customizations. 
 This low level wrapper should be relatively stable. 
 Advanced designs can be added to the xarray-wrapper level. 
+
+Note for developrs:
+
+- To build the high-level wrapper based on the low-level one,
+  See `this notebook for using the low-level wrapper <illustration_lowlevel.ipynb>`  
+  and `highlevel.py <xesmf/highlevel.py>`_ for current implementation. 
+
+- To modify the low-level wrapper,
+  See this tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial
+  (much more accessible than `ESMPy's official tutorial
+  <http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/examples.html>`_)
+  and `lowlevel.py <xesmf/lowlevel.py>` for current implementation.
 
 Issues & Plans
 --------------
@@ -70,12 +79,6 @@ Issues & Plans
 
 - Improve API design. Current API is just experimental, more like a proof-of-concept. 
   The trickest part is matching xarray's coordinate dimension with ESMPy's expectation.
-
-Additional Links
-----------------
-- A modern tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial, 
-  which is much more accessible than `the official tutorial
-  <http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/examples.html>`_.
 
 
 .. _ESMF: https://www.earthsystemcog.org/projects/esmf/

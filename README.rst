@@ -53,7 +53,7 @@ Advanced designs can be added to the xarray-wrapper level.
 Note for developrs:
 
 - To build the high-level wrapper based on the low-level one,
-  See `this notebook for using the low-level wrapper <illustration_lowlevel.ipynb>`  
+  see `this notebook for using the low-level wrapper <illustration_lowlevel.ipynb>`_
   and `highlevel.py <xesmf/highlevel.py>`_ for current implementation. 
 
 - To modify the low-level wrapper,

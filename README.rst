@@ -53,11 +53,11 @@ Advanced designs can be added to the xarray-wrapper level.
 Note for developrs:
 
 - To build the high-level wrapper based on the low-level one,
-  See `this notebook for using the low-level wrapper <illustration_lowlevel.ipynb>`  
+  see `this notebook for using the low-level wrapper <illustration_lowlevel.ipynb>`_
   and `highlevel.py <xesmf/highlevel.py>`_ for current implementation. 
 
 - To modify the low-level wrapper,
-  See this tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial
+  see this tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial
   (much more accessible than `ESMPy's official tutorial
   <http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/examples.html>`_)
   and `lowlevel.py <xesmf/lowlevel.py>` for current implementation.

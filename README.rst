@@ -60,7 +60,7 @@ Note for developrs:
   see this tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial
   (much more accessible than `ESMPy's official tutorial
   <http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/examples.html>`_)
-  and `lowlevel.py <xesmf/lowlevel.py>` for current implementation.
+  and `lowlevel.py <xesmf/lowlevel.py>`_ for current implementation.
 
 Issues & Plans
 --------------

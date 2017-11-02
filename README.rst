@@ -39,7 +39,7 @@ Installing the rest of packages is straightforward::
 Get Started
 -----------
 
-See `example notebook <illustration_highlevel.ipynb>`_
+See `example notebook <examples/illustration_highlevel.ipynb>`_
 
 Design Idea
 -----------
@@ -53,7 +53,7 @@ Advanced designs can be added to the xarray-wrapper level.
 Note for developrs:
 
 - To build the high-level wrapper based on the low-level one,
-  see `this notebook for using the low-level wrapper <illustration_lowlevel.ipynb>`_
+  see `this notebook for using the low-level wrapper <examples/illustration_lowlevel.ipynb>`_
   and `highlevel.py <xesmf/highlevel.py>`_ for current implementation. 
 
 - To modify the low-level wrapper,

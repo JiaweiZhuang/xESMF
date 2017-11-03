@@ -27,4 +27,4 @@ var/
 docs/_build/
 
 # notebook
-.ipynb_checkpoints/*
+.ipynb_checkpoints

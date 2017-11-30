@@ -28,3 +28,13 @@ docs/_build/
 
 # notebook
 .ipynb_checkpoints
+
+# OS-generated
+.DS_Store
+
+# NetCDF files
+*.nc
+*.nc4
+
+# ESMPy log files
+PET0.ESMF_LogFile

@@ -8,5 +8,5 @@ setup(name='xesmf',
       author_email='jiaweizhuang@g.harvard.edu',
       license='MIT',
       packages=['xesmf'],
-      install_requires=['esmpy','xarray','numpy','scipy']
+      install_requires=['esmpy', 'xarray', 'numpy', 'scipy']
       )

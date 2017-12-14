@@ -19,6 +19,7 @@ Jiawei Zhuang (12/14/2017)
 import numpy as np
 import ESMF
 import warnings
+import os
 
 
 def warn_f_contiguous(a):
@@ -153,7 +154,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
         mulplication to apply weights, which is faster and more Pythonic
         than ESMPy's online regridding.
 
-    extra_dims: list of integers, optional
+    extra_dims: a list of integers, optional
         Extra dimensions (e.g. time or levels) in the data field
 
         This does NOT affect offline weight file, only affects online regrid.
@@ -199,9 +200,9 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
 
     # ESMPy will throw an incomprehensive error if the weight file
     # already exists. Better to catch it here!
-    import os.path
-    assert not os.path.exists(filename), (
-           'Weights file already exists! Please remove it or use a new name.')
+    if filename is not None:
+        assert not os.path.exists(filename), (
+            'Weights file already exists! Please remove it or use a new name.')
 
     # Calculate regridding weights.
     # Must set unmapped_action to IGNORE, otherwise the function will fail,

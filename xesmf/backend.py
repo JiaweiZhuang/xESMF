@@ -258,16 +258,15 @@ def esmf_regrid_apply(regrid, indata):
     # apply regridding weights
     destfield = regrid(sourcefield, destfield)
 
-    # avoid sharing the same memory with the ESMF.Regrid object,
-    # since we are going to free the Regrid object later
-    outdata = destfield.data.copy()
-
-    return outdata
+    return destfield.data
 
 
 def esmf_regrid_finalize(regrid):
     '''
-    Free the underlying Fortran array to avoid memory leak
+    Free the underlying Fortran array to avoid memory leak.
+
+    After calling destroy() on regrid or its fields, we cannot use the
+    regrid method anymore, but the input and output data still exsit.
 
     Parameters
     ----------

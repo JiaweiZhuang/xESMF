@@ -48,7 +48,17 @@ def apply_weights(A, indata, Nlon_out, Nlat_out):
     indata: numpy array of shape (..., Nlat, Nlon) or (..., Ny, Nx)
             Should be C-ordered. Will be then tranposed to F-ordered.
 
+    Nlon_out, Nlat_out: integers
+            Output data shape for unflatten operation
+
+    Returns
+    -------
+    outdata: numpy array of shape (..., Nlat_out, Nlon_out)
+            If input is C-ordered, output will also be C-ordered
     '''
+
+    assert Nlon_out * Nlat_out == A.shape[0], (
+        "Nlon_out * Nlat_out should equal to A.shape[0]")
 
     # COO matrix is fast with F-ordered array but slow with C-array, so we
     # take in a C-ordered and then transpose)

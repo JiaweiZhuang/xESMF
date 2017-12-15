@@ -3,25 +3,41 @@ import numpy as np
 import ESMF
 import xesmf as xe
 from xesmf.backend import (warn_f_contiguous, esmf_grid, add_corner,
-                           esmf_regrid_build, esmf_regrid_finalize)
+                           esmf_regrid_build, esmf_regrid_apply,
+                           esmf_regrid_finalize)
 from xesmf.smm import read_weights, apply_weights
 
-from numpy.testing import assert_equal
+from numpy.testing import assert_equal, assert_almost_equal
 import pytest
 
 # We use pure numpy arrays to test backend
+# xarray DataSet is only used at the very beginning as a quick way to make data
 coord_names = ['lon', 'lat', 'lon_b', 'lat_b']
 
-ds_in = xe.util.grid_global(2, 2)
+ds_in = xe.util.grid_global(5, 4)
 lon_in, lat_in, lon_b_in, lat_b_in = [ds_in[name].values
                                       for name in coord_names]
 
-ds_out = xe.util.grid_global(5, 4)
+ds_out = xe.util.grid_global(2, 2)
 lon_out, lat_out, lon_b_out, lat_b_out = [ds_out[name].values
                                           for name in coord_names]
 
 # shortcut to test a single grid
 lon, lat, lon_b, lat_b = [lon_in, lat_in, lon_b_in, lat_b_in]
+
+# input test data
+ds_in['data'] = xe.data.wave_smooth(ds_in['lon'], ds_in['lat'])
+data_in = ds_in['data'].values
+
+# reference output data, calculated analytically
+ds_out['data_ref'] = xe.data.wave_smooth(ds_out['lon'], ds_out['lat'])
+data_ref = ds_out['data_ref'].values
+
+# 4D data to test broadcasting, increasing linearly with time and lev
+ds_in.coords['time'] = np.arange(1, 11)
+ds_in.coords['lev'] = np.arange(1, 51)
+ds_in['data4D'] = ds_in['time'] * ds_in['lev'] * ds_in['data']
+data4D_in = ds_in['data4D'].values
 
 
 def test_flag():
@@ -89,11 +105,11 @@ def test_esmf_grid_with_corner():
     assert_equal(grid.lower_bounds[3], np.array([0, 0]))
 
 
-def test_esmf_regrid_build():
+def test_esmf_build_bilinear():
+
     grid_in = esmf_grid(lon_in.T, lat_in.T)
     grid_out = esmf_grid(lon_out.T, lat_out.T)
 
-    # first test bilinear regridding
     regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear')
     assert regrid.unmapped_action == 1
     assert regrid.regrid_method == 0
@@ -102,30 +118,63 @@ def test_esmf_regrid_build():
     regrid.srcfield.grid is grid_in
     regrid.dstfield.grid is grid_out
 
-    # then test conservative regridding
+    esmf_regrid_finalize(regrid)
+
+
+def test_regrid():
+
+    # use conservative regridding as an example
+    # since it is the most well-tested studied on in papers
+
+    # TODO: possible to break this long test into smaller tests?
+    # not easy due to strong dependencies.
+
+    grid_in = esmf_grid(lon_in.T, lat_in.T)
+    grid_out = esmf_grid(lon_out.T, lat_out.T)
+
     # no corner info yet, should not be able to use conservative
     with pytest.raises(ValueError):
         esmf_regrid_build(grid_in, grid_out, 'conservative')
 
+    # now add corners
     add_corner(grid_in, lon_b_in.T, lat_b_in.T)
     add_corner(grid_out, lon_b_out.T, lat_b_out.T)
-    regrid = esmf_regrid_build(grid_in, grid_out, 'conservative')
+
+    # also write to file for scipy regridding
+    filename = 'test_weights.nc'
+    if os.path.exists(filename):
+        os.remove(filename)
+    regrid = esmf_regrid_build(grid_in, grid_out, 'conservative',
+                               filename=filename)
     assert regrid.regrid_method == 2
 
+    # apply regridding using ESMPy's native method
+    data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
+
+    rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
+    assert 0.02 < np.max(np.abs(rel_err)) < 0.04  # ~0.03
+
+    # apply regridding using scipy
+    A = read_weights(filename, lon_in.size, lon_out.size)
+    Nlat_out, Nlon_out = lon_out.shape
+    data_out_scipy = apply_weights(A, data_in, Nlon_out, Nlat_out)
+
+    # must be exactly the same as esmpy's result!
+    # TODO: this fails once but I cannot replicate it.
+    # Maybe assert_equal is too strict for scipy vs esmpy comparision
+    assert_equal(data_out_scipy, data_out_esmpy)
+
+    # finally, test broadcasting with scipy
+    # TODO: need to test broadcasting with ESMPy backend?
+    # We only use Scipy in frontend, and ESMPy is just for backend benchmark
+    # However, it is useful to compare performance and show scipy is 3x faster
+    data4D_out = apply_weights(A, data4D_in, Nlon_out, Nlat_out)
+
+    # data over broadcasting dimensions should agree
+    assert_almost_equal(data4D_in.mean(axis=(2, 3)),
+                        data4D_out.mean(axis=(2, 3)),
+                        decimal=10)
+
+    # clean-up
     esmf_regrid_finalize(regrid)
-
-
-def test_esmf_regrid_apply():
-    pass
-
-
-def test_write_weight_file():
-    pass
-
-
-def test_read_weights():
-    pass
-
-
-def test_apply_weights():
-    pass
+    os.remove(filename)

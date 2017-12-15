@@ -27,16 +27,3 @@ def wave_smooth(lon, lat):
 
     f = 2 + np.cos(lat)**2 * np.cos(2*lon)
     return f
-
-
-def wave_sharp(lon, lat):
-    '''
-    Spherical harmonic with high frequency
-    Y_32^16 = 2 + \sin^16(2 \theta) \cos(16 \phi)
-    '''
-    # degree to radius, make a copy
-    lat = lat/180.0*np.pi
-    lon = lon/180.0*np.pi
-
-    f = 2 + np.sin(2*lat)**16 * np.cos(16*lon)
-    return f

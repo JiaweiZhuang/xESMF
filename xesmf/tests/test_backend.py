@@ -95,6 +95,7 @@ def test_esmf_regrid_build():
 
     # first test bilinear regridding
     regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear')
+    assert regrid.unmapped_action == 1
     assert regrid.regrid_method == 0
 
     # they should share the same memory
@@ -109,6 +110,7 @@ def test_esmf_regrid_build():
     add_corner(grid_in, lon_b_in.T, lat_b_in.T)
     add_corner(grid_out, lon_b_out.T, lat_b_out.T)
     regrid = esmf_regrid_build(grid_in, grid_out, 'conservative')
+    assert regrid.regrid_method == 2
 
     esmf_regrid_finalize(regrid)
 

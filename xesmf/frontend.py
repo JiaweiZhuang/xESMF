@@ -39,13 +39,16 @@ class Regridder(object):
     def __str__(self):
         return ('xESMF Regridder \n'
                 'Regridding algorithm:       {} \n'
+                'Weight filename:            {} \n'
                 '(Nlat_in, Nlon_in):         {} \n'
                 '(Nlat_out, Nlon_out):       {} \n'
-                'Weight filename:            {} \n'
+                'Reuse pre-computed weights? {} \n'
                 .format(self.method,
+                        self.filename,
                         (self.Nlat_in, self.Nlon_in),
                         (self.Nlat_out, self.Nlon_out),
-                        self.filename)
+                        self.reuse_weights
+                        )
                 )
 
     def __repr__(self):

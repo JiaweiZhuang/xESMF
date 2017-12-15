@@ -180,8 +180,8 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     try:
         esmf_regrid_method = method_dict[method]
     except:
-        raise ValueError('method should be chosen from'
-                         '{}'.format(method_dict.keys()))
+        raise ValueError('method should be chosen from '
+                         '{}'.format(list(method_dict.keys())))
 
     # conservative regridding needs cell corner information
     if method == 'conservative':

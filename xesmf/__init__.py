@@ -1,3 +1,3 @@
 from . import util
-from . import testdata
+from . import data
 from . frontend import Regridder

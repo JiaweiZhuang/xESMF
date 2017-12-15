@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+import warnings
 
 from . backend import esmf_grid, add_corner
 
@@ -32,6 +33,14 @@ def grid_2d(lon0_b, lon1_b, d_lon,
 
 
 def grid_global(d_lon, d_lat):
+
+    if not np.isclose(360/d_lon, 360//d_lon):
+        warnings.warn('360 cannot be divided by d_lon = {}, '
+                      'might not cover the globe uniformally'.format(d_lon))
+
+    if not np.isclose(180/d_lat, 180//d_lat):
+        warnings.warn('180 cannot be divided by d_lat = {}, '
+                      'might not cover the globe uniformally'.format(d_lat))
 
     return grid_2d(-180, 180, d_lon, -90, 90, d_lat)
 

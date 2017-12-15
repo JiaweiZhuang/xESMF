@@ -202,7 +202,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # already exists. Better to catch it here!
     if filename is not None:
         assert not os.path.exists(filename), (
-            'Weights file already exists! Please remove it or use a new name.')
+            'Weight file already exists! Please remove it or use a new name.')
 
     # Calculate regridding weights.
     # Must set unmapped_action to IGNORE, otherwise the function will fail,
@@ -266,7 +266,7 @@ def esmf_regrid_finalize(regrid):
     Free the underlying Fortran array to avoid memory leak.
 
     After calling destroy() on regrid or its fields, we cannot use the
-    regrid method anymore, but the input and output data still exsit.
+    regrid method anymore, but the input and output data still exist.
 
     Parameters
     ----------

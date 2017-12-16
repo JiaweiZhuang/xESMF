@@ -99,15 +99,21 @@ class Regridder(object):
 
         """
 
+        # TODO: also accept 1D coodinate array for rectilinear grids
+        self.dim_name = _check_center_dim(ds_in, ds_out)
+
+        # get grid shape information
         # Use (Ny, Nx) instead of (Nlat, Nlon),
         # because ds can be general curvilinear grids
         # For rectilinear grids, (Ny, Nx) == (Nlat, Nlon)
-        self.dim_name = _check_center_dim(ds_in, ds_out)
-
         self.Ny_in, self.Nx_in = ds_in['lon'].shape
         self.Ny_out, self.Nx_out = ds_out['lon'].shape
         self.N_in = ds_in['lon'].size
         self.N_out = ds_out['lon'].size
+
+        # only copy coordinate values do not copy data
+        self.coords_in = ds_in.coords.to_dataset().copy()
+        self.coords_out = ds_out.coords.to_dataset().copy()
 
         if method == 'conservative':
             self.dim_b_name = _check_bound_dim(ds_in, ds_out)
@@ -209,9 +215,36 @@ class Regridder(object):
             - (Ny_out, Nx_out), if dr_in is 2D
             - (N2, N1, Ny_out, Nx_out), if dr_in has shape (N2, N1, Ny, Nx)
         """
+
+        # check dimension naming
+        dims_in = dr_in.dims
+        dims_extra = dims_in[0:-2]
+        dims_horiz = dims_in[-2:]
+
+        assert dims_horiz == self.dim_name, (
+                'The horizontal two dimensions of dr_in are {}, different from'
+                ' that of the regridder {}!'.format(dims_horiz, self.dim_name)
+                )
+
+        # check shape
+        shape_horiz = dr_in.shape[-2:]
+        assert shape_horiz == (self.Ny_in, self.Nx_in), (
+             'The horizontal shape of dr_in are {}, different from that of '
+             'the regridder {}!'.format(shape_horiz, (self.Ny_in, self.Nx_in))
+             )
+
+        # apply regridding to pure numpy array
         indata = dr_in.values
         outdata = apply_weights(self.A, indata, self.Ny_out, self.Nx_out)
 
-        # TODO: append metadata
+        # use a tempory DataSet to get horizontal grid information
+        varname = dr_in.name
+        ds_out_temp = self.coords_out.copy()
+        ds_out_temp[varname] = (dims_in, outdata)  # same dim name as dr_in
+        dr_out = ds_out_temp[varname]
 
-        return outdata
+        # recover coordinate values for extra dimensions
+        for dim in dims_extra:
+            dr_out.coords[dim] = dr_in.coords[dim]
+
+        return dr_out

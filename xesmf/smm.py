@@ -38,7 +38,7 @@ def read_weights(filename, N_in, N_out):
     return A
 
 
-def apply_weights(A, indata, Nlon_out, Nlat_out):
+def apply_weights(A, indata, Ny_out, Nx_out):
     '''
     Apply regridding weights
 
@@ -49,8 +49,9 @@ def apply_weights(A, indata, Nlon_out, Nlat_out):
     indata: numpy array of shape (..., Nlat, Nlon) or (..., Ny, Nx)
             Should be C-ordered. Will be then tranposed to F-ordered.
 
-    Nlon_out, Nlat_out: integers
-            Output data shape for unflatten operation
+    Ny_out, Nx_out: integers
+            Output data shape for unflatten operation.
+            For rectilinear grid, it is just (Nlat, Nlon)
 
     Returns
     -------
@@ -58,8 +59,8 @@ def apply_weights(A, indata, Nlon_out, Nlat_out):
             If input is C-ordered, output will also be C-ordered
     '''
 
-    assert Nlon_out * Nlat_out == A.shape[0], (
-        "Nlon_out * Nlat_out should equal to A.shape[0]")
+    assert Nx_out * Ny_out == A.shape[0], (
+        "Nx_out * Ny_out should equal to A.shape[0]")
 
     # COO matrix is fast with F-ordered array but slow with C-array, so we
     # take in a C-ordered and then transpose)
@@ -70,13 +71,13 @@ def apply_weights(A, indata, Nlon_out, Nlat_out):
 
     # get input shape information
     s = indata.shape
-    Nlat_in, Nlon_in = (s[-1], s[-2])
+    Ny_in, Nx_in = (s[-2], s[-1])
     N_extra_list = s[0:-2]
 
     # use flattened array for dot operation
-    indata_flat = indata.reshape(-1, Nlat_in*Nlon_in)
+    indata_flat = indata.reshape(-1, Ny_in*Nx_in)
     outdata_flat = A.dot(indata_flat.T).T
 
     # unflattened output array
-    outdata = outdata_flat.reshape([*N_extra_list, Nlat_out, Nlon_out])
+    outdata = outdata_flat.reshape([*N_extra_list, Ny_out, Nx_out])
     return outdata

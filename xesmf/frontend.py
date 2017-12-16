@@ -66,6 +66,38 @@ def _check_bound_shape(ds):
 class Regridder(object):
     def __init__(self, ds_in, ds_out, method,
                  filename=None, reuse_weights=False):
+        """
+        Make xESMF regridder
+
+        Parameters
+        ----------
+        ds_in, ds_out: xarray DataSet
+            Contain input and output grid coordinates. Look for variables
+            'lon', 'lat', and optionally 'lon_b', 'lat_b' for conservative
+            method.
+
+        method: str, optional
+            Regridding method. Options are
+            - 'bilinear'
+            - 'conservative', need grid corner information
+            - 'patch'
+            - 'nearest_s2d'
+            - 'nearest_d2s'
+
+        filename: bool, optional
+            Name for the weight file. The default naming scheme is
+            method_{Ny_in}x{Nx_in}_{Ny_out}x{Nx_out}.nc,
+            e.g. bilinear_400x600_300x400.nc
+
+        reuse_weights: bool, optional
+            Whether to read existing weight file to save computing time.
+            False by default (i.e. re-compute, not reuse).
+
+        Returns
+        -------
+        regridder: xESMF regridder object
+
+        """
 
         # Use (Ny, Nx) instead of (Nlat, Nlon),
         # because ds can be general curvilinear grids
@@ -124,9 +156,15 @@ class Regridder(object):
         return self.__str__()
 
     def __call__(self, dr_in):
+        """
+        Shortcut for self.apply_weights()
+        """
         return self.apply_weights(dr_in)
 
     def write_weights(self, ds_in, ds_out):
+        """
+        Write offline weight file, which will be read in at the next step.
+        """
 
         if os.path.exists(self.filename):
             if self.reuse_weights:
@@ -148,6 +186,29 @@ class Regridder(object):
         esmf_regrid_finalize(regrid)
 
     def apply_weights(self, dr_in):
+        """
+        Regrid xarray DataArray
+
+        Parameters
+        ----------
+        dr_in: xarray DataArray
+            The rightmost two dimensions must be the same as ds_in.
+            Can have arbitrary additional dimensions.
+
+            Examples of valid dimensions:
+            - (Nlat, Nlon), if ds_in has shape (Nlat, Nlon)
+            - (N2, N1, Ny, Nx), if ds_in has shape (Ny, Nx)
+
+        Returns
+        -------
+        dr_out: xarray DataArray
+            On the same horizontal grid as ds_out, with extra dims in dr_in.
+
+            Examples of returning dimensions,
+            assuming ds_out has the shape of (Ny_out, Nx_out):
+            - (Ny_out, Nx_out), if dr_in is 2D
+            - (N2, N1, Ny_out, Nx_out), if dr_in has shape (N2, N1, Ny, Nx)
+        """
         indata = dr_in.values
         outdata = apply_weights(self.A, indata, self.Ny_out, self.Nx_out)
 

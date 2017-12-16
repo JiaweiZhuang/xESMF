@@ -44,7 +44,7 @@ def apply_weights(A, indata, Nlon_out, Nlat_out):
 
     Parameters
     ----------
-    A: sparse COO matrix
+    A: scipy sparse COO matrix
 
     indata: numpy array of shape (..., Nlat, Nlon) or (..., Ny, Nx)
             Should be C-ordered. Will be then tranposed to F-ordered.

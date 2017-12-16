@@ -20,6 +20,16 @@ def wave_smooth(lon, lat):
     '''
     Spherical harmonic with low frequency
     Y_2^2 = 2 + \cos^2(\theta) \cos(2 \phi)
+
+    Parameters
+    ----------
+    lon, lat : 2D numpy array or xarray DataArray
+         Longitute/Latitude of cell centers
+
+    Returns
+    -------
+    f: 2D numpy array or xarray DataArray depending on input
+        2D wave field
     '''
     # degree to radius, make a copy
     lat = lat/180.0*np.pi

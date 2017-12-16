@@ -5,8 +5,25 @@ import warnings
 from . backend import esmf_grid, add_corner
 
 
-def grid_1d(start_b, end_b, step):
+def _grid_1d(start_b, end_b, step):
+    '''
+    1D grid centers and bounds
 
+    Parameters
+    ----------
+    start_b, end_b: float
+        start/end position. Bounds, not centers.
+
+    step: float
+        step size, i.e. grid resolution
+
+    Returns
+    -------
+    centers: 1D numpy array
+
+    bounds: 1D numpy array, with one more element than centers
+
+    '''
     bounds = np.arange(start_b, end_b+step, step)
     centers = (bounds[:-1] + bounds[1:])/2
 
@@ -15,9 +32,31 @@ def grid_1d(start_b, end_b, step):
 
 def grid_2d(lon0_b, lon1_b, d_lon,
             lat0_b, lat1_b, d_lat):
+    '''
+    2D rectilinear grid centers and bounds
 
-    lon_1d, lon_b_1d = grid_1d(lon0_b, lon1_b, d_lon)
-    lat_1d, lat_b_1d = grid_1d(lat0_b, lat1_b, d_lat)
+    Parameters
+    ----------
+    lon0_b, lon1_b: float
+        Longitude bounds
+
+    d_lon: float
+        Logitude step size, i.e. grid resolution
+
+    lat0_b, lat1_b: float
+        Latitude bounds
+
+    d_lat: float
+        Latitude step size, i.e. grid resolution
+
+    Returns
+    -------
+    ds: xarray DataSet with coordinate values
+
+    '''
+
+    lon_1d, lon_b_1d = _grid_1d(lon0_b, lon1_b, d_lon)
+    lat_1d, lat_b_1d = _grid_1d(lat0_b, lat1_b, d_lat)
 
     lon, lat = np.meshgrid(lon_1d, lat_1d)
     lon_b, lat_b = np.meshgrid(lon_b_1d, lat_b_1d)
@@ -33,6 +72,22 @@ def grid_2d(lon0_b, lon1_b, d_lon,
 
 
 def grid_global(d_lon, d_lat):
+    '''
+    Global 2D rectilinear grid centers and bounds
+
+    Parameters
+    ----------
+    d_lon: float
+        Logitude step size, i.e. grid resolution
+
+    d_lat: float
+        Latitude step size, i.e. grid resolution
+
+    Returns
+    -------
+    ds: xarray DataSet with coordinate values
+
+    '''
 
     if not np.isclose(360/d_lon, 360//d_lon):
         warnings.warn('360 cannot be divided by d_lon = {}, '

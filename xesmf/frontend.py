@@ -86,7 +86,7 @@ class Regridder(object):
 
         filename: bool, optional
             Name for the weight file. The default naming scheme is
-            method_{Ny_in}x{Nx_in}_{Ny_out}x{Nx_out}.nc,
+            {method}_{Ny_in}x{Nx_in}_{Ny_out}x{Nx_out}.nc,
             e.g. bilinear_400x600_300x400.nc
 
         reuse_weights: bool, optional
@@ -163,9 +163,10 @@ class Regridder(object):
 
     def __call__(self, dr_in):
         """
-        Shortcut for self.apply_weights()
+        Shortcut for regrid_dataarray()
         """
-        return self.apply_weights(dr_in)
+        # TODO: call different methods for DataArray and DataSet
+        return self.regrid_dataarray(dr_in)
 
     def write_weights(self, ds_in, ds_out):
         """
@@ -191,7 +192,7 @@ class Regridder(object):
         # we only need the weight file, not the regrid object
         esmf_regrid_finalize(regrid)
 
-    def apply_weights(self, dr_in):
+    def regrid_dataarray(self, dr_in):
         """
         Regrid xarray DataArray
 
@@ -248,3 +249,6 @@ class Regridder(object):
             dr_out.coords[dim] = dr_in.coords[dim]
 
         return dr_out
+
+    def regrid_dataset(self, ds_in):
+        raise NotImplementedError("Only support regrid_dataarray() for now.")

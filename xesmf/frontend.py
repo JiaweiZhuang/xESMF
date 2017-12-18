@@ -71,12 +71,12 @@ class Regridder(object):
 
         Parameters
         ----------
-        ds_in, ds_out: xarray DataSet
+        ds_in, ds_out : xarray DataSet
             Contain input and output grid coordinates. Look for variables
             'lon', 'lat', and optionally 'lon_b', 'lat_b' for conservative
             method.
 
-        method: str, optional
+        method : str, optional
             Regridding method. Options are
             - 'bilinear'
             - 'conservative', need grid corner information
@@ -84,18 +84,18 @@ class Regridder(object):
             - 'nearest_s2d'
             - 'nearest_d2s'
 
-        filename: bool, optional
+        filename : bool, optional
             Name for the weight file. The default naming scheme is
             {method}_{Ny_in}x{Nx_in}_{Ny_out}x{Nx_out}.nc,
             e.g. bilinear_400x600_300x400.nc
 
-        reuse_weights: bool, optional
+        reuse_weights : bool, optional
             Whether to read existing weight file to save computing time.
             False by default (i.e. re-compute, not reuse).
 
         Returns
         -------
-        regridder: xESMF regridder object
+        regridder : xESMF regridder object
 
         """
 
@@ -198,7 +198,7 @@ class Regridder(object):
 
         Parameters
         ----------
-        dr_in: xarray DataArray
+        dr_in : xarray DataArray
             The rightmost two dimensions must be the same as ds_in.
             Can have arbitrary additional dimensions.
 
@@ -208,7 +208,7 @@ class Regridder(object):
 
         Returns
         -------
-        dr_out: xarray DataArray
+        dr_out : xarray DataArray
             On the same horizontal grid as ds_out, with extra dims in dr_in.
 
             Examples of returning dimensions,
@@ -247,6 +247,8 @@ class Regridder(object):
         # recover coordinate values for extra dimensions
         for dim in dims_extra:
             dr_out.coords[dim] = dr_in.coords[dim]
+
+        # TODO: add Attributes like regridding method
 
         return dr_out
 

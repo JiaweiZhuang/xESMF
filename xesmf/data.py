@@ -28,7 +28,7 @@ def wave_smooth(lon, lat):
 
     Returns
     -------
-    f: 2D numpy array or xarray DataArray depending on input
+    f : 2D numpy array or xarray DataArray depending on input
         2D wave field
     '''
     # degree to radius, make a copy

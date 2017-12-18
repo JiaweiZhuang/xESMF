@@ -11,7 +11,7 @@ def _grid_1d(start_b, end_b, step):
 
     Parameters
     ----------
-    start_b, end_b: float
+    start_b, end_b : float
         start/end position. Bounds, not centers.
 
     step: float
@@ -19,9 +19,9 @@ def _grid_1d(start_b, end_b, step):
 
     Returns
     -------
-    centers: 1D numpy array
+    centers : 1D numpy array
 
-    bounds: 1D numpy array, with one more element than centers
+    bounds : 1D numpy array, with one more element than centers
 
     '''
     bounds = np.arange(start_b, end_b+step, step)
@@ -37,21 +37,21 @@ def grid_2d(lon0_b, lon1_b, d_lon,
 
     Parameters
     ----------
-    lon0_b, lon1_b: float
+    lon0_b, lon1_b : float
         Longitude bounds
 
-    d_lon: float
+    d_lon : float
         Logitude step size, i.e. grid resolution
 
-    lat0_b, lat1_b: float
+    lat0_b, lat1_b : float
         Latitude bounds
 
-    d_lat: float
+    d_lat : float
         Latitude step size, i.e. grid resolution
 
     Returns
     -------
-    ds: xarray DataSet with coordinate values
+    ds : xarray DataSet with coordinate values
 
     '''
 
@@ -77,15 +77,15 @@ def grid_global(d_lon, d_lat):
 
     Parameters
     ----------
-    d_lon: float
+    d_lon : float
         Logitude step size, i.e. grid resolution
 
-    d_lat: float
+    d_lat : float
         Latitude step size, i.e. grid resolution
 
     Returns
     -------
-    ds: xarray DataSet with coordinate values
+    ds : xarray DataSet with coordinate values
 
     '''
 
@@ -106,15 +106,16 @@ def ds_to_ESMFgrid(ds):
 
     Parameters
     ----------
-    ds: xarray DataSet
-        Contains variables 'lon', 'lat', and optionally 'lon_b', 'lat_b'.
+    ds : xarray DataSet
+        Contains variables ``lon``, ``lat``,
+        and optionally ``lon_b``, ``lat_b``.
 
-        Shape should be (Nlat, Nlon) or (Ny, Nx),
+        Shape should be ``(Nlat, Nlon)`` or ``(Ny, Nx)``,
         as normal C or Python ordering. Will be then tranposed to F-ordered.
 
     Returns
     -------
-    grid: ESMF.Grid object
+    grid : ESMF.Grid object
 
     '''
 

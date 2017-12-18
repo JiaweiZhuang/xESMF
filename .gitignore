@@ -25,6 +25,7 @@ var/
 
 # Sphinx documentation
 docs/_build/
+doc/_build/
 
 # notebook
 .ipynb_checkpoints
@@ -38,3 +39,6 @@ docs/_build/
 
 # ESMPy log files
 PET0.ESMF_LogFile
+
+# pytest cache
+.cache

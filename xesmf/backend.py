@@ -144,6 +144,8 @@ def add_corner(grid, lon_b, lat_b):
     assert lon_b.shape == lat_b.shape, "lon_b and lat_b must have same shape"
     assert np.array_equal(lon_b.shape, grid.max_index+1), (
            "lon_b should be size (Nx+1, Ny+1)")
+    assert (grid.num_peri_dims == 0) and (grid.periodic_dim is None), (
+           "Cannot add corner for periodic grid")
 
     grid.add_coords(staggerloc=staggerloc)
 

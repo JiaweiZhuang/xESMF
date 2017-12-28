@@ -166,6 +166,21 @@ class Regridder(object):
                                    filename=self.filename)
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
 
+    def clean_weight_file(self):
+        """
+        Remove the offline weight file on disk.
+
+        To save the time on re-computing weights, you can just keep the file,
+        and set "reuse_weights=True" when initializing the regridder next time.
+        """
+        if os.path.exists(self.filename):
+            print("Remove file {}".format(self.filename))
+            os.remove(self.filename)
+            print("You can still use the regridder because the weights "
+                  "are already read into memory.")
+        else:
+            print("File {} is already removed.".format(self.filename))
+
     def __str__(self):
         info = ('xESMF Regridder \n'
                 'Regridding algorithm:       {} \n'
@@ -210,6 +225,7 @@ class Regridder(object):
             raise TypeError("input must be numpy array or xarray DataArray!")
 
         return regrid_func(a)
+
 
     def regrid_numpy(self, indata):
         """

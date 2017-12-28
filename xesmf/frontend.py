@@ -161,12 +161,20 @@ class Regridder(object):
     def __repr__(self):
         return self.__str__()
 
-    def __call__(self, dr_in):
+    def __call__(self, a):
         """
-        Shortcut for regrid_dataarray()
+        Shortcut for regrid_numpy() and regrid_dataarray()
         """
-        # TODO: call different methods for DataArray and DataSet
-        return self.regrid_dataarray(dr_in)
+        # TODO: DataSet support
+
+        if isinstance(a, np.ndarray):
+            regrid_func = self.regrid_numpy
+        elif isinstance(a, xr.DataArray):
+            regrid_func = self.regrid_dataarray
+        else:
+            raise TypeError("input must be numpy array or xarray DataArray!")
+
+        return regrid_func(a)
 
     def write_weights(self, ds_in, ds_out):
         """
@@ -192,9 +200,17 @@ class Regridder(object):
         # we only need the weight file, not the regrid object
         esmf_regrid_finalize(regrid)
 
+    def regrid_numpy(self, indata):
+        """
+        Regrid pure numpy array
+
+        """
+        outdata = apply_weights(self.A, indata, self.Ny_out, self.Nx_out)
+        return outdata
+
     def regrid_dataarray(self, dr_in):
         """
-        Regrid xarray DataArray
+        Regrid xarray DataArray, track metadata.
 
         Parameters
         ----------
@@ -235,8 +251,7 @@ class Regridder(object):
              )
 
         # apply regridding to pure numpy array
-        indata = dr_in.values
-        outdata = apply_weights(self.A, indata, self.Ny_out, self.Nx_out)
+        outdata = self.regrid_numpy(dr_in.values)
 
         # use a tempory DataSet to get horizontal grid information
         varname = dr_in.name

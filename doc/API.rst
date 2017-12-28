@@ -1,6 +1,12 @@
 API
 ###
 
+frontend
+========
+
+.. automodule:: xesmf.frontend
+    :members:
+
 backend
 =======
 

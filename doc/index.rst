@@ -38,8 +38,15 @@ Contents
 
 .. toctree::
    :maxdepth: 1
+   :caption: Tutorials
 
-   tutorial
+   quick_start
+   built_in_example
+
+.. toctree::
+   :maxdepth: 1
+   :caption: API
+   
    API
 
 Why we need a new regridding package

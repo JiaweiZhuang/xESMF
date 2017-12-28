@@ -69,3 +69,33 @@ def test_regrid():
     # check metadata
     xr.testing.assert_identical(dr_out_4D['time'], ds_in['time'])
     xr.testing.assert_identical(dr_out_4D['lev'], ds_in['lev'])
+
+    # clean-up
+    regridder.clean_weight_file()
+
+
+def test_regrid_periodic_wrong():
+    # not using periodic option
+    regridder = xe.Regridder(ds_in, ds_out, 'bilinear')
+
+    dr_out = regridder(ds_in['data'])  # xarray DataArray
+
+    # compare with analytical solution
+    rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
+    assert np.max(np.abs(rel_err)) == 1.0  # some data will be missing
+
+    # clean-up
+    regridder.clean_weight_file()
+
+
+def test_regrid_periodic_correct():
+    regridder = xe.Regridder(ds_in, ds_out, 'bilinear', periodic=True)
+
+    dr_out = regridder(ds_in['data'])  # xarray DataArray
+
+    # compare with analytical solution
+    rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
+    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=1e-5)
+
+    # clean-up
+    regridder.clean_weight_file()

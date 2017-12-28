@@ -2,7 +2,8 @@ import os
 import numpy as np
 import ESMF
 import xesmf as xe
-from xesmf.backend import (warn_f_contiguous, esmf_grid, add_corner,
+from xesmf.backend import (warn_f_contiguous, warn_lat_range,
+                           esmf_grid, add_corner,
                            esmf_regrid_build, esmf_regrid_apply,
                            esmf_regrid_finalize)
 from xesmf.smm import read_weights, apply_weights
@@ -69,6 +70,15 @@ def test_warn_f_on_grid():
     # should throw a warning if not passing transpose
     with pytest.warns(UserWarning):
         esmf_grid(lon, lat)
+
+
+def test_warn_lat_range():
+    # latitude goes to -100 (invalid value)
+    ds_temp = xe.util.grid_2d(-180, 180, 10, -100, 90, 5)
+    with pytest.warns(UserWarning):
+        warn_lat_range(ds_temp['lat'].values)
+    with pytest.warns(UserWarning):
+        warn_lat_range(ds_temp['lat_b'].values)
 
 
 def test_esmf_grid_with_corner():

@@ -37,6 +37,21 @@ def warn_f_contiguous(a):
                       "Will affect performance.")
 
 
+def warn_lat_range(lat):
+    '''
+    Give a warning if latitude is outside of [-90, 90]
+
+    Longitute, on the other hand, can be in any range,
+    since the it the transform is done in (x, y, z) space.
+
+    Parameters
+    ----------
+    a : numpy array
+    '''
+    if (lat.max() > 90.0) or (lat.min() < -90.0):
+        warnings.warn("Latitude is outside of [-90, 90]")
+
+
 def esmf_grid(lon, lat, periodic=False):
     '''
     Create an ESMF.Grid object, for contrusting ESMF.Field and ESMF.Regrid
@@ -64,6 +79,8 @@ def esmf_grid(lon, lat, periodic=False):
     # Passing C-ordered array will slow down performance.
     for a in [lon, lat]:
         warn_f_contiguous(a)
+
+    warn_lat_range(lat)
 
     # ESMF.Grid can actually take 3D array (lon, lat, radius),
     # but regridding only works for 2D array
@@ -120,6 +137,8 @@ def add_corner(grid, lon_b, lat_b):
 
     for a in [lon_b, lat_b]:
         warn_f_contiguous(a)
+
+    warn_lat_range(lat_b)
 
     assert lon_b.ndim == 2, "Input grid must be 2D array"
     assert lon_b.shape == lat_b.shape, "lon_b and lat_b must have same shape"

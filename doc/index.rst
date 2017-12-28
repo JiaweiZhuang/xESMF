@@ -46,8 +46,9 @@ Contents
 .. toctree::
    :maxdepth: 1
    :caption: API
-   
-   API
+
+   user_api
+   internal_api
 
 Why we need a new regridding package
 ------------------------------------

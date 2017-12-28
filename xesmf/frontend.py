@@ -189,7 +189,16 @@ class Regridder(object):
 
     def __call__(self, a):
         """
-        Shortcut for regrid_numpy() and regrid_dataarray()
+        Shortcut for ``regrid_numpy()`` and ``regrid_dataarray()``.
+
+        Parameters
+        ----------
+        a : xarray DataArray or numpy array
+
+        Returns
+        -------
+        xarray DataArray or numpy array
+            Regridding results. Type depends on input.
         """
         # TODO: DataSet support
 
@@ -214,9 +223,6 @@ class Regridder(object):
         -------
         outdata : numpy array
 
-        See Also
-        -------
-        regrid_dataarray : Regrid xarray DataArray
         """
 
         # check shape
@@ -253,9 +259,6 @@ class Regridder(object):
             - (Ny_out, Nx_out), if dr_in is 2D
             - (N2, N1, Ny_out, Nx_out), if dr_in has shape (N2, N1, Ny, Nx)
 
-        See Also
-        -------
-        regrid_numpy : Regrid pure numpy array
         """
 
         # apply regridding to pure numpy array

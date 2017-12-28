@@ -6,72 +6,55 @@ import numpy as np
 import xarray as xr
 import os
 
-from . backend import esmf_regrid_build, esmf_regrid_finalize
-from . util import ds_to_ESMFgrid
+from . backend import (esmf_grid, add_corner,
+                       esmf_regrid_build, esmf_regrid_finalize)
+
 from . smm import read_weights, apply_weights
 
 
-def _check_center_dim(ds_in, ds_out):
-    """
-    make sure the cell center dimension agree
-    """
-    assert ds_in['lon'].ndim == 2, "dimension of ds_in['lon'] should be 2"
+def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None):
+    '''
+    Convert xarray DataSet or dictionary to ESMF.Grid object.
 
-    dim_name = ds_in['lon'].dims
-    assert ds_in['lat'].dims == dim_name, (
-           "ds_in['lat'] should have the same dimension name as ds_in['lon']")
-    assert ds_out['lon'].dims == ds_out['lat'].dims == dim_name, (
-           "ds_out['lon'] and ds_out['lat'] should have the same "
-           "dimension name as ds_in['lon']")
+    Parameters
+    ----------
+    ds : xarray DataSet
+        Contains variables ``lon``, ``lat``,
+        and optionally ``lon_b``, ``lat_b``.
 
-    return dim_name
+        Shape should be ``(Nlat, Nlon)`` or ``(Ny, Nx)``,
+        as normal C or Python ordering. Will be then tranposed to F-ordered.
 
+    Returns
+    -------
+    grid : ESMF.Grid object
 
-def _check_bound_dim(ds_in, ds_out):
-    """
-    make sure the cell bound dimension agree
-    """
+    '''
 
-    # existence
-    assert ('lon_b' in ds_in) and ('lat_b' in ds_in), (
-           "conservative method need 'lon_b' and 'lat_b' in ds_in")
-    assert ('lon_b' in ds_out) and ('lat_b' in ds_out), (
-           "conservative method need 'lon_b' and 'lat_b' in ds_out")
+    # use np.asarray(dr) instead of dr.values, so it also works for dictionary
+    lon = np.asarray(ds['lon'])
+    lat = np.asarray(ds['lat'])
 
-    # rank
-    assert ds_in['lon_b'].ndim == 2, "dimension of ds_in['lon_b'] should be 2"
+    # tranpose the arrays so they become Fortran-ordered
+    grid = esmf_grid(lon.T, lat.T, periodic=periodic)
 
-    # naming
-    dim_b_name = ds_in['lon_b'].dims
-    assert ds_in['lat_b'].dims == dim_b_name, (
-           'lat_b should have the same dimension name as lon_b')
-    assert ds_out['lon_b'].dims == ds_out['lat_b'].dims == dim_b_name, (
-           "ds_out['lon_b'] and ds_out['lat_b'] should have the same"
-           "dimension name as ds_in['lon_b']")
+    if need_bounds:
+        lon_b = np.asarray(ds['lon_b'])
+        lat_b = np.asarray(ds['lat_b'])
+        add_corner(grid, lon_b.T, lat_b.T)
 
-    return dim_b_name
-
-
-def _check_bound_shape(ds):
-    """
-    make sure bound has shape N+1 compared to center
-    """
-    s = ds['lon'].shape
-    s_b = ds['lon_b'].shape
-
-    assert (s_b[0] == s[0]+1) and (s_b[1] == s[1]+1), (
-           "ds['lon'] should be one box larger than ds['lon_b']")
+    return grid
 
 
 class Regridder(object):
-    def __init__(self, ds_in, ds_out, method,
+    def __init__(self, ds_in, ds_out, method, periodic=False,
                  filename=None, reuse_weights=False):
         """
         Make xESMF regridder
 
         Parameters
         ----------
-        ds_in, ds_out : xarray DataSet
+        ds_in, ds_out : xarray DataSet, or dictionary
             Contain input and output grid coordinates. Look for variables
             'lon', 'lat', and optionally 'lon_b', 'lat_b' for conservative
             method.
@@ -84,7 +67,12 @@ class Regridder(object):
             - 'nearest_s2d'
             - 'nearest_d2s'
 
-        filename : bool, optional
+        periodic : bool, optional
+            Periodic in longitude? Default to False.
+            Only useful for global grids with non-conservative regridding.
+            Will be forced to False for conservative regridding.
+
+        filename : str, optional
             Name for the weight file. The default naming scheme is
             {method}_{Ny_in}x{Nx_in}_{Ny_out}x{Nx_out}.nc,
             e.g. bilinear_400x600_300x400.nc
@@ -100,7 +88,25 @@ class Regridder(object):
         """
 
         # TODO: also accept 1D coodinate array for rectilinear grids
-        self.dim_name = _check_center_dim(ds_in, ds_out)
+
+        # record output grid coordinate, to be added to regridding results
+        self._lon_out = np.asarray(ds_out['lon'])
+        self._lat_out = np.asarray(ds_out['lat'])
+
+        # record basic switches
+        if method == 'conservative':
+            self.need_bounds = True
+            periodic = False  # bound shape will not be N+1 for periodic grid
+        else:
+            self.need_bounds = False
+
+        self.method = method
+        self.periodic = periodic
+        self.reuse_weights = reuse_weights
+
+        self._grid_in = ds_to_ESMFgrid(ds_in, need_bounds=self.need_bounds,
+                                       periodic=periodic)
+        self._grid_out = ds_to_ESMFgrid(ds_out, need_bounds=self.need_bounds)
 
         # get grid shape information
         # Use (Ny, Nx) instead of (Nlat, Nlon),
@@ -111,30 +117,48 @@ class Regridder(object):
         self.N_in = ds_in['lon'].size
         self.N_out = ds_out['lon'].size
 
-        # only copy coordinate values do not copy data
-        self.coords_in = ds_in.coords.to_dataset().copy()
-        self.coords_out = ds_out.coords.to_dataset().copy()
-
-        if method == 'conservative':
-            self.dim_b_name = _check_bound_dim(ds_in, ds_out)
-            _check_bound_shape(ds_in)
-            _check_bound_shape(ds_out)
-        else:
-            self.dim_b_name = None
-
-        self.method = method
-        self.reuse_weights = reuse_weights
+        # only copy coordinate values, do not copy data
+        # self.coords_in = ds_in.coords.to_dataset().copy()
+        # self.coords_out = ds_out.coords.to_dataset().copy()
 
         if filename is None:
-            # e.g. bilinear_400x600_300x400.nc
-            filename = ('{0}_{1}x{2}_{3}x{4}.nc'.format(method,
-                        self.Ny_in, self.Nx_in,
-                        self.Ny_out, self.Nx_out)
-                        )
-        self.filename = filename
+            self.filename = self._get_default_filename()
+        else:
+            self.filename = filename
 
-        self.write_weights(ds_in, ds_out)
+        # get weight matrix
+        self._write_weight_file()
         self.A = read_weights(self.filename, self.N_in, self.N_out)
+
+    def _get_default_filename(self):
+        # e.g. bilinear_400x600_300x400.nc
+        filename = ('{0}_{1}x{2}_{3}x{4}'.format(self.method,
+                    self.Ny_in, self.Nx_in,
+                    self.Ny_out, self.Nx_out)
+                    )
+        if self.periodic:
+            filename += '_peri.nc'
+        else:
+            filename += '.nc'
+
+        return filename
+
+    def _write_weight_file(self):
+
+        if os.path.exists(self.filename):
+            if self.reuse_weights:
+                print('Reuse existing file: {}'.format(self.filename))
+                return  # do not compute it again, just read it
+            else:
+                print('Overwrite existing file: {} \n'.format(self.filename),
+                      'You can set reuse_weights=True to save computing time.')
+                os.remove(self.filename)
+        else:
+            print('Create weight file: {}'.format(self.filename))
+
+        regrid = esmf_regrid_build(self._grid_in, self._grid_out, self.method,
+                                   filename=self.filename)
+        esmf_regrid_finalize(regrid)  # only need weights, not regrid object
 
     def __str__(self):
         info = ('xESMF Regridder \n'
@@ -143,18 +167,14 @@ class Regridder(object):
                 'Reuse pre-computed weights? {} \n'
                 'Input grid shape:           {} \n'
                 'Output grid shape:          {} \n'
-                'Grid dimension name:        {} \n'
+                'Periodic in longitude?      {}'
                 .format(self.method,
                         self.filename,
                         self.reuse_weights,
                         (self.Ny_in, self.Nx_in),
                         (self.Ny_out, self.Nx_out),
-                        self.dim_name
-                        )
+                        self.periodic)
                 )
-
-        if self.method == 'conservative':
-            info += 'Boundary dimension name:    {} \n'.format(self.dim_b_name)
 
         return info
 
@@ -176,35 +196,18 @@ class Regridder(object):
 
         return regrid_func(a)
 
-    def write_weights(self, ds_in, ds_out):
-        """
-        Write offline weight file, which will be read in at the next step.
-        """
-
-        if os.path.exists(self.filename):
-            if self.reuse_weights:
-                print('Reuse existing file: {}'.format(self.filename))
-                return  # do not compute it again, just read it
-            else:
-                print('Overwrite existing file: {} \n'.format(self.filename),
-                      'You can set reuse_weights=True to save computing time.')
-                os.remove(self.filename)
-        else:
-            print('Create weight file: {}'.format(self.filename))
-
-        grid_in = ds_to_ESMFgrid(ds_in)
-        grid_out = ds_to_ESMFgrid(ds_out)
-        regrid = esmf_regrid_build(grid_in, grid_out, self.method,
-                                   filename=self.filename)
-
-        # we only need the weight file, not the regrid object
-        esmf_regrid_finalize(regrid)
-
     def regrid_numpy(self, indata):
         """
         Regrid pure numpy array
-
         """
+
+        # check shape
+        shape_horiz = indata.shape[-2:]  # the rightmost two dimensions
+        assert shape_horiz == (self.Ny_in, self.Nx_in), (
+             'The horizontal shape of input data is {}, different from that of'
+             'the regridder {}!'.format(shape_horiz, (self.Ny_in, self.Nx_in))
+             )
+
         outdata = apply_weights(self.A, indata, self.Ny_out, self.Nx_out)
         return outdata
 
@@ -233,37 +236,27 @@ class Regridder(object):
             - (N2, N1, Ny_out, Nx_out), if dr_in has shape (N2, N1, Ny, Nx)
         """
 
-        # check dimension naming
-        dims_in = dr_in.dims
-        dims_extra = dims_in[0:-2]
-        dims_horiz = dims_in[-2:]
-
-        assert dims_horiz == self.dim_name, (
-                'The horizontal two dimensions of dr_in are {}, different from'
-                ' that of the regridder {}!'.format(dims_horiz, self.dim_name)
-                )
-
-        # check shape
-        shape_horiz = dr_in.shape[-2:]
-        assert shape_horiz == (self.Ny_in, self.Nx_in), (
-             'The horizontal shape of dr_in are {}, different from that of '
-             'the regridder {}!'.format(shape_horiz, (self.Ny_in, self.Nx_in))
-             )
-
         # apply regridding to pure numpy array
         outdata = self.regrid_numpy(dr_in.values)
 
-        # use a tempory DataSet to get horizontal grid information
-        varname = dr_in.name
-        ds_out_temp = self.coords_out.copy()
-        ds_out_temp[varname] = (dims_in, outdata)  # same dim name as dr_in
-        dr_out = ds_out_temp[varname]
+        # track metadata
+        dim_names = dr_in.dims
+        horiz_dims = dim_names[-2:]
+        extra_dims = dim_names[0:-2]
 
-        # recover coordinate values for extra dimensions
-        for dim in dims_extra:
+        varname = dr_in.name
+
+        dr_out = xr.DataArray(outdata, dims=dim_names, name=varname)
+
+        # append horizontal grid coordinate value
+        dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=horiz_dims)
+        dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=horiz_dims)
+
+        # append extra dimension coordinate value
+        for dim in extra_dims:
             dr_out.coords[dim] = dr_in.coords[dim]
 
-        # TODO: add Attributes like regridding method
+        dr_out.attrs['regrid_method'] = self.method
 
         return dr_out
 

@@ -98,36 +98,3 @@ def grid_global(d_lon, d_lat):
                       'might not cover the globe uniformally'.format(d_lat))
 
     return grid_2d(-180, 180, d_lon, -90, 90, d_lat)
-
-
-def ds_to_ESMFgrid(ds):
-    '''
-    Convert xarray DataSet to ESMF.Grid object.
-
-    Parameters
-    ----------
-    ds : xarray DataSet
-        Contains variables ``lon``, ``lat``,
-        and optionally ``lon_b``, ``lat_b``.
-
-        Shape should be ``(Nlat, Nlon)`` or ``(Ny, Nx)``,
-        as normal C or Python ordering. Will be then tranposed to F-ordered.
-
-    Returns
-    -------
-    grid : ESMF.Grid object
-
-    '''
-
-    # tranpose the arrays so they become Fortran-ordered
-    lon, lat = ds['lon'].values, ds['lat'].values
-    grid = esmf_grid(lon.T, lat.T)
-
-    # cell bounds are optional
-    try:
-        lon_b, lat_b = ds['lon_b'].values, ds['lat_b'].values
-        add_corner(grid, lon_b.T, lat_b.T)
-    except:
-        pass
-
-    return grid

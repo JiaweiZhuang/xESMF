@@ -123,8 +123,8 @@ def test_esmf_build_bilinear():
 
 def test_regrid():
 
-    # use conservative regridding as an example
-    # since it is the most well-tested studied on in papers
+    # use conservative regridding as an example,
+    # since it is the most well-tested studied one in papers
 
     # TODO: possible to break this long test into smaller tests?
     # not easy due to strong dependencies.
@@ -178,3 +178,41 @@ def test_regrid():
     # clean-up
     esmf_regrid_finalize(regrid)
     os.remove(filename)
+
+
+def test_regrid_periodic_wrong():
+
+    # not using periodic grid
+    grid_in = esmf_grid(lon_in.T, lat_in.T)
+    grid_out = esmf_grid(lon_out.T, lat_out.T)
+
+    assert grid_in.num_peri_dims == 0
+    assert grid_in.periodic_dim is None
+
+    regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear')
+    data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
+
+    rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
+    assert np.max(np.abs(rel_err)) == 1.0  # some data will be missing
+
+    # clean-up
+    esmf_regrid_finalize(regrid)
+
+
+def test_regrid_periodic_correct():
+
+    # only need to specific periodic for input grid
+    grid_in = esmf_grid(lon_in.T, lat_in.T, periodic=True)
+    grid_out = esmf_grid(lon_out.T, lat_out.T)
+
+    assert grid_in.num_peri_dims == 1
+    assert grid_in.periodic_dim == 0  # the first axis, longitude
+
+    regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear')
+    data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
+
+    rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
+    assert 0.004 < np.max(np.abs(rel_err)) < 0.005  # ~0.0045
+
+    # clean-up
+    esmf_regrid_finalize(regrid)

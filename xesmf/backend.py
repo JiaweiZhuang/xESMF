@@ -37,7 +37,7 @@ def warn_f_contiguous(a):
                       "Will affect performance.")
 
 
-def esmf_grid(lon, lat):
+def esmf_grid(lon, lat, periodic=False):
     '''
     Create an ESMF.Grid object, for contrusting ESMF.Field and ESMF.Regrid
 
@@ -50,6 +50,10 @@ def esmf_grid(lon, lat):
 
          Shape should be ``(Nlon, Nlat)`` for rectilinear grid,
          or ``(Nx, Ny)`` for general quadrilateral grid.
+
+    periodic : bool, optional
+        Periodic in longitude? Default to False.
+        Only useful for source grid.
 
     Returns
     -------
@@ -68,12 +72,18 @@ def esmf_grid(lon, lat):
 
     staggerloc = ESMF.StaggerLoc.CENTER  # actually just integer 0
 
+    if periodic:
+        num_peri_dims = 1
+    else:
+        num_peri_dims = None
+
     # ESMPy documentation claims that if staggerloc and coord_sys are None,
     # they will be set to default values (CENTER and SPH_DEG).
     # However, they actually need to be set explicitly,
     # otherwise grid._coord_sys and grid._staggerloc will still be None.
     grid = ESMF.Grid(np.array(lon.shape), staggerloc=staggerloc,
-                     coord_sys=ESMF.CoordSys.SPH_DEG)
+                     coord_sys=ESMF.CoordSys.SPH_DEG,
+                     num_peri_dims=num_peri_dims)
 
     # The grid object points to the underlying Fortran arrays in ESMF.
     # To modify lat/lon coordinates, need to get pointers to them

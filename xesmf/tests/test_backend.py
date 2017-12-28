@@ -162,7 +162,7 @@ def test_regrid():
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
 
     rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
-    assert 0.02 < np.max(np.abs(rel_err)) < 0.04  # ~0.03
+    assert np.max(np.abs(rel_err)) == pytest.approx(0.03126, abs=1e-5)
 
     # apply regridding using scipy
     A = read_weights(filename, lon_in.size, lon_out.size)
@@ -222,7 +222,8 @@ def test_regrid_periodic_correct():
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
 
     rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
-    assert 0.004 < np.max(np.abs(rel_err)) < 0.005  # ~0.0045
+    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=1e-5)
+    # assert 0.004 < np.max(np.abs(rel_err)) < 0.005  # ~0.0045
 
     # clean-up
     esmf_regrid_finalize(regrid)

@@ -18,12 +18,18 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None):
 
     Parameters
     ----------
-    ds : xarray DataSet
+    ds : xarray DataSet or dictionary
         Contains variables ``lon``, ``lat``,
-        and optionally ``lon_b``, ``lat_b``.
+        and optionally ``lon_b``, ``lat_b`` if need_bounds=True.
 
         Shape should be ``(Nlat, Nlon)`` or ``(Ny, Nx)``,
         as normal C or Python ordering. Will be then tranposed to F-ordered.
+
+    need_bounds : bool, optional
+        Need cell boundary values?
+
+    periodic : bool, optional
+        Periodic in longitude?
 
     Returns
     -------
@@ -199,6 +205,18 @@ class Regridder(object):
     def regrid_numpy(self, indata):
         """
         Regrid pure numpy array
+
+        Parameters
+        ----------
+        indata : numpy array
+
+        Returns
+        -------
+        outdata : numpy array
+
+        See Also
+        -------
+        regrid_dataarray : Regrid xarray DataArray
         """
 
         # check shape
@@ -234,6 +252,10 @@ class Regridder(object):
             assuming ds_out has the shape of (Ny_out, Nx_out):
             - (Ny_out, Nx_out), if dr_in is 2D
             - (N2, N1, Ny_out, Nx_out), if dr_in has shape (N2, N1, Ny, Nx)
+
+        See Also
+        -------
+        regrid_numpy : Regrid pure numpy array
         """
 
         # apply regridding to pure numpy array

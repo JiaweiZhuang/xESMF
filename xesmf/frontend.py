@@ -15,7 +15,7 @@ from . smm import read_weights, apply_weights
 def as_2d_mesh(lon, lat):
 
     if (lon.ndim, lat.ndim) == (2, 2):
-        pass
+        assert lon.shape == lat.shape, 'lon and lat should have same shape'
     elif (lon.ndim, lat.ndim) == (1, 1):
         lon, lat = np.meshgrid(lon, lat)
     else:
@@ -23,7 +23,8 @@ def as_2d_mesh(lon, lat):
 
     return lon, lat
 
-def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None):
+
+def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     '''
     Convert xarray DataSet or dictionary to ESMF.Grid object.
 
@@ -51,6 +52,7 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None):
     # use np.asarray(dr) instead of dr.values, so it also works for dictionary
     lon = np.asarray(ds['lon'])
     lat = np.asarray(ds['lat'])
+    lon, lat = as_2d_mesh(lon, lat)
 
     # tranpose the arrays so they become Fortran-ordered
     grid = esmf_grid(lon.T, lat.T, periodic=periodic)
@@ -58,9 +60,10 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None):
     if need_bounds:
         lon_b = np.asarray(ds['lon_b'])
         lat_b = np.asarray(ds['lat_b'])
+        lon_b, lat_b = as_2d_mesh(lon_b, lat_b)
         add_corner(grid, lon_b.T, lat_b.T)
 
-    return grid
+    return grid, lon.shape
 
 
 class Regridder(object):
@@ -119,22 +122,22 @@ class Regridder(object):
         self.periodic = periodic
         self.reuse_weights = reuse_weights
 
-        self._grid_in = ds_to_ESMFgrid(ds_in, need_bounds=self.need_bounds,
-                                       periodic=periodic)
-        self._grid_out = ds_to_ESMFgrid(ds_out, need_bounds=self.need_bounds)
+        self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
+                                                 need_bounds=self.need_bounds,
+                                                 periodic=periodic
+                                                 )
+        self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
+                                                   need_bounds=self.need_bounds
+                                                   )
 
         # get grid shape information
         # Use (Ny, Nx) instead of (Nlat, Nlon),
-        # because ds can be general curvilinear grids
+        # because ds can be general curvilinear grids.
         # For rectilinear grids, (Ny, Nx) == (Nlat, Nlon)
-        self.Ny_in, self.Nx_in = ds_in['lon'].shape
-        self.Ny_out, self.Nx_out = ds_out['lon'].shape
-        self.N_in = ds_in['lon'].size
-        self.N_out = ds_out['lon'].size
-
-        # only copy coordinate values, do not copy data
-        # self.coords_in = ds_in.coords.to_dataset().copy()
-        # self.coords_out = ds_out.coords.to_dataset().copy()
+        self.Ny_in, self.Nx_in = shape_in
+        self.Ny_out, self.Nx_out = shape_out
+        self.N_in = self.Ny_in * self.Nx_in
+        self.N_out = self.Ny_out * self.Nx_out
 
         if filename is None:
             self.filename = self._get_default_filename()
@@ -298,8 +301,15 @@ class Regridder(object):
         dr_out = xr.DataArray(outdata, dims=dim_names, name=varname)
 
         # append horizontal grid coordinate value
-        dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=horiz_dims)
-        dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=horiz_dims)
+        if self._lon_out.ndim == 2:
+            lon_dim = horiz_dims
+            lat_dim = horiz_dims
+        elif self._lon_out.ndim == 1:
+            lon_dim = horiz_dims[1]
+            lat_dim = horiz_dims[0]
+
+        dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=lon_dim)
+        dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=lat_dim)
 
         # append extra dimension coordinate value
         for dim in extra_dims:

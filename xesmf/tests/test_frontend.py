@@ -20,7 +20,6 @@ ds_in['data4D'] = ds_in['time'] * ds_in['lev'] * ds_in['data']
 
 
 def test_as_2d_mesh():
-
     # 2D grid should not change
     lon2d = ds_in['lon'].values
     lat2d = ds_in['lat'].values
@@ -109,11 +108,39 @@ def test_regrid_periodic_wrong():
 def test_regrid_periodic_correct():
     regridder = xe.Regridder(ds_in, ds_out, 'bilinear', periodic=True)
 
-    dr_out = regridder(ds_in['data'])  # xarray DataArray
+    dr_out = regridder(ds_in['data'])
 
     # compare with analytical solution
     rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
     assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=1e-5)
+
+    # clean-up
+    regridder.clean_weight_file()
+
+
+def ds_2d_to_1d(ds):
+    ds_temp = ds.reset_coords()
+    ds_1d = xr.merge([ds_temp['lon'][0, :], ds_temp['lat'][:, 0]])
+    ds_1d.coords['lon'] = ds_1d['lon']
+    ds_1d.coords['lat'] = ds_1d['lat']
+    return ds_1d
+
+
+def test_regrid_with_1d_grid():
+    ds_in_1d = ds_2d_to_1d(ds_in)
+    ds_out_1d = ds_2d_to_1d(ds_out)
+
+    regridder = xe.Regridder(ds_in_1d, ds_out_1d, 'bilinear', periodic=True)
+
+    dr_out = regridder(ds_in['data'])
+
+    # compare with analytical solution
+    rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
+    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=1e-5)
+
+    # metadata should be 1D
+    assert_equal(dr_out['lon'].values, ds_out_1d['lon'].values)
+    assert_equal(dr_out['lat'].values, ds_out_1d['lat'].values)
 
     # clean-up
     regridder.clean_weight_file()

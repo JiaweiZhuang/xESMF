@@ -107,10 +107,6 @@ class Regridder(object):
 
         """
 
-        # record output grid coordinate, to be added to regridding results
-        self._lon_out = np.asarray(ds_out['lon'])
-        self._lat_out = np.asarray(ds_out['lat'])
-
         # record basic switches
         if method == 'conservative':
             self.need_bounds = True
@@ -122,6 +118,7 @@ class Regridder(object):
         self.periodic = periodic
         self.reuse_weights = reuse_weights
 
+        # construct ESMF grid, with some shape checking
         self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
                                                  need_bounds=self.need_bounds,
                                                  periodic=periodic
@@ -129,6 +126,28 @@ class Regridder(object):
         self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
                                                    need_bounds=self.need_bounds
                                                    )
+
+        # record output grid and metadata
+        self._lon_out = np.asarray(ds_out['lon'])
+        self._lat_out = np.asarray(ds_out['lat'])
+
+        if self._lon_out.ndim == 2:
+            try:
+                self.lon_dim = self.lat_dim = ds_out['lon'].dims
+            except:
+                self.lon_dim = self.lat_dim = ('y', 'x')
+
+            self.horiz_dims = self.lon_dim
+
+        elif self._lon_out.ndim == 1:
+            try:
+                self.lon_dim, = ds_out['lon'].dims
+                self.lat_dim, = ds_out['lat'].dims
+            except:
+                self.lon_dim = 'lon'
+                self.lat_dim = 'lat'
+
+            self.horiz_dims = (self.lat_dim, self.lon_dim)
 
         # get grid shape information
         # Use (Ny, Nx) instead of (Nlat, Nlon),
@@ -200,12 +219,14 @@ class Regridder(object):
                 'Reuse pre-computed weights? {} \n'
                 'Input grid shape:           {} \n'
                 'Output grid shape:          {} \n'
+                'Output grid dimension name: {} \n'
                 'Periodic in longitude?      {}'
                 .format(self.method,
                         self.filename,
                         self.reuse_weights,
                         (self.Ny_in, self.Nx_in),
                         (self.Ny_out, self.Nx_out),
+                        self.horiz_dims,
                         self.periodic)
                 )
 
@@ -292,24 +313,15 @@ class Regridder(object):
         outdata = self.regrid_numpy(dr_in.values)
 
         # track metadata
-        dim_names = dr_in.dims
-        horiz_dims = dim_names[-2:]
-        extra_dims = dim_names[0:-2]
-
         varname = dr_in.name
+        extra_dims = dr_in.dims[0:-2]
 
-        dr_out = xr.DataArray(outdata, dims=dim_names, name=varname)
+        dr_out = xr.DataArray(outdata,
+                              dims=extra_dims+self.horiz_dims,
+                              name=varname)
 
-        # append horizontal grid coordinate value
-        if self._lon_out.ndim == 2:
-            lon_dim = horiz_dims
-            lat_dim = horiz_dims
-        elif self._lon_out.ndim == 1:
-            lon_dim = horiz_dims[1]
-            lat_dim = horiz_dims[0]
-
-        dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=lon_dim)
-        dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=lat_dim)
+        dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
+        dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
 
         # append extra dimension coordinate value
         for dim in extra_dims:

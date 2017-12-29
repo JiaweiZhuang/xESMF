@@ -43,3 +43,4 @@ PET0.ESMF_LogFile
 # Unit test / coverage reports
 .cache
 .coverage
+coverage.xml

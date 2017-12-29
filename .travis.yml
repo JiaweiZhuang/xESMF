@@ -25,3 +25,6 @@ install:
 
 script:
   - pytest -v xesmf --cov=xesmf --cov-config .coveragerc --cov-report term-missing
+
+after_success:
+  - codecov

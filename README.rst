@@ -1,6 +1,8 @@
 xESMF: Use ESMF regridding through xarray
 ===========================================
 
+|Build Status|
+
 xESMF aims to combine ESMF_/ESMPy_'s regridding power and xarray_'s elegance.
 
 Supports all `ESMF regridding algorithms <https://www.earthsystemcog.org/projects/esmf/regridding>`_:
@@ -43,3 +45,8 @@ TODO: add examples and docs
 .. _ESMPy: https://www.earthsystemcog.org/projects/esmpy/
 .. _xarray: http://xarray.pydata.org
 .. _NESII: https://www.esrl.noaa.gov/gsd/nesii/
+
+
+.. |Build Status| image:: https://api.travis-ci.org/JiaweiZhuang/xESMF.svg
+   :target: https://travis-ci.org/JiaweiZhuang/xESMF
+   :alt: travis-ci build status

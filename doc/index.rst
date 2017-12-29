@@ -38,10 +38,18 @@ Contents
 
 .. toctree::
    :maxdepth: 1
-   :caption: Tutorials
+   :caption: Basic tutorials
 
-   quick_start
-   built_in_example
+   Rectilinear_grid
+   Curvilinear_grid
+   Pure_numpy
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Advanced tutorials
+
+   Compare_algorithms
+   Reuse_regridder
 
 .. toctree::
    :maxdepth: 1

@@ -40,5 +40,6 @@ doc/_build/
 # ESMPy log files
 PET0.ESMF_LogFile
 
-# pytest cache
+# Unit test / coverage reports
 .cache
+.coverage

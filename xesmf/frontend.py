@@ -207,8 +207,6 @@ class Regridder(object):
         if os.path.exists(self.filename):
             print("Remove file {}".format(self.filename))
             os.remove(self.filename)
-            print("You can still use the regridder because the weights "
-                  "are already read into memory.")
         else:
             print("File {} is already removed.".format(self.filename))
 

@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import xarray as xr
 import xesmf as xe
@@ -46,6 +47,25 @@ def test_build_regridder():
         assert method in str(regridder)
 
         regridder.clean_weight_file()
+
+
+def test_existing_weights():
+    # the first run
+    method = 'bilinear'
+    regridder = xe.Regridder(ds_in, ds_out, method)
+
+    # make sure we can reuse weights
+    assert os.path.exists(regridder.filename)
+    regridder_reuse = xe.Regridder(ds_in, ds_out, method,
+                                   reuse_weights=True)
+    assert regridder_reuse.A.shape == regridder.A.shape
+
+    # or can also overwrite it
+    xe.Regridder(ds_in, ds_out, method)
+
+    # clean-up
+    regridder.clean_weight_file()
+    assert not os.path.exists(regridder.filename)
 
 
 def test_conservative_without_bounds():

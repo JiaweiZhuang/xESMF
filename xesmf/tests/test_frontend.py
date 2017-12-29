@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 import xesmf as xe
+from xesmf.frontend import as_2d_mesh
 
 from numpy.testing import assert_equal, assert_almost_equal
 import pytest
@@ -16,6 +17,23 @@ ds_out['data_ref'] = xe.data.wave_smooth(ds_out['lon'], ds_out['lat'])
 ds_in.coords['time'] = np.arange(1, 11)
 ds_in.coords['lev'] = np.arange(1, 51)
 ds_in['data4D'] = ds_in['time'] * ds_in['lev'] * ds_in['data']
+
+
+def test_as_2d_mesh():
+
+    # 2D grid should not change
+    lon2d = ds_in['lon'].values
+    lat2d = ds_in['lat'].values
+    assert_equal((lon2d, lat2d), as_2d_mesh(lon2d, lat2d))
+
+    # 1D grid should become 2D
+    lon1d = lon2d[0, :]
+    lat1d = lat2d[:, 0]
+    assert_equal((lon2d, lat2d), as_2d_mesh(lon1d, lat1d))
+
+    # mix of 1D and 2D should fail
+    with pytest.raises(ValueError):
+        as_2d_mesh(lon1d, lat2d)
 
 
 def test_build_regridder():

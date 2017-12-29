@@ -12,6 +12,17 @@ from . backend import (esmf_grid, add_corner,
 from . smm import read_weights, apply_weights
 
 
+def as_2d_mesh(lon, lat):
+
+    if (lon.ndim, lat.ndim) == (2, 2):
+        pass
+    elif (lon.ndim, lat.ndim) == (1, 1):
+        lon, lat = np.meshgrid(lon, lat)
+    else:
+        raise ValueError('lon and lat should be both 1D or 2D')
+
+    return lon, lat
+
 def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None):
     '''
     Convert xarray DataSet or dictionary to ESMF.Grid object.
@@ -92,8 +103,6 @@ class Regridder(object):
         regridder : xESMF regridder object
 
         """
-
-        # TODO: also accept 1D coodinate array for rectilinear grids
 
         # record output grid coordinate, to be added to regridding results
         self._lon_out = np.asarray(ds_out['lon'])
@@ -225,7 +234,6 @@ class Regridder(object):
             raise TypeError("input must be numpy array or xarray DataArray!")
 
         return regrid_func(a)
-
 
     def regrid_numpy(self, indata):
         """

@@ -39,6 +39,12 @@ def test_build_regridder():
     # 'patch' is too slow to test
     for method in ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']:
         regridder = xe.Regridder(ds_in, ds_out, method)
+
+        # check screen output
+        assert repr(regridder) == str(regridder)
+        assert 'xESMF Regridder' in str(regridder)
+        assert method in str(regridder)
+
         regridder.clean_weight_file()
 
 

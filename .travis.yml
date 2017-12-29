@@ -4,8 +4,10 @@ sudo: false # use container based build
 notifications:
   email: false
 
-python:
-  - "3.6"
+matrix:
+  include:
+  - python: "3.6"
+    env: CONDA_ENV=py36
 
 before_install:
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;

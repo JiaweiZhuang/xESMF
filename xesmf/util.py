@@ -41,7 +41,7 @@ def grid_2d(lon0_b, lon1_b, d_lon,
         Longitude bounds
 
     d_lon : float
-        Logitude step size, i.e. grid resolution
+        Longitude step size, i.e. grid resolution
 
     lat0_b, lat1_b : float
         Latitude bounds
@@ -78,7 +78,7 @@ def grid_global(d_lon, d_lat):
     Parameters
     ----------
     d_lon : float
-        Logitude step size, i.e. grid resolution
+        Longitude step size, i.e. grid resolution
 
     d_lat : float
         Latitude step size, i.e. grid resolution

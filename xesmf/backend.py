@@ -46,7 +46,7 @@ def warn_lat_range(lat):
 
     Parameters
     ----------
-    a : numpy array
+    lat : numpy array
     '''
     if (lat.max() > 90.0) or (lat.min() < -90.0):
         warnings.warn("Latitude is outside of [-90, 90]")

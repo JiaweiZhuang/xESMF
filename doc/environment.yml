@@ -1,0 +1,12 @@
+channels:
+    - defaults
+    - conda-forge
+dependencies:
+    - python=3.6
+    - jupyter
+    - sphinx
+    - nbconvert
+    - pip:
+        - nbsphinx
+        - sphinx_rtd_theme
+        - numpydoc

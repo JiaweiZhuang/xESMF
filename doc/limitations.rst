@@ -32,7 +32,7 @@ See `issue#3 <https://github.com/JiaweiZhuang/xESMF/issues/3>`_.
 Vector regridding
 -----------------
 
-Like almost all regridding packages, xESMF assume scalar fields.
+Like almost all regridding packages, xESMF assumes scalar fields.
 The most common way to remap winds is to rotate/re-decompose the
 wind components (U and V) to the new direction,
 and then regrid each component individually using a scalar regridding function.

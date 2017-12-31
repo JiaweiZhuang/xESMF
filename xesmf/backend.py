@@ -172,6 +172,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
 
     method : str
         Regridding method. Options are
+
         - 'bilinear'
         - 'conservative', **need grid corner information**
         - 'patch'

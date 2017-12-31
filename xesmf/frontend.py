@@ -76,13 +76,17 @@ class Regridder(object):
         ----------
         ds_in, ds_out : xarray DataSet, or dictionary
             Contain input and output grid coordinates. Look for variables
-            'lon', 'lat', and optionally 'lon_b', 'lat_b' for conservative
-            method.
+            ``lon``, ``lat``, and optionally ``lon_b``, ``lat_b`` for
+            conservative method.
+
+            Shape can be 1D ``(lat, lon)`` for rectilinear grids,
+            or 2D ``(y, x)`` for general curvilinear grids.
 
         method : str, optional
             Regridding method. Options are
+
             - 'bilinear'
-            - 'conservative', need grid corner information
+            - 'conservative', **need grid corner information**
             - 'patch'
             - 'nearest_s2d'
             - 'nearest_d2s'
@@ -93,8 +97,10 @@ class Regridder(object):
             Will be forced to False for conservative regridding.
 
         filename : str, optional
-            Name for the weight file. The default naming scheme is
-            {method}_{Ny_in}x{Nx_in}_{Ny_out}x{Nx_out}.nc,
+            Name for the weight file. The default naming scheme is::
+
+                {method}_{Ny_in}x{Nx_in}_{Ny_out}x{Nx_out}.nc
+
             e.g. bilinear_400x600_300x400.nc
 
         reuse_weights : bool, optional
@@ -259,7 +265,8 @@ class Regridder(object):
 
     def regrid_numpy(self, indata):
         """
-        Regrid pure numpy array
+        Regrid pure numpy array. Shape requirement is the same as
+        ``regrid_dataarray()``
 
         Parameters
         ----------
@@ -288,22 +295,26 @@ class Regridder(object):
         Parameters
         ----------
         dr_in : xarray DataArray
-            The rightmost two dimensions must be the same as ds_in.
+            The rightmost two dimensions must be the same as ``ds_in``.
             Can have arbitrary additional dimensions.
 
-            Examples of valid dimensions:
-            - (Nlat, Nlon), if ds_in has shape (Nlat, Nlon)
-            - (N2, N1, Ny, Nx), if ds_in has shape (Ny, Nx)
+            Examples of valid shapes
+
+            - (Nlat, Nlon), if ``ds_in`` has shape (Nlat, Nlon)
+            - (N2, N1, Ny, Nx), if ``ds_in`` has shape (Ny, Nx)
 
         Returns
         -------
         dr_out : xarray DataArray
-            On the same horizontal grid as ds_out, with extra dims in dr_in.
+            On the same horizontal grid as ``ds_out``,
+            with extra dims in ``dr_in``.
 
-            Examples of returning dimensions,
-            assuming ds_out has the shape of (Ny_out, Nx_out):
-            - (Ny_out, Nx_out), if dr_in is 2D
-            - (N2, N1, Ny_out, Nx_out), if dr_in has shape (N2, N1, Ny, Nx)
+            Assuming ``ds_out`` has the shape of (Ny_out, Nx_out),
+            examples of returning shapes are
+
+            - (Ny_out, Nx_out), if ``dr_in`` is 2D
+            - (N2, N1, Ny_out, Nx_out),`` if ``dr_in`` has shape
+              (N2, N1, Ny, Nx)
 
         """
 

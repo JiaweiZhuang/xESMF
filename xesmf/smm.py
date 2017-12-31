@@ -19,7 +19,7 @@ def read_weights(filename, N_in, N_out):
     N_in, N_out : integers
         ``(N_out, N_in)`` will be the shape of the returning sparse matrix.
         They are the total number of grid boxes in input and output grids::
-        
+
               N_in = Nx_in * Ny_in
               N_out = Nx_out * Ny_out
 

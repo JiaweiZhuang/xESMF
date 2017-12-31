@@ -2,8 +2,6 @@ import numpy as np
 import xarray as xr
 import warnings
 
-from . backend import esmf_grid, add_corner
-
 
 def _grid_1d(start_b, end_b, step):
     '''

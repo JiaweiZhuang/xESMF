@@ -41,15 +41,15 @@ before going to the
 - `TempestRemap <https://github.com/ClimateGlobalChange/tempestremap>`_
   (*C++ package*)
 
-A pretty mordern and powerful package,
+A pretty modern and powerful package,
 supporting arbitrary-order conservative remapping.
-It also can generate cubed-sphere grids on the fly
+It can also generate cubed-sphere grids on the fly
 and can be modified to support many cubed-sphere grid variations
 (`example <https://github.com/JiaweiZhuang/Tempest_for_GCHP>`_, only if you can read C++).
 
 - `SCRIP <http://oceans11.lanl.gov/trac/SCRIP>`_ (*Fortran package*)
 
-A very old pacakge, once popular but **no longer maintained** (long live SCRIP).
+An old pacakge, once popular but **no longer maintained** (long live SCRIP).
 You should not use it now, but should know that it exists.
 Newer regridding packages often follow its standards --
 you will see "SCRIP format" here and there, for example in ESMF or TempestRemap.

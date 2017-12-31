@@ -9,7 +9,7 @@ Traditional interpolation routines, such as
 and
 `interp2 in MATLAB <https://www.mathworks.com/help/matlab/ref/interp2.html>`_,
 assume flat 2D planes and do not consider the spherical geometry of the earth.
-They are great for image processing, but will lead to incorrect/distorted results for geospatial data.
+They are great for image processing, but will produce incorrect/distorted results for geospatial data.
 
 Also, traditional interpolation algorithms are typically based on piecewise polynomials ("splines").
 While being highly accurate in terms of error convergence, they often lack desired physical properties such as

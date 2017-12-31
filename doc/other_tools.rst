@@ -13,7 +13,7 @@ and xESMF development. Check them out if xESMF cannot suit your needs.
 Although its name "Earth System Modeling Framework" doesn't indicate a regridding
 functionality, it actually contains a very powerful regridding engine.
 It is widely used in Earth System Models (ESMs), serving as both the software infrastructure
-and the regridder for transforming data between the atmospheric, ocean, and land components.
+and the regridder for transforming data between the atmosphere, ocean, and land components.
 It can deal with general irregular meshes, in either 2D or 3D.
 
 ESMF is a huge beast, containing
@@ -44,8 +44,8 @@ before going to the
 A pretty mordern and powerful package,
 supporting arbitrary-order conservative remapping.
 It also can generate cubed-sphere grids on the fly
-and can be modified to support many cubed-sphere grid variations.
-(`example <https://github.com/JiaweiZhuang/Tempest_for_GCHP>`_, only if you can read C++)
+and can be modified to support many cubed-sphere grid variations
+(`example <https://github.com/JiaweiZhuang/Tempest_for_GCHP>`_, only if you can read C++).
 
 - `SCRIP <http://oceans11.lanl.gov/trac/SCRIP>`_ (*Fortran package*)
 

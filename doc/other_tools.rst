@@ -20,7 +20,6 @@ and xESMF development. Check them out if xESMF cannot suit your needs.
   Even just compiling it requires some effort.
   It is more for building ESMs than for data analysis.
 
-  |
 - `ESMPy <https://www.earthsystemcog.org/projects/esmpy/>`_ (*Python interface to ESMF*).
   ESMPy provides a much simpler way to use ESMF's regridding functionality.
   The greatest thing is, it is pre-compiled as a
@@ -36,7 +35,6 @@ and xESMF development. Check them out if xESMF cannot suit your needs.
   `tutorial <https://github.com/nawendt/esmpy-tutorial>`_ before going to the
   `official doc <http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/index.html>`_.
 
-  |
 - `TempestRemap <https://github.com/ClimateGlobalChange/tempestremap>`_
   (*C++ package*). A pretty mordern and powerful package,
   supporting arbitrary-order conservative remapping.
@@ -44,14 +42,12 @@ and xESMF development. Check them out if xESMF cannot suit your needs.
   and can be modified to support many cubed-sphere grid variations.
   (`example <https://github.com/JiaweiZhuang/Tempest_for_GCHP>`_, only if you can read C++)
 
-  |
 - `SCRIP <http://oceans11.lanl.gov/trac/SCRIP>`_ (*Fortran package*).
   A very old pacakge, once popular but **no longer maintained** (long live SCRIP).
   You should not use it now, but should know that it exists.
   Newer regridding packages often follow its standards --
   you will see "SCRIP format" here and there, for example in ESMF or TempestRemap.
 
-  |
 - `Regridder in NCL <https://www.ncl.ucar.edu/Applications/regrid.shtml>`_
   (*NCAR Command Language*).
   Has bilinear and conservative algorithms for rectilinear grids,
@@ -59,7 +55,7 @@ and xESMF development. Check them out if xESMF cannot suit your needs.
   There is also a `ESMF wrapper <https://www.ncl.ucar.edu/Applications/ESMF.shtml>`_
   that works for more grid types.
 
-Regridders inside other tools (often wraps ESMF or SCRIP):
+Regridders in other tools (often wraps ESMF or SCRIP):
 
 - `Regridder in NCO <http://nco.sourceforge.net/nco.html#Regridding>`_
   (*command line tool*)

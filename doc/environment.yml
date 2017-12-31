@@ -1,12 +1,14 @@
 channels:
-    - defaults
-    - conda-forge
+  - conda-forge
+  - nesii/label/dev-esmf
 dependencies:
-    - python=3.6
-    - jupyter
-    - sphinx
-    - nbconvert
-    - pip:
-        - nbsphinx
-        - sphinx_rtd_theme
-        - numpydoc
+  - python=3.6
+  - esmpy
+  - xarray
+  - numpy
+  - scipy
+  - sphinx
+  - pip:
+    - nbsphinx
+    - sphinx_rtd_theme
+    - numpydoc

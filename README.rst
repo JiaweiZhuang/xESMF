@@ -1,7 +1,7 @@
 xESMF: Universal Regridder for Geospatial Data
 ==============================================
 
-|Build Status| |codecov| |docs|
+|Build Status| |codecov| |docs| |license|
 
 Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_.
 
@@ -16,3 +16,7 @@ Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_.
 .. |docs| image:: https://readthedocs.org/projects/xesmf/badge/?version=latest
    :target: http://xesmf.readthedocs.io/en/latest/?badge=latest
    :alt: documentation Status
+
+.. |license| image:: https://img.shields.io/badge/License-MIT-blue.svg
+   :target: https://github.com/JiaweiZhuang/xESMF/blob/master/LICENSE
+   :alt: license

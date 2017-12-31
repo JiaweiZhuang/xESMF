@@ -8,6 +8,7 @@ dependencies:
   - numpy
   - scipy
   - sphinx
+  - jupyter
   - pip:
     - nbsphinx
     - sphinx_rtd_theme

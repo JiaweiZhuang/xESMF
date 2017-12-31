@@ -1,3 +1,5 @@
+.. _installation-label:
+
 Installation
 ============
 
@@ -9,33 +11,41 @@ xESMF depends on xarray and ESMPy. The best way to install them is using Anacond
     $ conda install xarray
     $ conda install -c nesii/label/dev-esmf -c conda-forge esmpy
 
-(ESMPy is currently on NESII_'s `own channel <https://anaconda.org/NESII/esmpy>`_.
-but also needs to pull dependencies from conda-forge.)
+(ESMPy is currently on NESII_'s `own channel <https://anaconda.org/NESII/esmpy>`_
+but also needs dependencies from `conda-forge <https://conda-forge.org>`_.)
 
 Then install xesmf::
 
     $ pip install xesmf
 
+Done! You can go to the next tutorial.
+
 Notes for Windows users
 -----------------------
 
 The ESMPy conda package is currently only available Linux and Mac OSX.
-Windows users can try the Linux subsystem
+Windows users can try the
+`Linux subsystem <https://docs.microsoft.com/en-us/windows/wsl/about>`_
 or `docker-miniconda <https://hub.docker.com/r/continuumio/miniconda3/>`_ .
 
-`Docker tutorial <https://towardsdatascience.com/how-docker-can-help-you-become-a-more-effective-data-scientist-7fc048ef91d5>`_
+Installing scientific software on Windows can often be a pain, and
+`Docker <https://www.docker.com>`_ is a pretty good workaround.
+It takes some time to learn but worths the effort.
+Check out this `tutorial on using Docker with Anaconda
+<https://towardsdatascience.com/
+how-docker-can-help-you-become-a-more-effective-data-scientist-7fc048ef91d5>`_.
 
-Also see
-https://github.com/conda-forge/esmpy-feedstock/issues/8
+This problem is being investigated.
+See `this issue <https://github.com/conda-forge/esmpy-feedstock/issues/8>`_.
 
-Install xESMF from source
--------------------------
+Install xESMF from GitHub repo
+------------------------------
 
-To get the latest version::
+To get the latest version that is not uploaded to PyPI_ yet::
 
     $ pip install --upgrade git+https://github.com/JiaweiZhuang/xESMF.git
 
-To track source code change::
+Developers can track source code change::
 
     $ git clone https://github.com/JiaweiZhuang/xESMF.git
     $ cd xESMF

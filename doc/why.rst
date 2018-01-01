@@ -13,7 +13,7 @@ They are great for image processing, but will produce incorrect/distorted result
 
 Also, traditional interpolation algorithms are typically based on piecewise polynomials ("splines").
 While being highly accurate in terms of error convergence, they often lack desired physical properties such as
-conservation (total mass should be conserved) and motononicity (air density cannot go negative).
+conservation (total mass should be conserved) and monotonicity (air density cannot go negative).
 
 For emerging new grid types
 ---------------------------

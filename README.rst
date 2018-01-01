@@ -18,6 +18,11 @@ It is
 
 Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_.
 
+
+.. _ESMF: https://www.earthsystemcog.org/projects/esmf/
+.. _ESMPy: https://www.earthsystemcog.org/projects/esmpy/
+.. _xarray: http://xarray.pydata.org
+
 .. |Build Status| image:: https://api.travis-ci.org/JiaweiZhuang/xESMF.svg
    :target: https://travis-ci.org/JiaweiZhuang/xESMF
    :alt: travis-ci build status

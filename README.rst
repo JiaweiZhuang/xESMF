@@ -1,7 +1,7 @@
 xESMF: Universal Regridder for Geospatial Data
 ==============================================
 
-|Build Status| |codecov| |docs| |license|
+|pypi| |Build Status| |codecov| |docs| |license|
 
 xESMF is a Python package for
 `regridding <https://climatedataguide.ucar.edu/climate-data-tools-and-analysis/regridding-overview>`_.
@@ -22,6 +22,10 @@ Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_.
 .. _ESMF: https://www.earthsystemcog.org/projects/esmf/
 .. _ESMPy: https://www.earthsystemcog.org/projects/esmpy/
 .. _xarray: http://xarray.pydata.org
+
+.. |pypi| image:: https://badge.fury.io/py/xesmf.svg
+   :target: https://badge.fury.io/py/xesmf
+   :alt: pypi package
 
 .. |Build Status| image:: https://api.travis-ci.org/JiaweiZhuang/xESMF.svg
    :target: https://travis-ci.org/JiaweiZhuang/xESMF

@@ -24,7 +24,7 @@ Done! You can go to the next tutorial.
 Notes for Windows users
 -----------------------
 
-The ESMPy conda package is currently only available Linux and Mac OSX.
+The ESMPy conda package is currently only available for Linux and Mac OSX.
 Windows users can try the
 `Linux subsystem <https://docs.microsoft.com/en-us/windows/wsl/about>`_
 or `docker-miniconda <https://hub.docker.com/r/continuumio/miniconda3/>`_ .

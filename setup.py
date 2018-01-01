@@ -11,7 +11,7 @@ PYTHON_REQUIRES = '>=3.5'
 INSTALL_REQUIRES = ['esmpy', 'xarray', 'numpy', 'scipy']
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',
-    'License :: OSI Approved :: Apache Software License',
+    'License :: OSI Approved :: MIT License',
     'Operating System :: OS Independent',
     'Intended Audience :: Science/Research',
     'Programming Language :: Python',

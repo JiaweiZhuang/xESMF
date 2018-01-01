@@ -3,6 +3,19 @@ xESMF: Universal Regridder for Geospatial Data
 
 |Build Status| |codecov| |docs| |license|
 
+xESMF is a Python package for
+`regridding <https://climatedataguide.ucar.edu/climate-data-tools-and-analysis/regridding-overview>`_.
+It is
+
+- **Powerful**: It uses ESMF_/ESMPy_ as backend and can regrid between **general curvilinear grids**
+  with all `ESMF regridding algorithms <https://www.earthsystemcog.org/projects/esmf/regridding>`_,
+  such as **bilinear**, **conservative** and **nearest neighbour**.
+- **Easy-to-use**: It abstracts away ESMF's complicated infrastructure
+  and provides a simple, high-level API, compatible with xarray_ as well as basic numpy arrays.
+- **Fast**: It is faster than ESMPy's original Fortran regridding engine,
+  due to the use of the highly-optimized
+  `Scipy sparse matrix library <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_.
+
 Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_.
 
 .. |Build Status| image:: https://api.travis-ci.org/JiaweiZhuang/xESMF.svg

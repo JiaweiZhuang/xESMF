@@ -6,7 +6,8 @@ Installation
 The quickest way
 ----------------
 
-xESMF depends on xarray and ESMPy. The best way to install them is using Anaconda_::
+xESMF requires Python>=3.5. The major dependencies are xarray and ESMPy.
+The best way to install them is using Anaconda_.::
 
     $ conda install xarray
     $ conda install -c nesii/label/dev-esmf -c conda-forge esmpy

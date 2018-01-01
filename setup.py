@@ -7,6 +7,8 @@ AUTHOR = 'Jiawei Zhuang'
 AUTHOR_EMAIL = 'jiaweizhuang@g.harvard.edu'
 URL = 'https://github.com/JiaweiZhuang/xESMF'
 LICENSE = 'MIT'
+PYTHON_REQUIRES = '>=3.5'
+INSTALL_REQUIRES = ['esmpy', 'xarray', 'numpy', 'scipy']
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',
     'License :: OSI Approved :: Apache Software License',
@@ -18,8 +20,6 @@ CLASSIFIERS = [
     'Programming Language :: Python :: 3.6',
     'Topic :: Scientific/Engineering',
 ]
-
-INSTALL_REQUIRES = ['esmpy', 'xarray', 'numpy', 'scipy']
 
 
 def readme():
@@ -35,6 +35,7 @@ setup(name=DISTNAME,
       classifiers=CLASSIFIERS,
       description=DESCRIPTION,
       long_description=readme(),
+      python_requires=PYTHON_REQUIRES,
       install_requires=INSTALL_REQUIRES,
       url=URL,
       packages=find_packages())

@@ -79,10 +79,11 @@ class Regridder(object):
             ``lon``, ``lat``, and optionally ``lon_b``, ``lat_b`` for
             conservative method.
 
-            Shape can be 1D ``(lat, lon)`` for rectilinear grids,
-            or 2D ``(y, x)`` for general curvilinear grids.
+            Shape can be 1D (Nlon,) and (Nlat,) for rectilinear grids,
+            or 2D (Ny, Nx) for general curvilinear grids.
+            Shape of bounds should be (N+1,) or (Ny+1, Nx+1).
 
-        method : str, optional
+        method : str
             Regridding method. Options are
 
             - 'bilinear'
@@ -313,7 +314,7 @@ class Regridder(object):
             examples of returning shapes are
 
             - (Ny_out, Nx_out), if ``dr_in`` is 2D
-            - (N2, N1, Ny_out, Nx_out),`` if ``dr_in`` has shape
+            - (N2, N1, Ny_out, Nx_out), if ``dr_in`` has shape
               (N2, N1, Ny, Nx)
 
         """

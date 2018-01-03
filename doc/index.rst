@@ -15,6 +15,14 @@ It is
   due to the use of the highly-optimized
   `Scipy sparse matrix library <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_.
 
+.. note::
+
+    xESMF is at early stage of development and will keep improving in the future.
+    The major regridding API should be quite stable,
+    but minor ultilities could change in the next version.
+    If you find any bugs or would like to request any enhancements,
+    please `raise an issue on GitHub <https://github.com/JiaweiZhuang/xESMF/issues>`_.
+
 Contents
 --------
 

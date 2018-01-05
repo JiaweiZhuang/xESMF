@@ -217,7 +217,7 @@ class Regridder(object):
         else:
             print("File {} is already removed.".format(self.filename))
 
-    def __str__(self):
+    def __repr__(self):
         info = ('xESMF Regridder \n'
                 'Regridding algorithm:       {} \n'
                 'Weight filename:            {} \n'
@@ -236,9 +236,6 @@ class Regridder(object):
                 )
 
         return info
-
-    def __repr__(self):
-        return self.__str__()
 
     def __call__(self, a):
         """

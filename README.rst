@@ -13,7 +13,7 @@ It is
 - **Easy-to-use**: It abstracts away ESMF's complicated infrastructure
   and provides a simple, high-level API, compatible with xarray_ as well as basic numpy arrays.
 - **Fast**: It is faster than ESMPy's original Fortran regridding engine in serial case,
-  and parallel capability will added in the next version.
+  and parallel capability will be added in the next version.
 
 Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_.
 

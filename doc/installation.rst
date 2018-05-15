@@ -10,10 +10,7 @@ xESMF requires Python>=3.5. The major dependencies are xarray and ESMPy.
 The best way to install them is using Anaconda_.::
 
     $ conda install xarray
-    $ conda install -c nesii/label/dev-esmf -c conda-forge esmpy
-
-(ESMPy is currently on NESII_'s `own channel <https://anaconda.org/NESII/esmpy>`_
-but also needs dependencies from `conda-forge <https://conda-forge.org>`_.)
+    $ conda install -c conda-forge esmpy
 
 Then install xesmf::
 

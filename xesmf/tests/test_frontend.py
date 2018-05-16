@@ -95,7 +95,7 @@ def test_regrid():
 
     # compare with analytical solution
     rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
-    assert np.max(np.abs(rel_err)) == pytest.approx(0.03126, abs=1e-5)
+    assert np.max(np.abs(rel_err)) == pytest.approx(0.03126, abs=2e-4)
 
     # check metadata
     assert_equal(dr_out['lat'].values, ds_out['lat'].values)
@@ -138,7 +138,7 @@ def test_regrid_periodic_correct():
 
     # compare with analytical solution
     rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
-    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=1e-5)
+    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=2e-4)
 
     # clean-up
     regridder.clean_weight_file()
@@ -162,7 +162,7 @@ def test_regrid_with_1d_grid():
 
     # compare with analytical solution
     rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
-    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=1e-5)
+    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=2e-4)
 
     # metadata should be 1D
     assert_equal(dr_out['lon'].values, ds_out_1d['lon'].values)

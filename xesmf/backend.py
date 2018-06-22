@@ -256,7 +256,8 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # if the destination grid is larger than the source grid.
     regrid = ESMF.Regrid(sourcefield, destfield, filename=filename,
                          regrid_method=esmf_regrid_method,
-                         unmapped_action=ESMF.UnmappedAction.IGNORE)
+                         unmapped_action=ESMF.UnmappedAction.IGNORE,
+                         src_mask_values=[0], dst_mask_values=[0])
 
     return regrid
 

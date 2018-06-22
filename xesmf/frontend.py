@@ -89,7 +89,7 @@ class Regridder(object):
             or 2D (Ny, Nx) for general curvilinear grids.
             Shape of bounds should be (N+1,) or (Ny+1, Nx+1).
 
-            If eiether dataset includes a 2d mask variable, that will also be
+            If either dataset includes a 2d mask variable, that will also be
             used to inform the regridding.
 
         method : str

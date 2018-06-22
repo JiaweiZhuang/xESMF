@@ -170,3 +170,20 @@ def test_regrid_with_1d_grid():
 
     # clean-up
     regridder.clean_weight_file()
+
+
+def test_build_regridder_with_masks():
+    ds_in['mask'] = xr.DataArray(
+        np.random.randint(2, size=ds_in['data'].shape),
+        dims=('y', 'x'))
+    print(ds_in)
+    # 'patch' is too slow to test
+    for method in ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']:
+        regridder = xe.Regridder(ds_in, ds_out, method)
+
+        # check screen output
+        assert repr(regridder) == str(regridder)
+        assert 'xESMF Regridder' in str(regridder)
+        assert method in str(regridder)
+
+        regridder.clean_weight_file()

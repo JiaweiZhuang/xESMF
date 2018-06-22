@@ -54,8 +54,14 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     lat = np.asarray(ds['lat'])
     lon, lat = as_2d_mesh(lon, lat)
 
+    if 'mask' in ds:
+        mask = np.asarray(ds['mask'])
+        print(mask.shape)
+    else:
+        mask = None
+
     # tranpose the arrays so they become Fortran-ordered
-    grid = esmf_grid(lon.T, lat.T, periodic=periodic)
+    grid = esmf_grid(lon.T, lat.T, periodic=periodic, mask=mask)
 
     if need_bounds:
         lon_b = np.asarray(ds['lon_b'])
@@ -82,6 +88,9 @@ class Regridder(object):
             Shape can be 1D (Nlon,) and (Nlat,) for rectilinear grids,
             or 2D (Ny, Nx) for general curvilinear grids.
             Shape of bounds should be (N+1,) or (Ny+1, Nx+1).
+
+            If eiether dataset includes a 2d mask variable, that will also be
+            used to inform the regridding.
 
         method : str
             Regridding method. Options are

@@ -119,10 +119,12 @@ def esmf_grid(lon, lat, periodic=False, mask=None):
     # See https://github.com/NCPP/ocgis/blob/61d88c60e9070215f28c1317221c2e074f8fb145/src/ocgis/regrid/base.py#L391-L404
     if mask is not None:
         grid_mask = np.swapaxes(mask.astype(np.int32), 0, 1)
+        grid_mask = np.where(grid_mask == 0, 0, 1)
         if not (grid_mask.shape == lon.shape):
-            raise ValueError("mask must have the same shape as the "
-                             "latitude/longitude coordinates, got:"
-                             "mask.shape = %s, lon.shape = %s" % (mask.shape, lon.shape))
+            raise ValueError(
+                "mask must have the same shape as the latitude/longitude"
+                "coordinates, got: mask.shape = %s, lon.shape = %s" %
+                (mask.shape, lon.shape))
         grid.add_item(ESMF.GridItem.MASK, staggerloc=ESMF.StaggerLoc.CENTER,
                       from_file=False)
         grid.mask[0][:] = grid_mask

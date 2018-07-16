@@ -1,87 +1,47 @@
-xESMF: Use ESMF regridding through xarray
-===========================================
+xESMF: Universal Regridder for Geospatial Data
+==============================================
 
-xESMF aims to combine ESMF_/ESMPy_'s regridding power and xarray_'s elegance.
+|pypi| |Build Status| |codecov| |docs| |license| |DOI|
 
-Supports all `ESMF regridding algorithms <https://www.earthsystemcog.org/projects/esmf/regridding>`_,
-including: 
+xESMF is a Python package for
+`regridding <https://climatedataguide.ucar.edu/climate-data-tools-and-analysis/regridding-overview>`_.
+It is
 
-- bilinear
-- first-order conservative 
-- nearest neighbour (either source- or destination-based)
-- high-order patch
+- **Powerful**: It uses ESMF_/ESMPy_ as backend and can regrid between **general curvilinear grids**
+  with all `ESMF regridding algorithms <https://www.earthsystemcog.org/projects/esmf/regridding>`_,
+  such as **bilinear**, **conservative** and **nearest neighbour**.
+- **Easy-to-use**: It abstracts away ESMF's complicated infrastructure
+  and provides a simple, high-level API, compatible with xarray_ as well as basic numpy arrays.
+- **Fast**: It is faster than ESMPy's original Fortran regridding engine in serial case,
+  and parallel capability will be added in the next version.
 
-Supports remapping between arbitrary quadrilateral (i.e. logically rectilinear) grids. 
-
-(Irregular meshes like hexagonal grids don't fit very well with xarray's data model. 
-ESMPy's Mesh Class might help.)
-
-Installation
-------------
-
-Building ESMF/ESMPy from the source code is very daunting. Fortunately,
-NESII_ provides a pre-compiled, Python3.6-compatible `anaconda package
-<https://anaconda.org/NESII/esmpy>`_ for ESMPy::
-
-    $ conda config --add channels conda-forge  
-    $ conda install -c nesii/label/dev-esmf esmpy
-
-It is on NESII's own channel but it also needs to pull dependencies from conda-forge.
-
-**This Python3-compatible ESMPy is currently only available on Linux.** Mac or Windows users can
-use `docker-miniconda <https://hub.docker.com/r/continuumio/miniconda3/>`_ as a temporary solution.
-
-Installing the rest of packages is straightforward::
-
-    $ conda install xarray
-    $ pip install git+https://github.com/JiaweiZhuang/xESMF.git 
-
-Get Started
------------
-
-See `example notebook <illustration_highlevel.ipynb>`_
-
-Design Idea
------------
-
-ESMF -> ESMPy -> low-level numpy wrapper -> high-level xarray wrapper
-
-The numpy wrapper just simplifies ESMPy's API without adding too many customizations. 
-This low level wrapper should be relatively stable. 
-Advanced designs can be added to the xarray-wrapper level. 
-
-Note for developrs:
-
-- To build the high-level wrapper based on the low-level one,
-  see `this notebook for using the low-level wrapper <illustration_lowlevel.ipynb>`_
-  and `highlevel.py <xesmf/highlevel.py>`_ for current implementation. 
-
-- To modify the low-level wrapper,
-  see this tutorial on ESMPy: https://github.com/nawendt/esmpy-tutorial
-  (much more accessible than `ESMPy's official tutorial
-  <http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/examples.html>`_)
-  and `lowlevel.py <xesmf/lowlevel.py>`_ for current implementation.
-
-Issues & Plans
---------------
-
-- Dask intergration. ESMF/ESMPy parallelizes in the horizontal, using MPI for horizontal domain decomposition. 
-  With dask, parallelizing over other dimensions (e.g. lev, time) would be a much better option.
-
-- Dump offline regridding weights. 
-  Currently the regridding weights are hided in the Fortran level and invisible in the Python level.
-
-- For multi-tiled grids like `Cubed-Sphere <https://github.com/JiaweiZhuang/cubedsphere>`_,
-  Conservative regridding will work correcly by just regridding each tile and adding up the results. 
-  But other methods do not correctly handle tile edges.
-
-- Improve Masking. Currently, np.nan will be mapped to np.nan, but masking created by np.ma will be ignored.
-
-- Improve API design. Current API is just experimental, more like a proof-of-concept. 
-  The trickest part is matching xarray's coordinate dimension with ESMPy's expectation.
+Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_.
 
 
 .. _ESMF: https://www.earthsystemcog.org/projects/esmf/
 .. _ESMPy: https://www.earthsystemcog.org/projects/esmpy/
 .. _xarray: http://xarray.pydata.org
-.. _NESII: https://www.esrl.noaa.gov/gsd/nesii/
+
+.. |pypi| image:: https://badge.fury.io/py/xesmf.svg
+   :target: https://badge.fury.io/py/xesmf
+   :alt: pypi package
+
+.. |Build Status| image:: https://api.travis-ci.org/JiaweiZhuang/xESMF.svg
+   :target: https://travis-ci.org/JiaweiZhuang/xESMF
+   :alt: travis-ci build status
+
+.. |codecov| image:: https://codecov.io/gh/JiaweiZhuang/xESMF/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/JiaweiZhuang/xESMF
+   :alt: code coverage
+
+.. |docs| image:: https://readthedocs.org/projects/xesmf/badge/?version=latest
+   :target: http://xesmf.readthedocs.io/en/latest/?badge=latest
+   :alt: documentation status
+
+.. |license| image:: https://img.shields.io/badge/License-MIT-blue.svg
+   :target: https://github.com/JiaweiZhuang/xESMF/blob/master/LICENSE
+   :alt: license
+
+.. |DOI| image:: https://zenodo.org/badge/101709596.svg
+   :target: https://zenodo.org/badge/latestdoi/101709596
+   :alt: DOI

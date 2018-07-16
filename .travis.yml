@@ -1,0 +1,32 @@
+# largely taken from https://github.com/xgcm/xgcm/blob/master/.travis.yml
+language: python
+sudo: false # use container based build
+notifications:
+  email: false
+
+matrix:
+  include:
+  - python: "3.6"
+    env: CONDA_ENV=py36
+  - python: "3.5"
+    env: CONDA_ENV=py35
+
+before_install:
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+
+install:
+  - conda env create --file ci/environment-$CONDA_ENV.yml
+  - source activate test_env
+  - pip install -e .
+
+script:
+  - pytest -v xesmf --cov=xesmf --cov-config .coveragerc --cov-report term-missing
+
+after_success:
+  - codecov

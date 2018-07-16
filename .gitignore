@@ -25,6 +25,22 @@ var/
 
 # Sphinx documentation
 docs/_build/
+doc/_build/
 
 # notebook
-.ipynb_checkpoints/*
+.ipynb_checkpoints
+
+# OS-generated
+.DS_Store
+
+# NetCDF files
+*.nc
+*.nc4
+
+# ESMPy log files
+PET0.ESMF_LogFile
+
+# Unit test / coverage reports
+.cache
+.coverage
+coverage.xml

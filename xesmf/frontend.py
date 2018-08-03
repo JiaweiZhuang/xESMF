@@ -280,7 +280,7 @@ class Regridder(object):
         shape_horiz = indata.shape[-2:]  # the rightmost two dimensions
         assert shape_horiz == (self.Ny_in, self.Nx_in), (
              'The horizontal shape of input data is {}, different from that of'
-             'the regridder {}!'.format(shape_horiz, (self.Ny_in, self.Nx_in))
+             ' the regridder {}!'.format(shape_horiz, (self.Ny_in, self.Nx_in))
              )
 
         outdata = apply_weights(self.A, indata, self.Ny_out, self.Nx_out)

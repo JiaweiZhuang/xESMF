@@ -102,6 +102,28 @@ def grid_global(d_lon, d_lat):
     return grid_2d(-180, 180, d_lon, -90, 90, d_lat)
 
 
+def warn_lon_lat_dne(da):
+    '''
+    Give a warning if lon/lat coordinate does not exist.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+    '''
+    lon_lat_set = set([LON, LAT]).difference(set(da.coords))
+    lon_lat_str = ', '.join(lon_lat_set)
+    if len(lon_lat_set) == 0:
+        return False
+    else:
+        warnings.warn(
+            'Will not regrid data variable'
+            f' {da.name} because {lon_lat_str}'
+            ' coordinate is missing, but it will'
+            ' still be in the output\n'
+        )
+        return True
+
+
 def _regrid_it(da, d_lon, d_lat, **kwargs):
     '''
     Global 2D rectilinear grid centers and bounds
@@ -128,14 +150,12 @@ def _regrid_it(da, d_lon, d_lat, **kwargs):
     da : xarray DataArray with coordinate values
 
     '''
-    try:
+    if not warn_lon_lat_dne(da):  # both lon and lat exist
         grid_out = {LON: np.arange(da[LON].min(), da[LON].max() + d_lon, d_lon),
                     LAT: np.arange(da[LAT].min(), da[LAT].max() + d_lat, d_lat)}
         regridder = xe.Regridder(da, grid_out, **kwargs)
         return regridder(da)
-    except KeyError:
-        warnings.warn('Skipping {0} because it has no '
-                      'lon / lat coordinate'.format(da.name))
+    else:
         return da
 
 

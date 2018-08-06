@@ -193,6 +193,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
 
         - 'bilinear'
         - 'conservative', **need grid corner information**
+        - 'conservative_normed', **need grid corner information**
         - 'patch'
         - 'nearest_s2d'
         - 'nearest_d2s'
@@ -222,6 +223,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # use shorter, clearer names for options in ESMF.RegridMethod
     method_dict = {'bilinear': ESMF.RegridMethod.BILINEAR,
                    'conservative': ESMF.RegridMethod.CONSERVE,
+                   'conservative_normed': ESMF.RegridMethod.CONSERVE,
                    'patch': ESMF.RegridMethod.PATCH,
                    'nearest_s2d': ESMF.RegridMethod.NEAREST_STOD,
                    'nearest_d2s': ESMF.RegridMethod.NEAREST_DTOS
@@ -253,12 +255,20 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
         assert not os.path.exists(filename), (
             'Weight file already exists! Please remove it or use a new name.')
 
+    # re-normalize conservative regridding results
+    # https://github.com/JiaweiZhuang/xESMF/issues/17
+    if method == 'conservative_normed':
+        norm_type = ESMF.NormType.FRACAREA
+    else:
+        norm_type = ESMF.NormType.DSTAREA
+
     # Calculate regridding weights.
     # Must set unmapped_action to IGNORE, otherwise the function will fail,
     # if the destination grid is larger than the source grid.
     regrid = ESMF.Regrid(sourcefield, destfield, filename=filename,
                          regrid_method=esmf_regrid_method,
                          unmapped_action=ESMF.UnmappedAction.IGNORE,
+                         norm_type=norm_type,
                          src_mask_values=[0], dst_mask_values=[0])
 
     return regrid

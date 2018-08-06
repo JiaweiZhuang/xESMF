@@ -97,6 +97,7 @@ class Regridder(object):
 
             - 'bilinear'
             - 'conservative', **need grid corner information**
+            - 'conservative_normed', **need grid corner information**
             - 'patch'
             - 'nearest_s2d'
             - 'nearest_d2s'

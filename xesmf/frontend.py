@@ -83,7 +83,7 @@ class Regridder(object):
         ds_in, ds_out : xarray DataSet, or dictionary
             Contain input and output grid coordinates. Look for variables
             ``lon``, ``lat``, and optionally ``lon_b``, ``lat_b`` for
-            conservative method.
+            add method.
 
             Shape can be 1D (Nlon,) and (Nlat,) for rectilinear grids,
             or 2D (Ny, Nx) for general curvilinear grids.
@@ -125,7 +125,7 @@ class Regridder(object):
         """
 
         # record basic switches
-        if method == 'conservative':
+        if method in ['conservative', 'conservative_normed']:
             self.need_bounds = True
             periodic = False  # bound shape will not be N+1 for periodic grid
         else:

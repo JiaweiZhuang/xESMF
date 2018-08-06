@@ -235,7 +235,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
                          '{}'.format(list(method_dict.keys())))
 
     # conservative regridding needs cell corner information
-    if method == 'conservative':
+    if method in ['conservative', 'conservative_normed']:
         if not sourcegrid.has_corners:
             raise ValueError('source grid has no corner information. '
                              'cannot use conservative regridding.')

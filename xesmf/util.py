@@ -119,8 +119,11 @@ def cell_area(ds):
 
     grid, _ = ds_to_ESMFgrid(ds, need_bounds=True)
     field = ESMF.Field(grid)
-    field.get_area()
-    area = field.data.T  # F-ordering to C-ordering
+    field.get_area()  # compute area
+
+    # F-ordering to C-ordering
+    # copy the array to make sure it persists after ESMF object is freed
+    area = field.data.T.copy()
     field.destroy()
 
     return area

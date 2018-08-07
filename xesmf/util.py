@@ -1,6 +1,8 @@
 import numpy as np
 import xarray as xr
 import warnings
+import ESMF
+from . frontend import ds_to_ESMFgrid
 
 
 def _grid_1d(start_b, end_b, step):
@@ -96,3 +98,29 @@ def grid_global(d_lon, d_lat):
                       'might not cover the globe uniformally'.format(d_lat))
 
     return grid_2d(-180, 180, d_lon, -90, 90, d_lat)
+
+
+def cell_area(ds):
+    '''
+    Get cell area of a grid.
+    Assume unit sphere (radius is 1, total area is 4*pi)
+
+    Parameters
+    ----------
+    ds : xarray DataSet or dictionary
+        Contains variables ``lon``, ``lat``, ``lon_b``, ``lat_b``
+        Note that boundary is required for computing cell area
+
+    Returns
+    -------
+    area : 2D numpy array for cell area
+
+    '''
+
+    grid, _ = ds_to_ESMFgrid(ds, need_bounds=True)
+    field = ESMF.Field(grid)
+    field.get_area()
+    area = field.data.T  # F-ordering to C-ordering
+    field.destroy()
+
+    return area

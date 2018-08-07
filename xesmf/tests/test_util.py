@@ -1,5 +1,7 @@
+import numpy as np
 import xesmf as xe
 import pytest
+from numpy.testing import assert_almost_equal
 
 
 def test_grid_global():
@@ -19,3 +21,11 @@ def test_grid_global_bad_resolution():
 
     with pytest.warns(UserWarning):
         xe.util.grid_global(1.23, 1.5)
+
+
+def test_cell_area():
+    ds = xe.util.grid_global(2.5, 2)
+    area = xe.util.cell_area(ds)
+
+    # total area of a unit sphere
+    assert_almost_equal(area.sum(), np.pi*4)

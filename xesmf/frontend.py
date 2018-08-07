@@ -24,7 +24,7 @@ def as_2d_mesh(lon, lat):
     return lon, lat
 
 
-def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
+def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None):
     '''
     Convert xarray DataSet or dictionary to ESMF.Grid object.
 

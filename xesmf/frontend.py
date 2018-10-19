@@ -12,6 +12,21 @@ from . backend import (esmf_grid, add_corner,
 from . smm import read_weights, apply_weights
 
 
+def get_latlon_name(ds):
+    # COARDS netCDF complaint
+    try:
+      if 'lat' in ds.variables:
+        lat_name = 'lat'
+        lon_name = 'lon'
+    # NETCDF CF 1.6 complaint 
+      elif 'latitude' in ds.variables:
+        lat_name = 'lat'
+        lon_name = 'lon'
+      else:
+        raise ValueError
+     except ValueError:
+        print('Must have coordinates compliant with NETCDF COARDS or CF conventions')
+
 def as_2d_mesh(lon, lat):
 
     if (lon.ndim, lat.ndim) == (2, 2):
@@ -50,8 +65,9 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     '''
 
     # use np.asarray(dr) instead of dr.values, so it also works for dictionary
-    lon = np.asarray(ds['lon'])
-    lat = np.asarray(ds['lat'])
+    lon_name,lat_name = get_latlon_name(ds)
+    lon = np.asarray(ds[lon_name])
+    lat = np.asarray(ds[lat_name])
     lon, lat = as_2d_mesh(lon, lat)
 
     # tranpose the arrays so they become Fortran-ordered
@@ -135,8 +151,9 @@ class Regridder(object):
                                                    )
 
         # record output grid and metadata
-        self._lon_out = np.asarray(ds_out['lon'])
-        self._lat_out = np.asarray(ds_out['lat'])
+        lon_name, lat_name = get_latlon_name(ds_out)
+        self._lon_out = np.asarray(ds_out[lon_name])
+        self._lat_out = np.asarray(ds_out[lat_name])
 
         if self._lon_out.ndim == 2:
             try:
@@ -148,11 +165,11 @@ class Regridder(object):
 
         elif self._lon_out.ndim == 1:
             try:
-                self.lon_dim, = ds_out['lon'].dims
-                self.lat_dim, = ds_out['lat'].dims
+                self.lon_dim, = ds_out[lon_name].dims
+                self.lat_dim, = ds_out[lat_name].dims
             except:
-                self.lon_dim = 'lon'
-                self.lat_dim = 'lat'
+                self.lon_dim = lon_name
+                self.lat_dim = lat_name
 
             self.horiz_dims = (self.lat_dim, self.lon_dim)
 
@@ -326,9 +343,9 @@ class Regridder(object):
         dr_out = xr.DataArray(outdata,
                               dims=extra_dims+self.horiz_dims,
                               name=varname)
-
-        dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
-        dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
+        lon_name, lat_name = get_latlon_name(dr_in)
+        dr_out.coords[lon_name] = xr.DataArray(self._lon_out, dims=self.lon_dim)
+        dr_out.coords[lat_name] = xr.DataArray(self._lat_out, dims=self.lat_dim)
 
         # append extra dimension coordinate value
         for dim in extra_dims:

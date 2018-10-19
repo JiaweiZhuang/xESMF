@@ -20,8 +20,8 @@ def get_latlon_name(ds):
         lon_name = 'lon'
     # NETCDF CF 1.6 complaint 
       elif 'latitude' in ds.variables:
-        lat_name = 'lat'
-        lon_name = 'lon'
+        lat_name = 'latitude'
+        lon_name = 'longitude'
       else:
         raise ValueError
      except ValueError:

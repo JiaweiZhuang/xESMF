@@ -108,8 +108,8 @@ def ds_to_ESMFgrid(ds,
     if need_bounds:
         if lat_b is None and lon_b is None:
             lon_b, lat_b = get_latlon_name(ds, boundary=True)
-        lon_b = np.asarray(ds['lon_b'])
-        lat_b = np.asarray(ds['lat_b'])
+        lon_b = np.asarray(ds[lon_b])
+        lat_b = np.asarray(ds[lat_b])
         lon_b, lat_b = as_2d_mesh(lon_b, lat_b)
         add_corner(grid, lon_b.T, lat_b.T)
 
@@ -220,32 +220,54 @@ class Regridder(object):
         self.periodic = periodic
         self.reuse_weights = reuse_weights
 
+        # get latitude and longitude names for ds_in and ds_out
+        if lat_in is None and lon_in is None:
+            self.lat_name_in, self.lon_name_in = get_latlon_name(ds_in)
+        else:
+            self.lat_name_in = lat_in
+            self.lon_name_in = lon_in
+        if lat_b_in is None and lon_b_in is None:
+            self.lat_b_name_in, self.lon_b_name_in = get_latlon_name(
+                ds_in, boundary=True)
+        else:
+            self.lat_b_name_in = lat_b_in
+            self.lon_b_name_in = lon_b_in
+        if lat_out is None and lon_out is None:
+            self.lat_name_out, self.lon_name_out = get_latlon_name(ds_out)
+        else:
+            self.lat_name_out = lat_out
+            self.lon_name_out = lon_out
+        if lat_b_out is None and lon_b_out is None:
+            self.lat_b_name_out, self.lon_b_name_out = get_latlon_name(
+                ds_out, boundary=True)
+        else:
+            self.lat_b_name_out = lat_b_out
+            self.lon_b_name_out = lon_b_out
+
         # construct ESMF grid, with some shape checking
         self._grid_in, shape_in = ds_to_ESMFgrid(
             ds_in,
             need_bounds=self.need_bounds,
             periodic=periodic,
-            lat=lat_in,
-            lon=lon_in,
-            lat_b=lat_b_in,
-            lon_b=lon_b_in)
+            lat=self.lat_name_in,
+            lon=self.lon_name_in,
+            lat_b=self.lat_b_name_in,
+            lon_b=self.lon_b_name_in)
         self._grid_out, shape_out = ds_to_ESMFgrid(
             ds_out,
             need_bounds=self.need_bounds,
-            lat=lat_out,
-            lon=lon_out,
-            lat_b=lat_b_out,
-            lon_b=lon_b_out)
+            lat=self.lat_name_out,
+            lon=self.lon_name_out,
+            lat_b=self.lat_b_name_out,
+            lon_b=self.lon_b_name_out)
 
         # record output grid and metadata
-        if lat_out is None and lon_out is None:
-            lon_name, lat_name = get_latlon_name(ds_out)
-        self._lon_out = np.asarray(ds_out[lon_name])
-        self._lat_out = np.asarray(ds_out[lat_name])
+        self._lon_out = np.asarray(ds_out[self.lon_name_out])
+        self._lat_out = np.asarray(ds_out[self.lat_name_out])
 
         if self._lon_out.ndim == 2:
             try:
-                self.lon_dim = self.lat_dim = ds_out[lon_name].dims
+                self.lon_dim = self.lat_dim = ds_out[self.lon_name_out].dims
             except:
                 self.lon_dim = self.lat_dim = ('y', 'x')
 
@@ -253,11 +275,11 @@ class Regridder(object):
 
         elif self._lon_out.ndim == 1:
             try:
-                self.lon_dim, = ds_out[lon_name].dims
-                self.lat_dim, = ds_out[lat_name].dims
+                self.lon_dim = ds_out[self.lon_name_out].dims
+                self.lat_dim = ds_out[self.lat_name_out].dims
             except:
-                self.lon_dim = lon_name
-                self.lat_dim = lat_name
+                self.lon_dim = self.lon_name_out
+                self.lat_dim = self.lat_name_out
 
             self.horiz_dims = (self.lat_dim, self.lon_dim)
 
@@ -384,7 +406,7 @@ class Regridder(object):
         outdata = apply_weights(self.A, indata, self.Ny_out, self.Nx_out)
         return outdata
 
-    def regrid_dataarray(self, dr_in, lat_name=None, lon_name=None):
+    def regrid_dataarray(self, dr_in):
         """
         Regrid xarray DataArray, track metadata.
 
@@ -423,11 +445,9 @@ class Regridder(object):
 
         dr_out = xr.DataArray(
             outdata, dims=extra_dims + self.horiz_dims, name=varname)
-        if lat_name is None and lon_name is None:
-            lon_name, lat_name = get_latlon_name(dr_in)
-        dr_out.coords[lon_name] = xr.DataArray(
+        dr_out.coords[self.lon_name_out] = xr.DataArray(
             self._lon_out, dims=self.lon_dim)
-        dr_out.coords[lat_name] = xr.DataArray(
+        dr_out.coords[self.lat_name_out] = xr.DataArray(
             self._lat_out, dims=self.lat_dim)
 
         # append extra dimension coordinate value

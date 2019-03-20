@@ -1,3 +1,4 @@
 numpydoc
 ipython
 nbsphinx
+git+https://github.com/JiaweiZhuang/xESMF

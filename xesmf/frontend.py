@@ -6,10 +6,46 @@ import numpy as np
 import xarray as xr
 import os
 
-from . backend import (esmf_grid, add_corner,
-                       esmf_regrid_build, esmf_regrid_finalize)
+from .backend import (esmf_grid, add_corner, esmf_regrid_build,
+                      esmf_regrid_finalize)
 
-from . smm import read_weights, apply_weights
+from .smm import read_weights, apply_weights
+
+
+def get_latlon_name(ds, boundary=False):
+    if boundary:
+        try:
+            # COARDS netCDF complaint
+            if 'lat_b' in ds.variables:
+                lat_name = 'lat_b'
+                lon_name = 'lon_b'
+            # NETCDF CF 1.6 complaint
+            elif 'latitude_b' in ds.variables:
+                lat_name = 'latitude_b'
+                lon_name = 'longitude_b'
+            else:
+                raise ValueError
+        except ValueError:
+            print(
+                """Must have coordinates compliant with NETCDF COARDS or CF conventions"""
+            )
+    else:
+        try:
+            # COARDS netCDF complaint
+            if 'lat' in ds.variables:
+                lat_name = 'lat'
+                lon_name = 'lon'
+            # NETCDF CF 1.6 complaint
+            elif 'latitude' in ds.variables:
+                lat_name = 'latitude'
+                lon_name = 'longitude'
+            else:
+                raise ValueError
+        except ValueError:
+            print(
+                'Must have coordinates compliant with NETCDF COARDS or CF conventions'
+            )
+    return lat_name, lon_name
 
 
 def as_2d_mesh(lon, lat):
@@ -24,7 +60,14 @@ def as_2d_mesh(lon, lat):
     return lon, lat
 
 
-def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
+def ds_to_ESMFgrid(ds,
+                   need_bounds=False,
+                   lat=None,
+                   lon=None,
+                   lat_b=None,
+                   lon_b=None,
+                   periodic=None,
+                   append=None):
     '''
     Convert xarray DataSet or dictionary to ESMF.Grid object.
 
@@ -50,16 +93,23 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     '''
 
     # use np.asarray(dr) instead of dr.values, so it also works for dictionary
-    lon = np.asarray(ds['lon'])
-    lat = np.asarray(ds['lat'])
+    if lat is None and lon is None:
+        lon_name, lat_name = get_latlon_name(ds)
+    else:
+        lat_name = lat
+        lon_name = lon
+    lon = np.asarray(ds[lon_name])
+    lat = np.asarray(ds[lat_name])
     lon, lat = as_2d_mesh(lon, lat)
 
     # tranpose the arrays so they become Fortran-ordered
     grid = esmf_grid(lon.T, lat.T, periodic=periodic)
 
     if need_bounds:
-        lon_b = np.asarray(ds['lon_b'])
-        lat_b = np.asarray(ds['lat_b'])
+        if lat_b is None and lon_b is None:
+            lon_b, lat_b = get_latlon_name(ds, boundary=True)
+        lon_b = np.asarray(ds[lon_b])
+        lat_b = np.asarray(ds[lat_b])
         lon_b, lat_b = as_2d_mesh(lon_b, lat_b)
         add_corner(grid, lon_b.T, lat_b.T)
 
@@ -67,8 +117,21 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
 
 
 class Regridder(object):
-    def __init__(self, ds_in, ds_out, method, periodic=False,
-                 filename=None, reuse_weights=False):
+    def __init__(self,
+                 ds_in,
+                 ds_out,
+                 method,
+                 periodic=False,
+                 filename=None,
+                 reuse_weights=False,
+                 lat_in=None,
+                 lon_in=None,
+                 lat_b_in=None,
+                 lon_b_in=None,
+                 lat_out=None,
+                 lon_out=None,
+                 lat_b_out=None,
+                 lon_b_out=None):
         """
         Make xESMF regridder
 
@@ -108,6 +171,38 @@ class Regridder(object):
             Whether to read existing weight file to save computing time.
             False by default (i.e. re-compute, not reuse).
 
+        lat_in : string, optional
+            Latitude name in ds_in xarray.DataArray.  If none it will try to
+            detect if the DataArray is netCDF CF 1.6 or COARDS compliant
+
+        lon_in : string, optional
+            Latitude name in ds_in xarray.DataArray.  If none it will try to
+             if the DataArray is netCDF CF 1.6 or COARDS compliant
+
+        lat_b_in : string, optional
+            Latitude name in ds_in xarray.DataArray.  If none it will try to
+            detect if the DataArray is netCDF CF 1.6 or COARDS compliant
+
+        lon_b_in : string, optional
+            Latitude name in ds_in xarray.DataArray.  If none it will try to
+            detect if the DataArray is netCDF CF 1.6 or COARDS compliant
+
+        lat_out : string, optional
+            Latitude name in ds_in xarray.DataArray.  If none it will try to
+            detect if the DataArray is netCDF CF 1.6 or COARDS compliant
+
+        lon_out : string, optional
+            Latitude name in ds_in xarray.DataArray.  If none it will try to
+            detect if the DataArray is netCDF CF 1.6 or COARDS compliant
+
+        lat_b_out : string, optional
+            Latitude name in ds_in xarray.DataArray.  If none it will try to
+            detect if the DataArray is netCDF CF 1.6 or COARDS compliant
+
+        lon_b_out : string, optional
+            Latitude name in ds_in xarray.DataArray.  If none it will try to
+            detectif the DataArray is netCDF CF 1.6 or COARDS compliant
+
         Returns
         -------
         regridder : xESMF regridder object
@@ -125,22 +220,54 @@ class Regridder(object):
         self.periodic = periodic
         self.reuse_weights = reuse_weights
 
+        # get latitude and longitude names for ds_in and ds_out
+        if lat_in is None and lon_in is None:
+            self.lat_name_in, self.lon_name_in = get_latlon_name(ds_in)
+        else:
+            self.lat_name_in = lat_in
+            self.lon_name_in = lon_in
+        if lat_b_in is None and lon_b_in is None:
+            self.lat_b_name_in, self.lon_b_name_in = get_latlon_name(
+                ds_in, boundary=True)
+        else:
+            self.lat_b_name_in = lat_b_in
+            self.lon_b_name_in = lon_b_in
+        if lat_out is None and lon_out is None:
+            self.lat_name_out, self.lon_name_out = get_latlon_name(ds_out)
+        else:
+            self.lat_name_out = lat_out
+            self.lon_name_out = lon_out
+        if lat_b_out is None and lon_b_out is None:
+            self.lat_b_name_out, self.lon_b_name_out = get_latlon_name(
+                ds_out, boundary=True)
+        else:
+            self.lat_b_name_out = lat_b_out
+            self.lon_b_name_out = lon_b_out
+
         # construct ESMF grid, with some shape checking
-        self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
-                                                 need_bounds=self.need_bounds,
-                                                 periodic=periodic
-                                                 )
-        self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
-                                                   need_bounds=self.need_bounds
-                                                   )
+        self._grid_in, shape_in = ds_to_ESMFgrid(
+            ds_in,
+            need_bounds=self.need_bounds,
+            periodic=periodic,
+            lat=self.lat_name_in,
+            lon=self.lon_name_in,
+            lat_b=self.lat_b_name_in,
+            lon_b=self.lon_b_name_in)
+        self._grid_out, shape_out = ds_to_ESMFgrid(
+            ds_out,
+            need_bounds=self.need_bounds,
+            lat=self.lat_name_out,
+            lon=self.lon_name_out,
+            lat_b=self.lat_b_name_out,
+            lon_b=self.lon_b_name_out)
 
         # record output grid and metadata
-        self._lon_out = np.asarray(ds_out['lon'])
-        self._lat_out = np.asarray(ds_out['lat'])
+        self._lon_out = np.asarray(ds_out[self.lon_name_out])
+        self._lat_out = np.asarray(ds_out[self.lat_name_out])
 
         if self._lon_out.ndim == 2:
             try:
-                self.lon_dim = self.lat_dim = ds_out['lon'].dims
+                self.lon_dim = self.lat_dim = ds_out[self.lon_name_out].dims
             except:
                 self.lon_dim = self.lat_dim = ('y', 'x')
 
@@ -148,11 +275,11 @@ class Regridder(object):
 
         elif self._lon_out.ndim == 1:
             try:
-                self.lon_dim, = ds_out['lon'].dims
-                self.lat_dim, = ds_out['lat'].dims
+                self.lon_dim = ds_out[self.lon_name_out].dims
+                self.lat_dim = ds_out[self.lat_name_out].dims
             except:
-                self.lon_dim = 'lon'
-                self.lat_dim = 'lat'
+                self.lon_dim = self.lon_name_out
+                self.lat_dim = self.lat_name_out
 
             self.horiz_dims = (self.lat_dim, self.lon_dim)
 
@@ -176,10 +303,8 @@ class Regridder(object):
 
     def _get_default_filename(self):
         # e.g. bilinear_400x600_300x400.nc
-        filename = ('{0}_{1}x{2}_{3}x{4}'.format(self.method,
-                    self.Ny_in, self.Nx_in,
-                    self.Ny_out, self.Nx_out)
-                    )
+        filename = ('{0}_{1}x{2}_{3}x{4}'.format(
+            self.method, self.Ny_in, self.Nx_in, self.Ny_out, self.Nx_out))
         if self.periodic:
             filename += '_peri.nc'
         else:
@@ -194,14 +319,15 @@ class Regridder(object):
                 print('Reuse existing file: {}'.format(self.filename))
                 return  # do not compute it again, just read it
             else:
-                print('Overwrite existing file: {} \n'.format(self.filename),
-                      'You can set reuse_weights=True to save computing time.')
+                print(
+                    'Overwrite existing file: {} \n'.format(self.filename),
+                    'You can set reuse_weights=True to save computing time.')
                 os.remove(self.filename)
         else:
             print('Create weight file: {}'.format(self.filename))
 
-        regrid = esmf_regrid_build(self._grid_in, self._grid_out, self.method,
-                                   filename=self.filename)
+        regrid = esmf_regrid_build(
+            self._grid_in, self._grid_out, self.method, filename=self.filename)
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
 
     def clean_weight_file(self):
@@ -225,15 +351,10 @@ class Regridder(object):
                 'Input grid shape:           {} \n'
                 'Output grid shape:          {} \n'
                 'Output grid dimension name: {} \n'
-                'Periodic in longitude?      {}'
-                .format(self.method,
-                        self.filename,
-                        self.reuse_weights,
-                        (self.Ny_in, self.Nx_in),
-                        (self.Ny_out, self.Nx_out),
-                        self.horiz_dims,
-                        self.periodic)
-                )
+                'Periodic in longitude?      {}'.format(
+                    self.method, self.filename, self.reuse_weights,
+                    (self.Ny_in, self.Nx_in), (self.Ny_out, self.Nx_out),
+                    self.horiz_dims, self.periodic))
 
         return info
 
@@ -279,9 +400,8 @@ class Regridder(object):
         # check shape
         shape_horiz = indata.shape[-2:]  # the rightmost two dimensions
         assert shape_horiz == (self.Ny_in, self.Nx_in), (
-             'The horizontal shape of input data is {}, different from that of'
-             'the regridder {}!'.format(shape_horiz, (self.Ny_in, self.Nx_in))
-             )
+            'The horizontal shape of input data is {}, different from that of'
+            'the regridder {}!'.format(shape_horiz, (self.Ny_in, self.Nx_in)))
 
         outdata = apply_weights(self.A, indata, self.Ny_out, self.Nx_out)
         return outdata
@@ -323,12 +443,12 @@ class Regridder(object):
         varname = dr_in.name
         extra_dims = dr_in.dims[0:-2]
 
-        dr_out = xr.DataArray(outdata,
-                              dims=extra_dims+self.horiz_dims,
-                              name=varname)
-
-        dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
-        dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
+        dr_out = xr.DataArray(
+            outdata, dims=extra_dims + self.horiz_dims, name=varname)
+        dr_out.coords[self.lon_name_out] = xr.DataArray(
+            self._lon_out, dims=self.lon_dim)
+        dr_out.coords[self.lat_name_out] = xr.DataArray(
+            self._lat_out, dims=self.lat_dim)
 
         # append extra dimension coordinate value
         for dim in extra_dims:

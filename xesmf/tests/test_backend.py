@@ -15,11 +15,11 @@ import pytest
 # xarray DataSet is only used at the very beginning as a quick way to make data
 coord_names = ['lon', 'lat', 'lon_b', 'lat_b']
 
-ds_in = xe.util.grid_global(5, 4)
+ds_in = xe.util.grid_global(20, 12)
 lon_in, lat_in, lon_b_in, lat_b_in = [ds_in[name].values
                                       for name in coord_names]
 
-ds_out = xe.util.grid_global(2, 2)
+ds_out = xe.util.grid_global(15, 9)
 lon_out, lat_out, lon_b_out, lat_b_out = [ds_out[name].values
                                           for name in coord_names]
 
@@ -162,7 +162,7 @@ def test_regrid():
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
 
     rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
-    assert np.max(np.abs(rel_err)) == pytest.approx(0.03126, abs=1e-5)
+    assert np.max(np.abs(rel_err)) < 0.05
 
     # apply regridding using scipy
     A = read_weights(filename, lon_in.size, lon_out.size)
@@ -222,7 +222,6 @@ def test_regrid_periodic_correct():
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
 
     rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
-    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=1e-5)
-
+    assert np.max(np.abs(rel_err)) < 0.065
     # clean-up
     esmf_regrid_finalize(regrid)

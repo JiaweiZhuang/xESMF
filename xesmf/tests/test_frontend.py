@@ -8,8 +8,8 @@ from numpy.testing import assert_equal, assert_almost_equal
 import pytest
 
 # same test data as test_backend.py, but here we can use xarray DataSet
-ds_in = xe.util.grid_global(5, 4)
-ds_out = xe.util.grid_global(2, 2)
+ds_in = xe.util.grid_global(20, 12)
+ds_out = xe.util.grid_global(15, 9)
 
 ds_in['data'] = xe.data.wave_smooth(ds_in['lon'], ds_in['lat'])
 ds_out['data_ref'] = xe.data.wave_smooth(ds_out['lon'], ds_out['lat'])
@@ -95,7 +95,7 @@ def test_regrid():
 
     # compare with analytical solution
     rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
-    assert np.max(np.abs(rel_err)) == pytest.approx(0.03126, abs=2e-4)
+    assert np.max(np.abs(rel_err)) < 0.05
 
     # check metadata
     assert_equal(dr_out['lat'].values, ds_out['lat'].values)
@@ -138,7 +138,7 @@ def test_regrid_periodic_correct():
 
     # compare with analytical solution
     rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
-    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=2e-4)
+    assert np.max(np.abs(rel_err)) < 0.065
 
     # clean-up
     regridder.clean_weight_file()
@@ -162,7 +162,7 @@ def test_regrid_with_1d_grid():
 
     # compare with analytical solution
     rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
-    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=2e-4)
+    assert np.max(np.abs(rel_err)) < 0.065
 
     # metadata should be 1D
     assert_equal(dr_out['lon'].values, ds_out_1d['lon'].values)

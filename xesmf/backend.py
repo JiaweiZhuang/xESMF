@@ -306,11 +306,15 @@ def esmf_regrid_finalize(regrid):
 
     '''
 
+    regrid.destroy()
     regrid.srcfield.destroy()
     regrid.dstfield.destroy()
-    regrid.destroy()
+    regrid.srcfield.grid.destroy()
+    regrid.dstfield.grid.destroy()
 
     # double check
+    assert regrid.finalized
     assert regrid.srcfield.finalized
     assert regrid.dstfield.finalized
-    assert regrid.finalized
+    assert regrid.srcfield.grid.finalized
+    assert regrid.dstfield.grid.finalized

@@ -36,17 +36,19 @@ def test_as_2d_mesh():
         as_2d_mesh(lon1d, lat2d)
 
 
-def test_build_regridder():
-    # 'patch' is too slow to test
-    for method in ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']:
-        regridder = xe.Regridder(ds_in, ds_out, method)
+# 'patch' is too slow to test
+methods_list = ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']
 
-        # check screen output
-        assert repr(regridder) == str(regridder)
-        assert 'xESMF Regridder' in str(regridder)
-        assert method in str(regridder)
+@pytest.mark.parametrize('method', methods_list)
+def test_build_regridder(method):
+    regridder = xe.Regridder(ds_in, ds_out, method)
 
-        regridder.clean_weight_file()
+    # check screen output
+    assert repr(regridder) == str(regridder)
+    assert 'xESMF Regridder' in str(regridder)
+    assert method in str(regridder)
+
+    regridder.clean_weight_file()
 
 
 def test_existing_weights():

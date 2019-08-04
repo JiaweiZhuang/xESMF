@@ -185,14 +185,6 @@ class Regridder(object):
         print(message)
         return self.weights
 
-    def get_A(self):
-        warnings.warn(
-            "regridder.A is deprecated and will be removed in future versions. "
-            "Use regridder.weights instead.", DeprecationWarning
-            )
-        print("Do not use A!")
-        return self.weights
-
     def _get_default_filename(self):
         # e.g. bilinear_400x600_300x400.nc
         filename = ('{0}_{1}x{2}_{3}x{4}'.format(self.method,

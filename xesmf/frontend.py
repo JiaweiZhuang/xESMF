@@ -12,6 +12,11 @@ from . backend import (esmf_grid, add_corner,
 
 from . smm import read_weights, apply_weights
 
+try:
+    import dask.array as da
+except:
+    pass
+
 
 def as_2d_mesh(lon, lat):
 
@@ -145,7 +150,7 @@ class Regridder(object):
             except:
                 self.lon_dim = self.lat_dim = ('y', 'x')
 
-            self.horiz_dims = self.lon_dim
+            self.out_horiz_dims = self.lon_dim
 
         elif self._lon_out.ndim == 1:
             try:
@@ -155,7 +160,7 @@ class Regridder(object):
                 self.lon_dim = 'lon'
                 self.lat_dim = 'lat'
 
-            self.horiz_dims = (self.lat_dim, self.lon_dim)
+            self.out_horiz_dims = (self.lat_dim, self.lon_dim)
 
         # record grid shape information
         self.shape_in = shape_in
@@ -242,106 +247,120 @@ class Regridder(object):
                         self.reuse_weights,
                         self.shape_in,
                         self.shape_out,
-                        self.horiz_dims,
+                        self.out_horiz_dims,
                         self.periodic)
                 )
 
         return info
 
-    def __call__(self, a):
+    def __call__(self, indata):
         """
-        Shortcut for ``regrid_numpy()`` and ``regrid_dataarray()``.
+        Apply regridding to input data.
 
         Parameters
         ----------
-        a : xarray DataArray or numpy array
-
-        Returns
-        -------
-        xarray DataArray or numpy array
-            Regridding results. Type depends on input.
-        """
-        # TODO: DataSet support
-
-        if isinstance(a, np.ndarray):
-            regrid_func = self.regrid_numpy
-        elif isinstance(a, xr.DataArray):
-            regrid_func = self.regrid_dataarray
-        else:
-            raise TypeError("input must be numpy array or xarray DataArray!")
-
-        return regrid_func(a)
-
-    def regrid_numpy(self, indata):
-        """
-        Regrid pure numpy array. Shape requirement is the same as
-        ``regrid_dataarray()``
-
-        Parameters
-        ----------
-        indata : numpy array
-
-        Returns
-        -------
-        outdata : numpy array
-
-        """
-
-        outdata = apply_weights(self.weights, indata,
-                                self.shape_in, self.shape_out)
-        return outdata
-
-    def regrid_dataarray(self, dr_in):
-        """
-        Regrid xarray DataArray, track metadata.
-
-        Parameters
-        ----------
-        dr_in : xarray DataArray
+        indata : numpy array, dask array, xarray DataArray or Dataset.
             The rightmost two dimensions must be the same as ``ds_in``.
             Can have arbitrary additional dimensions.
 
             Examples of valid shapes
 
-            - (Nlat, Nlon), if ``ds_in`` has shape (Nlat, Nlon)
-            - (N2, N1, Ny, Nx), if ``ds_in`` has shape (Ny, Nx)
+            - (n_lat, n_lon), if ``ds_in`` has shape (n_lat, n_lon)
+            - (n_time, n_lev, n_y, n_x), if ``ds_in`` has shape (Ny, n_x)
+
+            Transpose your input data if the horizontal dimensions are not
+            the rightmost two dimensions.
 
         Returns
         -------
-        dr_out : xarray DataArray
+        outdata : Data type is the same as input data type.
             On the same horizontal grid as ``ds_out``,
             with extra dims in ``dr_in``.
 
-            Assuming ``ds_out`` has the shape of (Ny_out, Nx_out),
+            Assuming ``ds_out`` has the shape of (n_y_out, n_x_out),
             examples of returning shapes are
 
-            - (Ny_out, Nx_out), if ``dr_in`` is 2D
-            - (N2, N1, Ny_out, Nx_out), if ``dr_in`` has shape
-              (N2, N1, Ny, Nx)
+            - (n_y_out, n_x_out), if ``dr_in`` is 2D
+            - (n_time, n_lev, n_y_out, n_x_out), if ``dr_in`` has shape
+              (n_time, n_lev, n_y, n_x)
 
         """
 
-        # apply regridding to pure numpy array
-        outdata = self.regrid_numpy(dr_in.values)
+        if isinstance(indata, np.ndarray):
+            regrid_func = self.regrid_numpy
+        elif isinstance(indata, da.Array):
+            regrid_func = self.regrid_dask
+        elif isinstance(indata, xr.DataArray):
+            regrid_func = self.regrid_dataarray
+        elif isinstance(indata, xr.Dataset):
+            regrid_func = self.regrid_dataset
+        else:
+            raise TypeError(
+                "input must be numpy array, dask array, "
+                "xarray DataArray or Dataset!")
 
-        # track metadata
-        varname = dr_in.name
-        extra_dims = dr_in.dims[0:-2]
+        return regrid_func(indata)
 
-        dr_out = xr.DataArray(outdata,
-                              dims=extra_dims+self.horiz_dims,
-                              name=varname)
+    def regrid_numpy(self, indata):
+        """See __call__()."""
 
+        outdata = apply_weights(self.weights, indata,
+                                self.shape_in, self.shape_out)
+        return outdata
+
+    def regrid_dask(self, indata):
+        """See __call__()."""
+
+        extra_chunk_shape = indata.chunksize[0:-2]
+
+        output_chunk_shape = extra_chunk_shape + self.shape_out
+
+        outdata = da.map_blocks(
+            self.regrid_numpy,
+            indata,
+            dtype=float,
+            chunks=output_chunk_shape
+        )
+
+        return outdata
+
+    def regrid_dataarray(self, dr_in):
+        """See __call__()."""
+
+        # example: ('lat', 'lon') or ('y', 'x')
+        input_horiz_dims = dr_in.dims[-2:]
+
+        # apply_ufunc needs a different name for output_core_dims
+        # example: ('lat', 'lon') -> ('lat_new', 'lon_new')
+        # https://github.com/pydata/xarray/issues/1931#issuecomment-367417542
+        temp_horiz_dims = [s + '_new' for s in input_horiz_dims]
+
+        dr_out = xr.apply_ufunc(
+            self.regrid_numpy, dr_in,
+            input_core_dims=[input_horiz_dims],
+            output_core_dims=[temp_horiz_dims],
+            dask='parallelized',
+            output_dtypes=[float],
+            output_sizes={temp_horiz_dims[0]: self.shape_out[0],
+                          temp_horiz_dims[1]: self.shape_out[1]
+                          }
+        )
+
+        # rename dimension name to match output grid
+        dr_out = dr_out.rename(
+            {temp_horiz_dims[0]: self.out_horiz_dims[0],
+             temp_horiz_dims[1]: self.out_horiz_dims[1]
+            }
+        )
+
+        # append output horizontal coordinate values
+        # extra coordinates are automatically tracked by apply_ufunc
         dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
         dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
-
-        # append extra dimension coordinate value
-        for dim in extra_dims:
-            dr_out.coords[dim] = dr_in.coords[dim]
 
         dr_out.attrs['regrid_method'] = self.method
 
         return dr_out
 
     def regrid_dataset(self, ds_in):
-        raise NotImplementedError("Only support regrid_dataarray() for now.")
+        raise NotImplementedError

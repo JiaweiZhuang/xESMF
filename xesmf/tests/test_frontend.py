@@ -11,14 +11,20 @@ import pytest
 ds_in = xe.util.grid_global(20, 12)
 ds_out = xe.util.grid_global(15, 9)
 
+horiz_shape_in = ds_in['lon'].shape
+horiz_shape_out = ds_out['lon'].shape
+
 ds_in['data'] = xe.data.wave_smooth(ds_in['lon'], ds_in['lat'])
 ds_out['data_ref'] = xe.data.wave_smooth(ds_out['lon'], ds_out['lat'])
 
 # 4D data to test broadcasting, increasing linearly with time and lev
-ds_in.coords['time'] = np.arange(1, 11)
-ds_in.coords['lev'] = np.arange(1, 51)
+ds_in.coords['time'] = np.arange(7) + 1
+ds_in.coords['lev'] = np.arange(11) + 1
 ds_in['data4D'] = ds_in['time'] * ds_in['lev'] * ds_in['data']
+ds_out['data4D_ref'] = ds_in['time'] * ds_in['lev'] * ds_out['data_ref']
 
+# use non-divisible chunk size to catch edge cases
+ds_in_chunked = ds_in.chunk({'time': 3, 'lev': 2})
 
 def test_as_2d_mesh():
     # 2D grid should not change
@@ -86,39 +92,6 @@ def test_build_regridder_from_dict():
     regridder.clean_weight_file()
 
 
-def test_regrid():
-    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
-
-    outdata = regridder(ds_in['data'].values)  # pure numpy array
-    dr_out = regridder(ds_in['data'])  # xarray DataArray
-
-    # DataArray and numpy array should lead to the same result
-    assert_equal(outdata, dr_out.values)
-
-    # compare with analytical solution
-    rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
-    assert np.max(np.abs(rel_err)) < 0.05
-
-    # check metadata
-    assert_equal(dr_out['lat'].values, ds_out['lat'].values)
-    assert_equal(dr_out['lon'].values, ds_out['lon'].values)
-
-    # test broadcasting
-    dr_out_4D = regridder(ds_in['data4D'])
-
-    # data over broadcasting dimensions should agree
-    assert_almost_equal(ds_in['data4D'].values.mean(axis=(2, 3)),
-                        dr_out_4D.values.mean(axis=(2, 3)),
-                        decimal=10)
-
-    # check metadata
-    xr.testing.assert_identical(dr_out_4D['time'], ds_in['time'])
-    xr.testing.assert_identical(dr_out_4D['lev'], ds_in['lev'])
-
-    # clean-up
-    regridder.clean_weight_file()
-
-
 def test_regrid_periodic_wrong():
     # not using periodic option
     regridder = xe.Regridder(ds_in, ds_out, 'bilinear')
@@ -172,3 +145,92 @@ def test_regrid_with_1d_grid():
 
     # clean-up
     regridder.clean_weight_file()
+
+
+# TODO: consolidate (regrid method, input data types) combination
+# using pytest fixtures and parameterization
+
+def test_regrid_dataarray():
+    # xarray.DataArray containing in-memory numpy array
+
+    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
+
+    outdata = regridder(ds_in['data'].values)  # pure numpy array
+    dr_out = regridder(ds_in['data'])  # xarray DataArray
+
+    # DataArray and numpy array should lead to the same result
+    assert_equal(outdata, dr_out.values)
+
+    # compare with analytical solution
+    rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
+    assert np.max(np.abs(rel_err)) < 0.05
+
+    # check metadata
+    assert_equal(dr_out['lat'].values, ds_out['lat'].values)
+    assert_equal(dr_out['lon'].values, ds_out['lon'].values)
+
+    # test broadcasting
+    dr_out_4D = regridder(ds_in['data4D'])
+
+    # data over broadcasting dimensions should agree
+    assert_almost_equal(ds_in['data4D'].values.mean(axis=(2, 3)),
+                        dr_out_4D.values.mean(axis=(2, 3)),
+                        decimal=10)
+
+    # check metadata
+    xr.testing.assert_identical(dr_out_4D['time'], ds_in['time'])
+    xr.testing.assert_identical(dr_out_4D['lev'], ds_in['lev'])
+
+    # clean-up
+    regridder.clean_weight_file()
+
+
+def test_regrid_dask():
+    # chunked dask array (no xarray metadata)
+
+    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
+
+    indata = ds_in_chunked['data4D'].data
+    outdata = regridder(indata)
+
+    # lazy dask arrays have incorrect shape attribute due to last chunk
+    assert outdata.compute().shape == indata.shape[:-2] + horiz_shape_out
+    assert outdata.chunksize == indata.chunksize[:-2] + horiz_shape_out
+
+    outdata_ref = ds_out['data4D_ref'].values
+    rel_err = (outdata.compute() - outdata_ref) / outdata_ref
+    assert np.max(np.abs(rel_err)) < 0.05
+
+    # clean-up
+    regridder.clean_weight_file()
+
+
+def test_regrid_dataarray_dask():
+    # xarray.DataArray containing chunked dask array
+
+    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
+
+    # test broadcasting
+    dr_in = ds_in_chunked['data4D']
+    dr_out = regridder(dr_in)
+
+    assert dr_out.data.shape == dr_in.data.shape[:-2] + horiz_shape_out
+    assert dr_out.data.chunksize == dr_in.data.chunksize[:-2] + horiz_shape_out
+
+    # data over broadcasting dimensions should agree
+    assert_almost_equal(dr_in.values.mean(axis=(2, 3)),
+                        dr_out.values.mean(axis=(2, 3)),
+                        decimal=10)
+
+    # check metadata
+    xr.testing.assert_identical(dr_out['time'], dr_in['time'])
+    xr.testing.assert_identical(dr_out['lev'], dr_in['lev'])
+    assert_equal(dr_out['lat'].values, ds_out['lat'].values)
+    assert_equal(dr_out['lon'].values, ds_out['lon'].values)
+
+    # clean-up
+    regridder.clean_weight_file()
+
+
+def test_regrid_dataset():
+    pass

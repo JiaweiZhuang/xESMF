@@ -287,14 +287,8 @@ class Regridder(object):
 
         """
 
-        # check shape
-        shape_horiz = indata.shape[-2:]  # the rightmost two dimensions
-        assert shape_horiz == self.shape_in, (
-             'The horizontal shape of input data is {}, different from that of'
-             'the regridder {}!'.format(shape_horiz, self.shape_in)
-             )
-
-        outdata = apply_weights(self.weights, indata, self.shape_out)
+        outdata = apply_weights(self.weights, indata,
+                                self.shape_in, self.shape_out)
         return outdata
 
     def regrid_dataarray(self, dr_in):

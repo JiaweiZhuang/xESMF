@@ -41,7 +41,7 @@ def read_weights(filename, n_in, n_out):
     return weights
 
 
-def apply_weights(weights, indata, shape_out):
+def apply_weights(weights, indata, shape_in, shape_out):
     '''
     Apply regridding weights to data.
 
@@ -52,8 +52,8 @@ def apply_weights(weights, indata, shape_out):
     indata : numpy array of shape ``(..., n_lat, n_lon)`` or ``(..., n_y, n_x)``.
         Should be C-ordered. Will be then tranposed to F-ordered.
 
-    shape_out : tuple of two integers
-        Output data shape for unflatten operation.
+    shape_in, shape_out : tuple of two integers
+        Input/output data shape for unflatten operation.
         For rectilinear grid, it is just ``(n_lat, n_lon)``.
 
     Returns
@@ -63,9 +63,6 @@ def apply_weights(weights, indata, shape_out):
         If input data is C-ordered, output will also be C-ordered.
     '''
 
-    assert shape_out[0] * shape_out[1] == weights.shape[0], (
-        "ny_out * nx_out should equal to weights.shape[0]")
-
     # COO matrix is fast with F-ordered array but slow with C-array, so we
     # take in a C-ordered and then transpose)
     # (CSR or CRS matrix is fast with C-ordered array but slow with F-array)
@@ -74,8 +71,19 @@ def apply_weights(weights, indata, shape_out):
                       "Will affect performance.")
 
     # get input shape information
-    shape_in = indata.shape[-2:]
+    shape_horiz = indata.shape[-2:]
     extra_shape = indata.shape[0:-2]
+
+    assert shape_horiz == shape_in, (
+        'The horizontal shape of input data is {}, different from that of'
+        'the regridder {}!'.format(shape_horiz, shape_in)
+        )
+
+    assert shape_in[0] * shape_in[1] == weights.shape[1], (
+        "ny_in * nx_in should equal to weights.shape[1]")
+
+    assert shape_out[0] * shape_out[1] == weights.shape[0], (
+        "ny_out * nx_out should equal to weights.shape[0]")
 
     # use flattened array for dot operation
     indata_flat = indata.reshape(-1, shape_in[0]*shape_in[1])

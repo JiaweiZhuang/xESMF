@@ -363,4 +363,47 @@ class Regridder(object):
         return dr_out
 
     def regrid_dataset(self, ds_in):
-        raise NotImplementedError
+        """See __call__()."""
+
+        # most logic is the same as regrid_dataarray()
+        # the major caution is that some data variables might not contain
+        # the correct horizontal dimension names.
+
+        # get the first data variable to infer input_core_dims
+        name, dr_in = next(iter(ds_in.items()))
+
+        input_horiz_dims = dr_in.dims[-2:]
+        temp_horiz_dims = [s + '_new' for s in input_horiz_dims]
+
+        # help user debugging invalid horizontal dimensions
+        print('using dimensions {} from data variable {} '
+              'as the horizontal dimensions for this dataset.'
+              .format(input_horiz_dims, name)
+              )
+
+        ds_out = xr.apply_ufunc(
+            self.regrid_numpy, ds_in,
+            input_core_dims=[input_horiz_dims],
+            output_core_dims=[temp_horiz_dims],
+            dask='parallelized',
+            output_dtypes=[float],
+            output_sizes={temp_horiz_dims[0]: self.shape_out[0],
+                          temp_horiz_dims[1]: self.shape_out[1]
+                          }
+        )
+
+        # rename dimension name to match output grid
+        ds_out = ds_out.rename(
+            {temp_horiz_dims[0]: self.out_horiz_dims[0],
+             temp_horiz_dims[1]: self.out_horiz_dims[1]
+            }
+        )
+
+        # append output horizontal coordinate values
+        # extra coordinates are automatically tracked by apply_ufunc
+        ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
+        ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
+
+        ds_out.attrs['regrid_method'] = self.method
+
+        return ds_out

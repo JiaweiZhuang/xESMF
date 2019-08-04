@@ -210,7 +210,6 @@ def test_regrid_dataarray_dask():
 
     regridder = xe.Regridder(ds_in, ds_out, 'conservative')
 
-    # test broadcasting
     dr_in = ds_in_chunked['data4D']
     dr_out = regridder(dr_in)
 
@@ -233,4 +232,31 @@ def test_regrid_dataarray_dask():
 
 
 def test_regrid_dataset():
-    pass
+    # xarray.Dataset containing in-memory numpy array
+
+    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
+
+    # `ds_out` already refers to output grid object
+    # TODO: use more consistent variable namings across tests
+    ds_result = regridder(ds_in)
+
+    # output should contain all data variables
+    assert set(ds_result.data_vars.keys()) == set(ds_in.data_vars.keys())
+
+    # compare with analytical solution
+    rel_err = (ds_out['data_ref'] - ds_result['data'])/ds_out['data_ref']
+    assert np.max(np.abs(rel_err)) < 0.05
+
+    # data over broadcasting dimensions should agree
+    assert_almost_equal(ds_in['data4D'].values.mean(axis=(2, 3)),
+                        ds_result['data4D'].values.mean(axis=(2, 3)),
+                        decimal=10)
+
+    # check metadata
+    xr.testing.assert_identical(ds_result['time'], ds_in['time'])
+    xr.testing.assert_identical(ds_result['lev'], ds_in['lev'])
+    assert_equal(ds_result['lat'].values, ds_out['lat'].values)
+    assert_equal(ds_result['lon'].values, ds_out['lon'].values)
+
+    # clean-up
+    regridder.clean_weight_file()

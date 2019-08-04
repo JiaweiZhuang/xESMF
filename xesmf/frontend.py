@@ -5,6 +5,7 @@ Frontend for xESMF, exposed to users.
 import numpy as np
 import xarray as xr
 import os
+import warnings
 
 from . backend import (esmf_grid, add_corner,
                        esmf_regrid_build, esmf_regrid_finalize)
@@ -34,7 +35,7 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
         Contains variables ``lon``, ``lat``,
         and optionally ``lon_b``, ``lat_b`` if need_bounds=True.
 
-        Shape should be ``(Nlat, Nlon)`` or ``(Ny, Nx)``,
+        Shape should be ``(n_lat, n_lon)`` or ``(n_y, n_x)``,
         as normal C or Python ordering. Will be then tranposed to F-ordered.
 
     need_bounds : bool, optional
@@ -79,9 +80,9 @@ class Regridder(object):
             ``lon``, ``lat``, and optionally ``lon_b``, ``lat_b`` for
             conservative method.
 
-            Shape can be 1D (Nlon,) and (Nlat,) for rectilinear grids,
-            or 2D (Ny, Nx) for general curvilinear grids.
-            Shape of bounds should be (N+1,) or (Ny+1, Nx+1).
+            Shape can be 1D (n_lon,) and (n_lat,) for rectilinear grids,
+            or 2D (n_y, n_x) for general curvilinear grids.
+            Shape of bounds should be (n+1,) or (n_y+1, n_x+1).
 
         method : str
             Regridding method. Options are
@@ -156,14 +157,11 @@ class Regridder(object):
 
             self.horiz_dims = (self.lat_dim, self.lon_dim)
 
-        # get grid shape information
-        # Use (Ny, Nx) instead of (Nlat, Nlon),
-        # because ds can be general curvilinear grids.
-        # For rectilinear grids, (Ny, Nx) == (Nlat, Nlon)
-        self.Ny_in, self.Nx_in = shape_in
-        self.Ny_out, self.Nx_out = shape_out
-        self.N_in = self.Ny_in * self.Nx_in
-        self.N_out = self.Ny_out * self.Nx_out
+        # record grid shape information
+        self.shape_in = shape_in
+        self.shape_out = shape_out
+        self.n_in = shape_in[0] * shape_in[1]
+        self.n_out = shape_out[0] * shape_out[1]
 
         if filename is None:
             self.filename = self._get_default_filename()
@@ -172,13 +170,34 @@ class Regridder(object):
 
         # get weight matrix
         self._write_weight_file()
-        self.A = read_weights(self.filename, self.N_in, self.N_out)
+        self.weights = read_weights(self.filename, self.n_in, self.n_out)
+
+    @property
+    def A(self):
+        message = (
+            "regridder.A is deprecated and will be removed in future versions. "
+            "Use regridder.weights instead."
+        )
+
+        warnings.warn(message, DeprecationWarning)
+        # DeprecationWarning seems to be ignored by certain Python environments
+        # Also print to make sure users notice this.
+        print(message)
+        return self.weights
+
+    def get_A(self):
+        warnings.warn(
+            "regridder.A is deprecated and will be removed in future versions. "
+            "Use regridder.weights instead.", DeprecationWarning
+            )
+        print("Do not use A!")
+        return self.weights
 
     def _get_default_filename(self):
         # e.g. bilinear_400x600_300x400.nc
         filename = ('{0}_{1}x{2}_{3}x{4}'.format(self.method,
-                    self.Ny_in, self.Nx_in,
-                    self.Ny_out, self.Nx_out)
+                    self.shape_in[0], self.shape_in[1],
+                    self.shape_out[0], self.shape_out[1],)
                     )
         if self.periodic:
             filename += '_peri.nc'
@@ -229,8 +248,8 @@ class Regridder(object):
                 .format(self.method,
                         self.filename,
                         self.reuse_weights,
-                        (self.Ny_in, self.Nx_in),
-                        (self.Ny_out, self.Nx_out),
+                        self.shape_in,
+                        self.shape_out,
                         self.horiz_dims,
                         self.periodic)
                 )
@@ -278,12 +297,13 @@ class Regridder(object):
 
         # check shape
         shape_horiz = indata.shape[-2:]  # the rightmost two dimensions
-        assert shape_horiz == (self.Ny_in, self.Nx_in), (
+        assert shape_horiz == self.shape_in, (
              'The horizontal shape of input data is {}, different from that of'
-             'the regridder {}!'.format(shape_horiz, (self.Ny_in, self.Nx_in))
+             'the regridder {}!'.format(shape_horiz, self.shape_in)
              )
 
-        outdata = apply_weights(self.A, indata, self.Ny_out, self.Nx_out)
+        outdata = apply_weights(self.weights, indata,
+                                self.shape_out[0], self.shape_out[1])
         return outdata
 
     def regrid_dataarray(self, dr_in):

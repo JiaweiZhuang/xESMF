@@ -7,7 +7,7 @@ import scipy.sparse as sps
 import warnings
 
 
-def read_weights(filename, N_in, N_out):
+def read_weights(filename, n_in, n_out):
     '''
     Read regridding weights into a scipy sparse COO matrix.
 
@@ -37,11 +37,11 @@ def read_weights(filename, N_in, N_out):
     row = ds_w['row'].values - 1
     S = ds_w['S'].values
 
-    A = sps.coo_matrix((S, (row, col)), shape=[N_out, N_in])
-    return A
+    weights = sps.coo_matrix((S, (row, col)), shape=[n_out, n_in])
+    return weights
 
 
-def apply_weights(A, indata, Ny_out, Nx_out):
+def apply_weights(weights, indata, shape_out):
     '''
     Apply regridding weights to data.
 
@@ -49,22 +49,22 @@ def apply_weights(A, indata, Ny_out, Nx_out):
     ----------
     A : scipy sparse COO matrix
 
-    indata : numpy array of shape ``(..., Nlat, Nlon)`` or ``(..., Ny, Nx)``.
+    indata : numpy array of shape ``(..., n_lat, n_lon)`` or ``(..., n_y, n_x)``.
         Should be C-ordered. Will be then tranposed to F-ordered.
 
-    Ny_out, Nx_out : integers
+    shape_out : tuple of two integers
         Output data shape for unflatten operation.
-        For rectilinear grid, it is just ``(Nlat_out, Nlon_out)``.
+        For rectilinear grid, it is just ``(n_lat, n_lon)``.
 
     Returns
     -------
-    outdata : numpy array of shape ``(..., Ny_out, Nx_out)``.
+    outdata : numpy array of shape ``(..., shape_out[0], shape_out[1])``.
         Extra dimensions are the same as `indata`.
         If input data is C-ordered, output will also be C-ordered.
     '''
 
-    assert Nx_out * Ny_out == A.shape[0], (
-        "Nx_out * Ny_out should equal to A.shape[0]")
+    assert shape_out[0] * shape_out[1] == weights.shape[0], (
+        "ny_out * nx_out should equal to weights.shape[0]")
 
     # COO matrix is fast with F-ordered array but slow with C-array, so we
     # take in a C-ordered and then transpose)
@@ -74,14 +74,14 @@ def apply_weights(A, indata, Ny_out, Nx_out):
                       "Will affect performance.")
 
     # get input shape information
-    s = indata.shape
-    Ny_in, Nx_in = (s[-2], s[-1])
-    N_extra_list = s[0:-2]
+    shape_in = indata.shape[-2:]
+    extra_shape = indata.shape[0:-2]
 
     # use flattened array for dot operation
-    indata_flat = indata.reshape(-1, Ny_in*Nx_in)
-    outdata_flat = A.dot(indata_flat.T).T
+    indata_flat = indata.reshape(-1, shape_in[0]*shape_in[1])
+    outdata_flat = weights.dot(indata_flat.T).T
 
     # unflattened output array
-    outdata = outdata_flat.reshape([*N_extra_list, Ny_out, Nx_out])
+    outdata = outdata_flat.reshape(
+        [*extra_shape, shape_out[0], shape_out[1]])
     return outdata

@@ -302,8 +302,7 @@ class Regridder(object):
              'the regridder {}!'.format(shape_horiz, self.shape_in)
              )
 
-        outdata = apply_weights(self.weights, indata,
-                                self.shape_out[0], self.shape_out[1])
+        outdata = apply_weights(self.weights, indata, self.shape_out)
         return outdata
 
     def regrid_dataarray(self, dr_in):

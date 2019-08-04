@@ -5,6 +5,7 @@ dependencies:
   - python=3.5
   - esmpy
   - xarray
+  - dask
   - numpy
   - scipy
   - pytest

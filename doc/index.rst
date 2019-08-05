@@ -11,7 +11,7 @@ It is
 - **Easy-to-use**: It abstracts away ESMF's complicated infrastructure
   and provides a simple, high-level API, compatible with xarray_ as well as basic numpy arrays.
 - **Fast**: It is faster than ESMPy's original Fortran regridding engine in serial case
-  (surprise! here's :doc:`benchmark <./Backend>`), and also supports dask_ for `out-of-core, parallel computation http://xarray.pydata.org/en/stable/dask.html>`_.
+  (surprise! here's :doc:`benchmark <./Backend>`), and also supports dask_ for `out-of-core, parallel computation <http://xarray.pydata.org/en/stable/dask.html>`_.
 
 .. note::
 

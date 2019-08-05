@@ -40,11 +40,13 @@ Contents
    Rectilinear_grid
    Curvilinear_grid
    Pure_numpy
+   Dataset
 
 .. toctree::
    :maxdepth: 1
    :caption: Intermediate tutorials
 
+   Dask
    Compare_algorithms
    Reuse_regridder
 

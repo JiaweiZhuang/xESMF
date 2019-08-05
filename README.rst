@@ -1,7 +1,7 @@
 xESMF: Universal Regridder for Geospatial Data
 ==============================================
 
-|pypi| |Build Status| |codecov| |docs| |license| |DOI|
+|Binder| |pypi| |Build Status| |codecov| |docs| |license| |DOI|
 
 xESMF is a Python package for
 `regridding <https://climatedataguide.ucar.edu/climate-data-tools-and-analysis/regridding-overview>`_.
@@ -14,7 +14,7 @@ It is
   and provides a simple, high-level API, compatible with xarray_ as well as basic numpy arrays.
 - **Fast**: It is faster than ESMPy's original Fortran regridding engine in serial case, and also supports dask_ for `out-of-core, parallel computation <http://xarray.pydata.org/en/stable/dask.html>`_.
 
-Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_.
+Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_, or `play with example notebooks on Binder <https://mybinder.org/v2/gh/JiaweiZhuang/xESMF/master?filepath=doc%2Fnotebooks>`_.
 
 
 .. _ESMF: https://www.earthsystemcog.org/projects/esmf/
@@ -45,3 +45,7 @@ Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_.
 .. |DOI| image:: https://zenodo.org/badge/101709596.svg
    :target: https://zenodo.org/badge/latestdoi/101709596
    :alt: DOI
+   
+.. |Binder| image:: https://mybinder.org/badge_logo.svg
+   :target: https://mybinder.org/v2/gh/JiaweiZhuang/xESMF/master?filepath=doc%2Fnotebooks
+   :alt: binder

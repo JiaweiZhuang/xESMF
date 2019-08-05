@@ -15,7 +15,7 @@ xESMF requires Python>=3.5. The major dependencies are xarray and ESMPy. The bes
 
 `Installing miniconda <https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html>`_, and then install dependencies in a new environment:
 
-.. code-block:: console
+.. code-block:: bash
 
     # recommend creating a new, clean environment
     $ conda create -n xesmf_env python=3.7
@@ -29,7 +29,7 @@ xESMF requires Python>=3.5. The major dependencies are xarray and ESMPy. The bes
 
 After dependencies are properly installed, get xesmf:
 
-.. code-block:: console
+.. code-block:: bash
 
     $ pip install xesmf
 
@@ -42,7 +42,7 @@ Testing your installation
 
 xESMF itself is a lightweight package, but its dependency ESMPy is a quite heavy and sometimes might be installed incorrectly. To validate & debug your installation, you can use pytest to run the test suites:
 
-.. code-block:: console
+.. code-block:: bash
 
     $ pip install pytest
     $ pytest -v --pyargs xesmf  # should all pass

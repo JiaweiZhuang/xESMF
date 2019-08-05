@@ -22,7 +22,7 @@ xESMF requires Python>=3.5. The major dependencies are xarray and ESMPy. The bes
     # install common dependencies for fully functionality
     $ conda install -c conda-forge esmpy xarray scipy dask netCDF4
 
-    # additional dependencies for executing all notebook examples
+    # optional dependencies for executing all notebook examples
     $ conda install -c conda-forge matplotlib cartopy jupyterlab
 
 After dependencies are properly installed, get xesmf::
@@ -32,7 +32,7 @@ After dependencies are properly installed, get xesmf::
 
 .. warning::
 
-    The conda channel is not yet actively maintained by the author. `conda install -c conda-forge xesmf` can give you out-dated versions. For now, stick to `pip install` for xesmf itself.
+    The conda channel is not yet actively maintained by the author. ``conda install -c conda-forge xesmf`` can give you out-dated versions. For now, stick to ``pip install`` for xesmf itself.
 
 Testing your installation
 -------------------------
@@ -42,7 +42,7 @@ xESMF itself is a lightweight package, but its dependency ESMPy is a quite heavy
     $ pip install pytest
     $ pytest -v --pyargs xesmf  # should all pass
 
-A common cause of error (especially for HPC cluster users) is that pre-installed modules like NetCDF, MPI, and ESMF are incompatible with the conda-installed equivalents. Make sure you have a clean environment when running `conda install` (do not `module load` other libraries). See `this issue <https://github.com/JiaweiZhuang/xESMF/issues/55#issuecomment-514298498>`_ for more discussions.
+A common cause of error (especially for HPC cluster users) is that pre-installed modules like NetCDF, MPI, and ESMF are incompatible with the conda-installed equivalents. Make sure you have a clean environment when running ``conda install`` (do not ``module load`` other libraries). See `this issue <https://github.com/JiaweiZhuang/xESMF/issues/55#issuecomment-514298498>`_ for more discussions.
 
 Notes for Windows users
 -----------------------

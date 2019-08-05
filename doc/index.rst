@@ -37,24 +37,24 @@ Contents
    :caption: Beginner tutorials
 
    installation
-   Rectilinear_grid
-   Curvilinear_grid
-   Pure_numpy
-   Dataset
+   notebooks/Rectilinear_grid
+   notebooks/Curvilinear_grid
+   notebooks/Pure_numpy
+   notebooks/Dataset
 
 .. toctree::
    :maxdepth: 1
    :caption: Intermediate tutorials
 
-   Dask
-   Compare_algorithms
-   Reuse_regridder
+   notebooks/Dask
+   notebooks/Compare_algorithms
+   notebooks/Reuse_regridder
 
 .. toctree::
    :maxdepth: 1
    :caption: Technical notes
 
-   Backend
+   notebooks/Backend
 
 .. toctree::
    :maxdepth: 1

@@ -16,6 +16,7 @@ It is
 
 Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_, or `play with example notebooks on Binder <https://mybinder.org/v2/gh/JiaweiZhuang/xESMF/master?filepath=doc%2Fnotebooks>`_.
 
+For new users, I also recommend reading `How to ask for help <https://xesmf.readthedocs.io/en/latest/#how-to-ask-for-help>`_ and `How to support xESMF <https://xesmf.readthedocs.io/en/latest/#how-to-support-xesmf>`_.
 
 .. _ESMF: https://www.earthsystemcog.org/projects/esmf/
 .. _ESMPy: https://www.earthsystemcog.org/projects/esmpy/

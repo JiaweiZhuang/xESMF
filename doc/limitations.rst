@@ -22,13 +22,6 @@ xarray's data model, although powerful, can only describe quadrilateral grids
 If there is an elegant data model in Python for irregular meshes,
 interfacing that with ESMPy should not be super difficult.
 
-Parallel regridding
--------------------
-
-xESMF currently only runs in serial.
-Parallel options are being investgated.
-See `issue#3 <https://github.com/JiaweiZhuang/xESMF/issues/3>`_.
-
 Vector regridding
 -----------------
 

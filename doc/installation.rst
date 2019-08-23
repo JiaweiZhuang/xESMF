@@ -13,29 +13,35 @@ Install on local machine with Conda
 
 xESMF requires Python>=3.5. The major dependencies are xarray and ESMPy. The best way to install them is using Conda_.
 
-`Installing miniconda <https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html>`_, and then install dependencies in a new environment:
+First, `install miniconda <https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html>`_. Then, I recommend creating a new, clean environment:
 
 .. code-block:: bash
 
-    # recommend creating a new, clean environment
     $ conda create -n xesmf_env python=3.7
     $ conda activate xesmf_env
 
-    # install common dependencies for fully functionality
-    $ conda install -c conda-forge esmpy xarray scipy dask netCDF4
+Getting xESMF is as simple as:
+
+.. code-block:: bash
+
+    $ conda install -c conda-forge xesmf
+
+I also highly recommend those extra packages for full functionality:
+
+.. code-block:: bash
+
+    # to support all features in xESMF
+    $ conda install -c conda-forge dask netCDF4
 
     # optional dependencies for executing all notebook examples
     $ conda install -c conda-forge matplotlib cartopy jupyterlab
 
-After dependencies are properly installed, get xesmf:
+Alternatively, you can first install dependencies, and then use ``pip`` to install xESMF:
 
 .. code-block:: bash
 
+    $ conda install -c conda-forge esmpy xarray scipy dask netCDF4
     $ pip install xesmf
-
-.. warning::
-
-    The conda channel is not yet actively maintained by the author. ``conda install -c conda-forge xesmf`` can give you out-dated versions. For now, stick to ``pip install`` for xesmf itself.
 
 Testing your installation
 -------------------------

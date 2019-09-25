@@ -288,12 +288,12 @@ class Regridder(object):
 
         if isinstance(indata, np.ndarray):
             regrid_func = self.regrid_numpy
-        elif isinstance(indata, da.Array):
-            regrid_func = self.regrid_dask
         elif isinstance(indata, xr.DataArray):
             regrid_func = self.regrid_dataarray
         elif isinstance(indata, xr.Dataset):
             regrid_func = self.regrid_dataset
+        elif isinstance(indata, da.Array):
+            regrid_func = self.regrid_dask
         else:
             raise TypeError(
                 "input must be numpy array, dask array, "

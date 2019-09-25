@@ -14,9 +14,9 @@ from . smm import read_weights, apply_weights
 
 try:
     import dask.array as da
-except:
-    pass
-
+    dask_array_type = (da.Array,)  # for isinstance checks
+except ImportError:
+    dask_array_type = ()
 
 def as_2d_mesh(lon, lat):
 
@@ -288,12 +288,12 @@ class Regridder(object):
 
         if isinstance(indata, np.ndarray):
             regrid_func = self.regrid_numpy
+        elif isinstance(indata, dask_array_type):
+            regrid_func = self.regrid_dask
         elif isinstance(indata, xr.DataArray):
             regrid_func = self.regrid_dataarray
         elif isinstance(indata, xr.Dataset):
             regrid_func = self.regrid_dataset
-        elif isinstance(indata, da.Array):
-            regrid_func = self.regrid_dask
         else:
             raise TypeError(
                 "input must be numpy array, dask array, "

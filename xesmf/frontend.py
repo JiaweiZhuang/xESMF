@@ -253,7 +253,7 @@ class Regridder(object):
 
         return info
 
-    def __call__(self, indata):
+    def __call__(self, indata, keep_attrs=False):
         """
         Apply regridding to input data.
 
@@ -271,6 +271,10 @@ class Regridder(object):
             Transpose your input data if the horizontal dimensions are not
             the rightmost two dimensions.
 
+        keep_attrs : bool, optional
+            Keep attributes for xarray DataArrays or Datasets.
+            Defaults to False.
+
         Returns
         -------
         outdata : Data type is the same as input data type.
@@ -287,19 +291,17 @@ class Regridder(object):
         """
 
         if isinstance(indata, np.ndarray):
-            regrid_func = self.regrid_numpy
+            return self.regrid_numpy(indata)
         elif isinstance(indata, dask_array_type):
-            regrid_func = self.regrid_dask
+            return self.regrid_dask(indata)
         elif isinstance(indata, xr.DataArray):
-            regrid_func = self.regrid_dataarray
+            return self.regrid_dataarray(indata, keep_attrs=keep_attrs)
         elif isinstance(indata, xr.Dataset):
-            regrid_func = self.regrid_dataset
+            return self.regrid_dataset(indata, keep_attrs=keep_attrs)
         else:
             raise TypeError(
                 "input must be numpy array, dask array, "
                 "xarray DataArray or Dataset!")
-
-        return regrid_func(indata)
 
     def regrid_numpy(self, indata):
         """See __call__()."""
@@ -324,7 +326,7 @@ class Regridder(object):
 
         return outdata
 
-    def regrid_dataarray(self, dr_in):
+    def regrid_dataarray(self, dr_in, keep_attrs=False):
         """See __call__()."""
 
         # example: ('lat', 'lon') or ('y', 'x')
@@ -343,7 +345,8 @@ class Regridder(object):
             output_dtypes=[float],
             output_sizes={temp_horiz_dims[0]: self.shape_out[0],
                           temp_horiz_dims[1]: self.shape_out[1]
-                          }
+                          },
+            keep_attrs=keep_attrs
         )
 
         # rename dimension name to match output grid
@@ -362,7 +365,7 @@ class Regridder(object):
 
         return dr_out
 
-    def regrid_dataset(self, ds_in):
+    def regrid_dataset(self, ds_in, keep_attrs=False):
         """See __call__()."""
 
         # most logic is the same as regrid_dataarray()
@@ -389,7 +392,8 @@ class Regridder(object):
             output_dtypes=[float],
             output_sizes={temp_horiz_dims[0]: self.shape_out[0],
                           temp_horiz_dims[1]: self.shape_out[1]
-                          }
+                          },
+            keep_attrs=keep_attrs
         )
 
         # rename dimension name to match output grid

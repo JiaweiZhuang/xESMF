@@ -253,7 +253,7 @@ class Regridder(object):
 
         return info
 
-    def __call__(self, indata, **kwargs):
+    def __call__(self, indata, keep_attrs=False):
         """
         Apply regridding to input data.
 
@@ -291,19 +291,17 @@ class Regridder(object):
         """
 
         if isinstance(indata, np.ndarray):
-            regrid_func = self.regrid_numpy
+            return self.regrid_numpy(indata)
         elif isinstance(indata, dask_array_type):
-            regrid_func = self.regrid_dask
+            return self.regrid_dask(indata)
         elif isinstance(indata, xr.DataArray):
-            regrid_func = self.regrid_dataarray
+            return self.regrid_dataarray(indata, keep_attrs=keep_attrs)
         elif isinstance(indata, xr.Dataset):
-            regrid_func = self.regrid_dataset
+            return self.regrid_dataset(indata, keep_attrs=keep_attrs)
         else:
             raise TypeError(
                 "input must be numpy array, dask array, "
                 "xarray DataArray or Dataset!")
-
-        return regrid_func(indata, **kwargs)
 
     def regrid_numpy(self, indata):
         """See __call__()."""

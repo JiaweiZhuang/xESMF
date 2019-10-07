@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 DISTNAME = 'xesmf'
 DESCRIPTION = "Universal Regridder for Geospatial Data"
 AUTHOR = 'Jiawei Zhuang'

@@ -74,7 +74,7 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
 
 class Regridder(object):
     def __init__(self, ds_in, ds_out, method, periodic=False,
-                 filename=None, reuse_weights=False):
+                 filename=None, reuse_weights=False, ignore_degenerate=None):
         """
         Make xESMF regridder
 
@@ -114,6 +114,10 @@ class Regridder(object):
             Whether to read existing weight file to save computing time.
             False by default (i.e. re-compute, not reuse).
 
+        ignore_degenerate : bool, optional
+            If False (default), raise error if grids contain degenerated cells
+            (i.e. triangles or lines, instead of quadrilaterals)
+
         Returns
         -------
         regridder : xESMF regridder object
@@ -130,6 +134,7 @@ class Regridder(object):
         self.method = method
         self.periodic = periodic
         self.reuse_weights = reuse_weights
+        self.ignore_degenerate = ignore_degenerate
 
         # construct ESMF grid, with some shape checking
         self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
@@ -217,7 +222,8 @@ class Regridder(object):
             print('Create weight file: {}'.format(self.filename))
 
         regrid = esmf_regrid_build(self._grid_in, self._grid_out, self.method,
-                                   filename=self.filename)
+                                   filename=self.filename,
+                                   ignore_degenerate=self.ignore_degenerate)
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
 
     def clean_weight_file(self):

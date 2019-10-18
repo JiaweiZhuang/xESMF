@@ -157,7 +157,7 @@ def add_corner(grid, lon_b, lat_b):
 
 
 def esmf_regrid_build(sourcegrid, destgrid, method,
-                      filename=None, extra_dims=None):
+                      filename=None, extra_dims=None, ignore_degenerate=None):
     '''
     Create an ESMF.Regrid object, containing regridding weights.
 
@@ -194,6 +194,10 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
         i.e. following Fortran-like instead of C-like conventions.
         For example, if extra_dims=[Nlev, Ntime], then the data field dimension
         will be [Nlon, Nlat, Nlev, Ntime]
+
+    ignore_degenerate : bool, optional
+        If False (default), raise error if grids contain degenerated cells
+        (i.e. triangles or lines, instead of quadrilaterals)
 
     Returns
     -------
@@ -240,7 +244,8 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # if the destination grid is larger than the source grid.
     regrid = ESMF.Regrid(sourcefield, destfield, filename=filename,
                          regrid_method=esmf_regrid_method,
-                         unmapped_action=ESMF.UnmappedAction.IGNORE)
+                         unmapped_action=ESMF.UnmappedAction.IGNORE,
+                         ignore_degenerate=ignore_degenerate)
 
     return regrid
 

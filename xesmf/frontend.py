@@ -10,6 +10,8 @@ import warnings
 from . backend import (esmf_grid, add_corner,
                        esmf_regrid_build, esmf_regrid_finalize)
 
+from .cf import decode_cf as decode_cf_
+
 from . smm import read_weights, apply_weights
 
 try:
@@ -30,7 +32,8 @@ def as_2d_mesh(lon, lat):
     return lon, lat
 
 
-def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
+def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None,
+                   decode_cf=True):
     '''
     Convert xarray DataSet or dictionary to ESMF.Grid object.
 
@@ -49,11 +52,18 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     periodic : bool, optional
         Periodic in longitude?
 
+    decode_cf: bool, optional
+        Search for lon and lat according to CF conventions and rename them
+
     Returns
     -------
     grid : ESMF.Grid object
 
     '''
+
+    # rename lon and lat?
+    if decode_cf:
+        ds = decode_cf_(ds)
 
     # use np.asarray(dr) instead of dr.values, so it also works for dictionary
     lon = np.asarray(ds['lon'])
@@ -74,7 +84,8 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
 
 class Regridder(object):
     def __init__(self, ds_in, ds_out, method, periodic=False,
-                 filename=None, reuse_weights=False, ignore_degenerate=None):
+                 filename=None, reuse_weights=False, ignore_degenerate=None,
+                 decode_cf=True):
         """
         Make xESMF regridder
 
@@ -118,6 +129,10 @@ class Regridder(object):
             If False (default), raise error if grids contain degenerated cells
             (i.e. triangles or lines, instead of quadrilaterals)
 
+
+        decode_cf: bool, optional
+            Search for lon and lat according to CF conventions and rename them
+
         Returns
         -------
         regridder : xESMF regridder object
@@ -139,10 +154,12 @@ class Regridder(object):
         # construct ESMF grid, with some shape checking
         self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
                                                  need_bounds=self.need_bounds,
-                                                 periodic=periodic
+                                                 periodic=periodic,
+                                                 decode_cf=decode_cf
                                                  )
         self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
-                                                   need_bounds=self.need_bounds
+                                                   need_bounds=self.need_bounds,
+                                                   decode_cf=decode_cf
                                                    )
 
         # record output grid and metadata

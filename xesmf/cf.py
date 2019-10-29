@@ -23,7 +23,6 @@ CF_SPECS = {
     }
 
 
-
 def get_coord_name_from_specs(ds, specs):
     '''
     Get the name of a `xarray.DataArray` according to search specifications
@@ -112,32 +111,48 @@ def get_lat_name(ds):
     warnings.warn('latitude not found in dataset')
 
 
-def decode_cf(ds):
+def decode_cf(ds, mapping=None):
     '''
     Search for longitude and latitude and rename them
 
     Parameters
     ----------
     ds: xarray.DataArray or xarray.Dataset
+    mapping: None or dict
+        When a `dict` is provided, it is filled with keys that are the new
+        names and values that are the old names, so that the output dataset
+        can have its coordinates be renamed back with
+        :meth:`~xarray.Dataset.rename`.
 
     Returns
     -------
     ds: xarray.DataArray or xarray.Dataset
     '''
+    # Suffixes for bounds
+    bsuffixes = ('_b', '_bounds', '_bnds')
+
     # Longitude
     lon_name = get_lon_name(ds)
-    if lon_name is not None:
+    if lon_name is not None and lon_name != 'lon':
         ds = ds.rename({lon_name: 'lon'})
-        for suffix in ('_b', '_bounds'):
+        if isinstance(mapping, dict):
+            mapping['lon'] = lon_name
+        for suffix in bsuffixes:
             if lon_name+suffix in ds:
                 ds = ds.rename({lon_name+suffix: 'lon_b'})
+                if isinstance(mapping, dict):
+                    mapping['lon_b'] = lon_name + suffix
 
     # Latitude
     lat_name = get_lat_name(ds)
-    if lat_name is not None:
+    if lat_name is not None and lat_name != 'lat':
         ds = ds.rename({lat_name: 'lat'})
-        for suffix in ('_b', '_bounds'):
+        if isinstance(mapping, dict):
+            mapping['lat'] = lat_name
+        for suffix in bsuffixes:
             if lat_name+suffix in ds:
                 ds = ds.rename({lat_name+suffix: 'lat_b'})
+                if isinstance(mapping, dict):
+                    mapping['lat_b'] = lat_name + suffix
 
     return ds

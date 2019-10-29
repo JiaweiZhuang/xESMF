@@ -52,8 +52,10 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None,
     periodic : bool, optional
         Periodic in longitude?
 
-    decode_cf: bool, optional
-        Search for lon and lat according to CF conventions and rename them
+    decode_cf: bool, dict, optional
+        Search for lon and lat according to CF conventions and rename them.
+        When a dict is provided, it is filled so it can be used to rename
+        lon and lat back.
 
     Returns
     -------
@@ -62,8 +64,9 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None,
     '''
 
     # rename lon and lat?
-    if decode_cf:
-        ds = decode_cf_(ds)
+    if decode_cf or isinstance(decode_cf, dict):
+        mapping = decode_cf if isinstance(decode_cf, dict) else None
+        ds = decode_cf_(ds, mapping)
 
     # use np.asarray(dr) instead of dr.values, so it also works for dictionary
     lon = np.asarray(ds['lon'])
@@ -157,11 +160,13 @@ class Regridder(object):
                                                  periodic=periodic,
                                                  decode_cf=decode_cf
                                                  )
+        self._cf_mapping = {}
+        if decode_cf:
+            ds_out = decode_cf_(ds_out, self._cf_mapping)
         self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
                                                    need_bounds=self.need_bounds,
-                                                   decode_cf=decode_cf
+                                                   decode_cf=False,
                                                    )
-
         # record output grid and metadata
         self._lon_out = np.asarray(ds_out['lon'])
         self._lat_out = np.asarray(ds_out['lat'])
@@ -384,6 +389,10 @@ class Regridder(object):
         dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
         dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
 
+        # rename coords back to original output grid
+        if self._cf_mapping:
+            dr_out = dr_out.rename(self._cf_mapping)
+
         dr_out.attrs['regrid_method'] = self.method
 
         return dr_out
@@ -430,6 +439,10 @@ class Regridder(object):
         # extra coordinates are automatically tracked by apply_ufunc
         ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
         ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
+
+        # rename coords back to original output grid
+        if self._cf_mapping:
+            ds_out = ds_out.rename(self._cf_mapping)
 
         ds_out.attrs['regrid_method'] = self.method
 

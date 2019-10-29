@@ -260,3 +260,29 @@ def test_regrid_dataset():
 
     # clean-up
     regridder.clean_weight_file()
+
+
+def test_regrid_dataset_renamed_back():
+
+    # renaming
+    ds_out2 = ds_out.rename(lon='X', lat='Y', lon_b='X_b', lat_b='Y_bnds')
+    ds_out2.X.attrs['units'] = 'degrees_east'
+    ds_out2.Y.attrs['standard_name'] = 'latitude'
+    print(ds_out2.X.units)
+
+    regridder = xe.Regridder(ds_in, ds_out2, 'conservative')
+
+    ds_result = regridder(ds_in)
+
+    # compare with analytical solution
+    rel_err = (ds_out2['data_ref'] - ds_result['data'])/ds_out2['data_ref']
+    assert np.max(np.abs(rel_err)) < 0.05
+
+    # check that name are restored
+    assert 'X' in ds_result.coords
+    assert 'Y' in ds_result.coords
+    assert 'X_b' in ds_result.variables
+    assert 'Y_bnds' in ds_result.variables
+
+    # clean-up
+    regridder.clean_weight_file()

@@ -44,19 +44,38 @@ def test_cf_get_lat_name(name, coord_specs):
     assert xecf.get_lat_name(da.assign_coords(**{name: coord_specs})) == name
 
 
+def test_get_bounds_name_from_coord_attribute():
+    da = coord_base.copy()
+    dab = xr.DataArray(np.arange(da.size+1, dtype='d'), dims='xb')
+    da.attrs.update(bounds='xb')
+    ds = xr.Dataset({'x': da, 'xb': dab}).set_coords('x')
+
+    assert xecf.get_bounds_name_from_coord(ds, 'x') == 'xb'
+
+
+def test_get_bounds_name_from_coord_name():
+    da = coord_base.copy()
+    dab = xr.DataArray(np.arange(da.size+1, dtype='d'), dims='x_b')
+    ds = xr.Dataset({'x': da, 'x_b': dab}).set_coords('x')
+
+    assert xecf.get_bounds_name_from_coord(ds, 'x') == 'x_b'
+
+
 def test_cf_decode_cf():
 
     yy, xx = np.mgrid[:3, :4].astype('d')
     yyb, xxb = np.mgrid[:4, :5] - .5
 
-    xx = xr.DataArray(xx, dims=['ny', 'nx'], attrs={'units': "degrees_east"})
+    xx = xr.DataArray(xx, dims=['ny', 'nx'],
+                      attrs={'units': "degrees_east",
+                             'bounds': "xx_boonds"})
     xxb = xr.DataArray(xxb, dims=['nyb', 'nxb'])
     yy = xr.DataArray(yy, dims=['ny', 'nx'])
     yyb = xr.DataArray(yyb, dims=['nyb', 'nxb'])
 
     ds = xr.Dataset({
         'xx': xx,
-        'xx_b': xxb,
+        'xx_boonds': xxb,
         'latitude': yy,
         'latitude_bounds': yyb})
     ds_decoded = xecf.decode_cf(ds)

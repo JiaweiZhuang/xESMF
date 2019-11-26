@@ -103,7 +103,7 @@ def get_lat_name(ds):
 
     Returns
     -------
-    str: Name of the xarray.DataArray
+    str or None: Name of the xarray.DataArray
     '''
     lat_name = get_coord_name_from_specs(ds, CF_SPECS['lat'])
     if lat_name is not None:
@@ -111,9 +111,46 @@ def get_lat_name(ds):
     warnings.warn('latitude not found in dataset')
 
 
+def get_bounds_name_from_coord(ds, coord_name,
+                               suffixes=['_b', '_bnds', '_bounds']):
+    '''
+    Get the name of the bounds array from the coord array
+
+    It first searches for the 'bounds' attributes, then search
+    for names built from the suffixed coord name.
+
+    Parameters
+    ----------
+    ds: xarray.DataArray or xarray.Dataset
+    coord_name: str
+        Name of coord DataArray.
+    suffixes: list of str
+        Prefixes appended to `coord_name` to search for the bounds array name.
+
+    Returns
+    -------
+    str or None: Name of the xarray.DataArray
+    '''
+
+    # Inits
+    coord = ds[coord_name]
+
+    # From bounds attribute (CF)
+    if 'bounds' in coord.attrs:
+        bounds_name = coord.attrs['bounds'].strip()
+        if bounds_name in ds:
+            return bounds_name
+        warnings.warn('invalid bounds name: ' + bounds_name)
+
+    # From suffixed names
+    for suffix in suffixes:
+        if coord_name+suffix in ds:
+            return coord_name + suffix
+
+
 def decode_cf(ds, mapping=None):
     '''
-    Search for longitude and latitude and rename them
+    Search for longitude and latitude coordinates and bounds and rename them
 
     Parameters
     ----------
@@ -128,31 +165,39 @@ def decode_cf(ds, mapping=None):
     -------
     ds: xarray.DataArray or xarray.Dataset
     '''
-    # Suffixes for bounds
-    bsuffixes = ('_b', '_bounds', '_bnds')
 
     # Longitude
     lon_name = get_lon_name(ds)
-    if lon_name is not None and lon_name != 'lon':
-        ds = ds.rename({lon_name: 'lon'})
-        if isinstance(mapping, dict):
-            mapping['lon'] = lon_name
-        for suffix in bsuffixes:
-            if lon_name+suffix in ds:
-                ds = ds.rename({lon_name+suffix: 'lon_b'})
-                if isinstance(mapping, dict):
-                    mapping['lon_b'] = lon_name + suffix
+    if lon_name is not None:
+
+        # Search for bounds and rename
+        lon_b_name = get_bounds_name_from_coord(ds, lon_name)
+        if lon_b_name is not None and lon_b_name != 'lon_b':
+            ds = ds.rename({lon_b_name: 'lon_b'})
+            if isinstance(mapping, dict):
+                mapping['lon_b'] = lon_b_name
+
+        # Rename coordinates
+        if lon_name != 'lon':
+            ds = ds.rename({lon_name: 'lon'})
+            if isinstance(mapping, dict):
+                mapping['lon'] = lon_name
 
     # Latitude
     lat_name = get_lat_name(ds)
-    if lat_name is not None and lat_name != 'lat':
-        ds = ds.rename({lat_name: 'lat'})
-        if isinstance(mapping, dict):
-            mapping['lat'] = lat_name
-        for suffix in bsuffixes:
-            if lat_name+suffix in ds:
-                ds = ds.rename({lat_name+suffix: 'lat_b'})
-                if isinstance(mapping, dict):
-                    mapping['lat_b'] = lat_name + suffix
+    if lat_name is not None:
+
+        # Search for bounds and rename
+        lat_b_name = get_bounds_name_from_coord(ds, lat_name)
+        if lat_b_name is not None and lat_b_name != 'lat_b':
+            ds = ds.rename({lat_b_name: 'lat_b'})
+            if isinstance(mapping, dict):
+                mapping['lat_b'] = lat_b_name
+
+        # Rename coordinates
+        if lat_name != 'lat':
+            ds = ds.rename({lat_name: 'lat'})
+            if isinstance(mapping, dict):
+                mapping['lat'] = lat_name
 
     return ds

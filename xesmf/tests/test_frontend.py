@@ -26,6 +26,10 @@ ds_out['data4D_ref'] = ds_in['time'] * ds_in['lev'] * ds_out['data_ref']
 # use non-divisible chunk size to catch edge cases
 ds_in_chunked = ds_in.chunk({'time': 3, 'lev': 2})
 
+ds_locs = xr.Dataset()
+ds_locs['lat'] = xr.DataArray(data=[-20, -10, 0, 10], dims=('locations',))
+ds_locs['lon'] = xr.DataArray(data=[0, 5, 10, 15], dims=('locations',))
+
 def test_as_2d_mesh():
     # 2D grid should not change
     lon2d = ds_in['lon'].values
@@ -46,8 +50,14 @@ def test_as_2d_mesh():
 methods_list = ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']
 
 @pytest.mark.parametrize('method', methods_list)
-def test_build_regridder(method):
-    regridder = xe.Regridder(ds_in, ds_out, method)
+@pytest.mark.parametrize('locstream', [True, False])
+def test_build_regridder(method, locstream):
+    if locstream:
+        # conservative does not exist in LocStream
+        method = 'bilinear' if method == 'conservative' else method
+        regridder = xe.Regridder(ds_in, ds_locs, method, locstream_out=True)
+    else:
+        regridder = xe.Regridder(ds_in, ds_out, method)
 
     # check screen output
     assert repr(regridder) == str(regridder)
@@ -78,7 +88,7 @@ def test_existing_weights():
 
 def test_conservative_without_bounds():
     with pytest.raises(KeyError):
-        xe.Regridder(ds_in.drop('lon_b'), ds_out, 'conservative')
+        xe.Regridder(ds_in.drop_vars('lon_b'), ds_out, 'conservative')
 
 
 def test_build_regridder_from_dict():

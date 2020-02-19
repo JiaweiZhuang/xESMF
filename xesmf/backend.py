@@ -114,6 +114,38 @@ def esmf_grid(lon, lat, periodic=False):
     return grid
 
 
+def esmf_locstream(lon, lat):
+    '''
+    Create an ESMF.LocStream object, for contrusting ESMF.Field and ESMF.Regrid
+
+    Parameters
+    ----------
+    lon, lat : 1D numpy array
+         Longitute/Latitude of cell centers.
+
+    Returns
+    -------
+    locstream : ESMF.LocStream object
+    '''
+
+    if lon.shape > 1:
+        raise ValueError("lon can only be 1d")
+    if lat.shape > 1:
+        raise ValueError("lat can only be 1d")
+
+    assert lon.shape == lat.shape
+
+    location_count = len(lon)
+
+    locstream = ESMF.LocStream(location_count,
+                               coords_sys=ESMF.CoordSys.SPH_DEG)
+
+    locstream["ESMF:Lon"] = lon
+    locstream["ESMF:Lat"] = lat
+
+    return locstream
+
+
 def add_corner(grid, lon_b, lat_b):
     '''
     Add corner information to ESMF.Grid for conservative regridding.

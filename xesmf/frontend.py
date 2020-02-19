@@ -72,9 +72,45 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     return grid, lon.shape
 
 
+def ds_toESMFlocstream(ds):
+    '''
+    Convert xarray DataSet or dictionary to ESMF.LocStream object.
+
+    Parameters
+    ----------
+    ds : xarray DataSet or dictionary
+        Contains variables ``lon``, ``lat``.
+
+    Returns
+    -------
+    locstream : ESMF.LocStream object
+
+    '''
+
+    lon = np.asarray(ds['lon'])
+    lat = np.asarray(ds['lat'])
+
+    if lon.shape > 2:
+        raise ValueError("lon can only be 1d or 2d")
+    if lat.shape > 2:
+        raise ValueError("lat can only be 1d or 2d")
+
+    if lon.shape == 2:
+        lon = lon.flatten()
+    if lat.shape == 2:
+        lat = lat.flatten()
+
+    assert lon.shape == lat.shape
+
+    locstream = esmf_grid(lon, lat)
+
+    return locstream, lon.shape
+
+
 class Regridder(object):
     def __init__(self, ds_in, ds_out, method, periodic=False,
-                 filename=None, reuse_weights=False, ignore_degenerate=None):
+                 filename=None, reuse_weights=False, ignore_degenerate=None,
+                 locstream_out=False):
         """
         Make xESMF regridder
 
@@ -141,7 +177,10 @@ class Regridder(object):
                                                  need_bounds=self.need_bounds,
                                                  periodic=periodic
                                                  )
-        self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
+        if locstream_out:
+            self._grid_out, shape_out = ds_to_ESMFlocstream(ds_out)
+        else:
+            self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
                                                    need_bounds=self.need_bounds
                                                    )
 

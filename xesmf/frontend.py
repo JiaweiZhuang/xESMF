@@ -7,7 +7,7 @@ import xarray as xr
 import os
 import warnings
 
-from . backend import (esmf_grid, add_corner,
+from . backend import (esmf_grid, esmf_locstream, add_corner,
                        esmf_regrid_build, esmf_regrid_finalize)
 
 from . smm import read_weights, apply_weights
@@ -72,9 +72,45 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     return grid, lon.shape
 
 
+def ds_to_ESMFlocstream(ds):
+    '''
+    Convert xarray DataSet or dictionary to ESMF.LocStream object.
+
+    Parameters
+    ----------
+    ds : xarray DataSet or dictionary
+        Contains variables ``lon``, ``lat``.
+
+    Returns
+    -------
+    locstream : ESMF.LocStream object
+
+    '''
+
+    lon = np.asarray(ds['lon'])
+    lat = np.asarray(ds['lat'])
+
+    if len(lon.shape) > 2:
+        raise ValueError("lon can only be 1d or 2d")
+    if len(lat.shape) > 2:
+        raise ValueError("lat can only be 1d or 2d")
+
+    if len(lon.shape) == 2:
+        lon = lon.flatten()
+    if len(lat.shape) == 2:
+        lat = lat.flatten()
+
+    assert lon.shape == lat.shape
+
+    locstream = esmf_locstream(lon, lat)
+
+    return locstream, (1,) + lon.shape
+
+
 class Regridder(object):
     def __init__(self, ds_in, ds_out, method, periodic=False,
-                 filename=None, reuse_weights=False, ignore_degenerate=None):
+                 filename=None, reuse_weights=False, ignore_degenerate=None,
+                 locstream_out=False):
         """
         Make xESMF regridder
 
@@ -141,7 +177,10 @@ class Regridder(object):
                                                  need_bounds=self.need_bounds,
                                                  periodic=periodic
                                                  )
-        self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
+        if locstream_out:
+            self._grid_out, shape_out = ds_to_ESMFlocstream(ds_out)
+        else:
+            self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
                                                    need_bounds=self.need_bounds
                                                    )
 

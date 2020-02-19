@@ -433,7 +433,10 @@ class Regridder(object):
         name, dr_in = next(iter(ds_in.items()))
 
         input_horiz_dims = dr_in.dims[-2:]
-        temp_horiz_dims = [s + '_new' for s in input_horiz_dims]
+        if self.locstream_out:
+            temp_horiz_dims = ['dummy', 'locations']
+        else:
+            temp_horiz_dims = [s + '_new' for s in input_horiz_dims]
 
         # help user debugging invalid horizontal dimensions
         print('using dimensions {} from data variable {} '
@@ -453,18 +456,26 @@ class Regridder(object):
             keep_attrs=keep_attrs
         )
 
-        # rename dimension name to match output grid
-        ds_out = ds_out.rename(
-            {temp_horiz_dims[0]: self.out_horiz_dims[0],
-             temp_horiz_dims[1]: self.out_horiz_dims[1]
-            }
-        )
+        if not self.locstream_out:
+            # rename dimension name to match output grid
+            ds_out = ds_out.rename(
+                {temp_horiz_dims[0]: self.out_horiz_dims[0],
+                 temp_horiz_dims[1]: self.out_horiz_dims[1]
+                }
+            )
 
         # append output horizontal coordinate values
         # extra coordinates are automatically tracked by apply_ufunc
-        ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
-        ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
+        if self.locstream_out:
+            ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=('locations',))
+            ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=('locations',))
+        else:
+            ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
+            ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
 
         ds_out.attrs['regrid_method'] = self.method
+
+        if self.locstream_out:
+            ds_out = ds_out.squeeze(dim='dummy')
 
         return ds_out

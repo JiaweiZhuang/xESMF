@@ -171,6 +171,7 @@ class Regridder(object):
         self.periodic = periodic
         self.reuse_weights = reuse_weights
         self.ignore_degenerate = ignore_degenerate
+        self.locstream_out = locstream_out
 
         # construct ESMF grid, with some shape checking
         self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
@@ -380,7 +381,10 @@ class Regridder(object):
         # apply_ufunc needs a different name for output_core_dims
         # example: ('lat', 'lon') -> ('lat_new', 'lon_new')
         # https://github.com/pydata/xarray/issues/1931#issuecomment-367417542
-        temp_horiz_dims = [s + '_new' for s in input_horiz_dims]
+        if self.locstream_out:
+            temp_horiz_dims = ['dummy', 'locations']
+        else:
+            temp_horiz_dims = [s + '_new' for s in input_horiz_dims]
 
         dr_out = xr.apply_ufunc(
             self.regrid_numpy, dr_in,
@@ -394,19 +398,27 @@ class Regridder(object):
             keep_attrs=keep_attrs
         )
 
-        # rename dimension name to match output grid
-        dr_out = dr_out.rename(
-            {temp_horiz_dims[0]: self.out_horiz_dims[0],
-             temp_horiz_dims[1]: self.out_horiz_dims[1]
-            }
-        )
+        if not self.locstream_out:
+            # rename dimension name to match output grid
+            dr_out = dr_out.rename(
+                {temp_horiz_dims[0]: self.out_horiz_dims[0],
+                 temp_horiz_dims[1]: self.out_horiz_dims[1]
+                }
+            )
 
         # append output horizontal coordinate values
         # extra coordinates are automatically tracked by apply_ufunc
-        dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
-        dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
+        if self.locstream_out:
+            dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=('locations',))
+            dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=('locations',))
+        else:
+            dr_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
+            dr_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
 
         dr_out.attrs['regrid_method'] = self.method
+
+        if self.locstream_out:
+            dr_out = dr_out.squeeze(dim='dummy')
 
         return dr_out
 

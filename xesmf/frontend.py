@@ -366,7 +366,7 @@ class Regridder(object):
         """See __call__()."""
 
         if self.locstream_in:
-            indata = indata[np.newaxis, :]
+            indata = np.expand_dims(indata, axis=-2)
 
         outdata = apply_weights(self.weights, indata,
                                 self.shape_in, self.shape_out)
@@ -392,7 +392,10 @@ class Regridder(object):
         """See __call__()."""
 
         # example: ('lat', 'lon') or ('y', 'x')
-        input_horiz_dims = dr_in.dims[-2:]
+        if self.locstream_in:
+            input_horiz_dims = dr_in.dims[-1:]
+        else:
+            input_horiz_dims = dr_in.dims[-2:]
 
         # apply_ufunc needs a different name for output_core_dims
         # example: ('lat', 'lon') -> ('lat_new', 'lon_new')
@@ -402,7 +405,7 @@ class Regridder(object):
         else:
             temp_horiz_dims = [s + '_new' for s in input_horiz_dims]
 
-        if self.locstream_in:
+        if self.locstream_in and not self.locstream_out:
             temp_horiz_dims = ['dummy_new'] + temp_horiz_dims
 
 
@@ -452,14 +455,17 @@ class Regridder(object):
         # get the first data variable to infer input_core_dims
         name, dr_in = next(iter(ds_in.items()))
 
-        input_horiz_dims = dr_in.dims[-2:]
+        if self.locstream_in:
+            input_horiz_dims = dr_in.dims[-1:]
+        else:
+            input_horiz_dims = dr_in.dims[-2:]
 
         if self.locstream_out:
             temp_horiz_dims = ['dummy', 'locations']
         else:
             temp_horiz_dims = [s + '_new' for s in input_horiz_dims]
 
-        if self.locstream_in:
+        if self.locstream_in and not self.locstream_out:
             temp_horiz_dims = ['dummy_new'] + temp_horiz_dims
 
         # help user debugging invalid horizontal dimensions
@@ -494,9 +500,8 @@ class Regridder(object):
             ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=('locations',))
             ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=('locations',))
         else:
-            if not self.locstream_in:
-                ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
-                ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
+            ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
+            ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
 
         ds_out.attrs['regrid_method'] = self.method
 

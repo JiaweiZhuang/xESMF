@@ -6,6 +6,7 @@ from xesmf.frontend import as_2d_mesh
 
 from numpy.testing import assert_equal, assert_almost_equal
 import pytest
+import ESMF
 
 # same test data as test_backend.py, but here we can use xarray DataSet
 ds_in = xe.util.grid_global(20, 12)
@@ -194,6 +195,41 @@ def test_regrid_dataarray():
     # clean-up
     regridder.clean_weight_file()
 
+    # -----------------------------------------
+    # testing locstream out
+    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
+
+    outdata = regridder(ds_in['data'].values)  # pure numpy array
+    dr_out = regridder(ds_in['data'])  # xarray DataArray
+
+    # DataArray and numpy array should lead to the same result
+    assert_equal(outdata.squeeze(), dr_out.values)
+
+    # clean-up
+    regridder.clean_weight_file()
+
+    with pytest.raises(ValueError):
+        regridder = xe.Regridder(ds_in, ds_locs, 'conservative', locstream_out=True)
+
+    # -----------------------------------------
+    # testing locstream in
+    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
+
+    outdata = regridder(ds_locs['lat'].values)  # pure numpy array
+    dr_out = regridder(ds_locs['lat'])  # xarray DataArray
+
+    # DataArray and numpy array should lead to the same result
+    assert_equal(outdata, dr_out.values)
+
+    # clean-up
+    regridder.clean_weight_file()
+
+    with pytest.raises(ValueError):
+        regridder = xe.Regridder(ds_locs, ds_in, 'bilinear', locstream_in=True)
+    with pytest.raises(ValueError):
+        regridder = xe.Regridder(ds_locs, ds_in, 'patch', locstream_in=True)
+    with pytest.raises(ValueError):
+        regridder = xe.Regridder(ds_locs, ds_in, 'conservative', locstream_in=True)
 
 def test_regrid_dask():
     # chunked dask array (no xarray metadata)
@@ -214,6 +250,14 @@ def test_regrid_dask():
     # clean-up
     regridder.clean_weight_file()
 
+    # testing locstream out
+    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
+
+    indata = ds_in_chunked['data4D'].data
+    outdata = regridder(indata)
+
+    # clean-up
+    regridder.clean_weight_file()
 
 def test_regrid_dataarray_dask():
     # xarray.DataArray containing chunked dask array
@@ -240,6 +284,14 @@ def test_regrid_dataarray_dask():
     # clean-up
     regridder.clean_weight_file()
 
+    # testing locstream out
+    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
+
+    dr_in = ds_in_chunked['data4D']
+    dr_out = regridder(dr_in)
+
+    # clean-up
+    regridder.clean_weight_file()
 
 def test_regrid_dataset():
     # xarray.Dataset containing in-memory numpy array
@@ -270,3 +322,18 @@ def test_regrid_dataset():
 
     # clean-up
     regridder.clean_weight_file()
+
+    # testing locstream out
+    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
+    ds_result = regridder(ds_in)
+    # clean-up
+    regridder.clean_weight_file()
+
+def test_ds_to_ESMFlocstream():
+
+    from xesmf.frontend import ds_to_ESMFlocstream
+    locstream, shape = ds_to_ESMFlocstream(ds_locs)
+    assert isinstance(locstream, ESMF.LocStream)
+    assert shape == (1,4,)
+    with pytest.raises(ValueError):
+        locstream, shape = ds_to_ESMFlocstream(ds_in)

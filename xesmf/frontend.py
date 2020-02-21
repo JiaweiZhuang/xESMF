@@ -90,15 +90,10 @@ def ds_to_ESMFlocstream(ds):
     lon = np.asarray(ds['lon'])
     lat = np.asarray(ds['lat'])
 
-    if len(lon.shape) > 2:
-        raise ValueError("lon can only be 1d or 2d")
-    if len(lat.shape) > 2:
-        raise ValueError("lat can only be 1d or 2d")
-
-    if len(lon.shape) == 2:
-        lon = lon.flatten()
-    if len(lat.shape) == 2:
-        lat = lat.flatten()
+    if len(lon.shape) > 1:
+        raise ValueError("lon can only be 1d")
+    if len(lat.shape) > 1:
+        raise ValueError("lat can only be 1d")
 
     assert lon.shape == lat.shape
 
@@ -110,7 +105,7 @@ def ds_to_ESMFlocstream(ds):
 class Regridder(object):
     def __init__(self, ds_in, ds_out, method, periodic=False,
                  filename=None, reuse_weights=False, ignore_degenerate=None,
-                 locstream_out=False):
+                 locstream_in=False, locstream_out=False):
         """
         Make xESMF regridder
 
@@ -154,6 +149,12 @@ class Regridder(object):
             If False (default), raise error if grids contain degenerated cells
             (i.e. triangles or lines, instead of quadrilaterals)
 
+        locstream_in: bool, optional
+            input is a LocStream (list of locations)
+
+        locstream_out: bool, optional
+            output is a LocStream (list of locations)
+
         Returns
         -------
         regridder : xESMF regridder object
@@ -171,19 +172,31 @@ class Regridder(object):
         self.periodic = periodic
         self.reuse_weights = reuse_weights
         self.ignore_degenerate = ignore_degenerate
+        self.locstream_in = locstream_in
         self.locstream_out = locstream_out
 
+        methods_avail_ls_in = ['nearest_s2d', 'nearest_d2s']
+        methods_avail_ls_out = ['bilinear', 'patch'] + methods_avail_ls_in
+
+        if locstream_in and self.method not in methods_avail_ls_in:
+            raise ValueError(f'locstream input is only available for method in {methods_avail_ls_in}')
+        if locstream_out and self.method not in methods_avail_ls_out:
+            raise ValueError(f'locstream output is only available for method in {methods_avail_ls_out}')
+
         # construct ESMF grid, with some shape checking
-        self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
-                                                 need_bounds=self.need_bounds,
-                                                 periodic=periodic
-                                                 )
+        if locstream_in:
+            self._grid_in, shape_in = ds_to_ESMFlocstream(ds_in)
+        else:
+            self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
+                                                     need_bounds=self.need_bounds,
+                                                     periodic=periodic
+                                                     )
         if locstream_out:
             self._grid_out, shape_out = ds_to_ESMFlocstream(ds_out)
         else:
             self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
-                                                   need_bounds=self.need_bounds
-                                                   )
+                                                       need_bounds=self.need_bounds
+                                                       )
 
         # record output grid and metadata
         self._lon_out = np.asarray(ds_out['lon'])
@@ -352,6 +365,9 @@ class Regridder(object):
     def regrid_numpy(self, indata):
         """See __call__()."""
 
+        if self.locstream_in:
+            indata = indata[np.newaxis, :]
+
         outdata = apply_weights(self.weights, indata,
                                 self.shape_in, self.shape_out)
         return outdata
@@ -385,6 +401,10 @@ class Regridder(object):
             temp_horiz_dims = ['dummy', 'locations']
         else:
             temp_horiz_dims = [s + '_new' for s in input_horiz_dims]
+
+        if self.locstream_in:
+            temp_horiz_dims = ['dummy_new'] + temp_horiz_dims
+
 
         dr_out = xr.apply_ufunc(
             self.regrid_numpy, dr_in,
@@ -433,10 +453,14 @@ class Regridder(object):
         name, dr_in = next(iter(ds_in.items()))
 
         input_horiz_dims = dr_in.dims[-2:]
+
         if self.locstream_out:
             temp_horiz_dims = ['dummy', 'locations']
         else:
             temp_horiz_dims = [s + '_new' for s in input_horiz_dims]
+
+        if self.locstream_in:
+            temp_horiz_dims = ['dummy_new'] + temp_horiz_dims
 
         # help user debugging invalid horizontal dimensions
         print('using dimensions {} from data variable {} '
@@ -470,8 +494,9 @@ class Regridder(object):
             ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=('locations',))
             ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=('locations',))
         else:
-            ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
-            ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
+            if not self.locstream_in:
+                ds_out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
+                ds_out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
 
         ds_out.attrs['regrid_method'] = self.method
 

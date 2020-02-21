@@ -250,11 +250,21 @@ def test_regrid_dask():
     # clean-up
     regridder.clean_weight_file()
 
+    # -----------------------------------------
     # testing locstream out
     regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
 
     indata = ds_in_chunked['data4D'].data
     outdata = regridder(indata)
+
+    # clean-up
+    regridder.clean_weight_file()
+
+    # -----------------------------------------
+    # testing locstream in
+    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
+
+    outdata = regridder(ds_locs['lat'].data) 
 
     # clean-up
     regridder.clean_weight_file()
@@ -293,6 +303,15 @@ def test_regrid_dataarray_dask():
     # clean-up
     regridder.clean_weight_file()
 
+    # -----------------------------------------
+    # testing locstream in
+    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
+
+    outdata = regridder(ds_locs['lat']) 
+
+    # clean-up
+    regridder.clean_weight_file()
+
 def test_regrid_dataset():
     # xarray.Dataset containing in-memory numpy array
 
@@ -323,9 +342,19 @@ def test_regrid_dataset():
     # clean-up
     regridder.clean_weight_file()
 
+    # -----------------------------------------
     # testing locstream out
     regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
     ds_result = regridder(ds_in)
+    # clean-up
+    regridder.clean_weight_file()
+
+    # -----------------------------------------
+    # testing locstream in
+    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
+
+    outdata = regridder(ds_locs) 
+
     # clean-up
     regridder.clean_weight_file()
 
@@ -337,3 +366,7 @@ def test_ds_to_ESMFlocstream():
     assert shape == (1,4,)
     with pytest.raises(ValueError):
         locstream, shape = ds_to_ESMFlocstream(ds_in)
+    ds_bogus = ds_in.copy()
+    ds_bogus['lon'] = ds_locs['lon']
+    with pytest.raises(ValueError):
+        locstream, shape = ds_to_ESMFlocstream(ds_bogus)

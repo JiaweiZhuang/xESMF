@@ -219,3 +219,7 @@ def test_esmf_locstream():
     lon2d, lat2d = np.meshgrid(lon, lat)
     with pytest.raises(ValueError):
         ls = esmf_locstream(lon2d, lat2d)
+    with pytest.raises(ValueError):
+        ls = esmf_locstream(lon, lat2d)
+    with pytest.raises(ValueError):
+        ls = esmf_locstream(lon2d, lat)

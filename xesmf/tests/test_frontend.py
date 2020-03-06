@@ -6,7 +6,6 @@ from xesmf.frontend import as_2d_mesh
 
 from numpy.testing import assert_equal, assert_almost_equal
 import pytest
-import ESMF
 
 # same test data as test_backend.py, but here we can use xarray DataSet
 ds_in = xe.util.grid_global(20, 12)
@@ -389,8 +388,9 @@ def test_regrid_dataset_from_locstream():
 
 
 def test_ds_to_ESMFlocstream():
-
+    import ESMF
     from xesmf.frontend import ds_to_ESMFlocstream
+
     locstream, shape = ds_to_ESMFlocstream(ds_locs)
     assert isinstance(locstream, ESMF.LocStream)
     assert shape == (1,4,)

@@ -26,6 +26,10 @@ Getting xESMF is as simple as:
 
     $ conda install -c conda-forge xesmf
 
+.. warning::
+
+    One some platforms you might get :code:`ImportError: Regrid(filename) requires PIO and does not work if ESMF has not been built with MPI support`. (see `this comment <https://github.com/JiaweiZhuang/xESMF/issues/47#issuecomment-582421822>`_). A quick workaround is to constrain ESMPy version :code:`conda install -c conda-forge xesmf esmpy=7.1.0`.
+
 I also highly recommend those extra packages for full functionality:
 
 .. code-block:: bash

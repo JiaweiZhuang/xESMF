@@ -50,15 +50,26 @@ def test_as_2d_mesh():
 # 'patch' is too slow to test
 methods_list = ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']
 
-@pytest.mark.parametrize('method', methods_list)
-@pytest.mark.parametrize('locstream', [True, False])
-def test_build_regridder(method, locstream):
-    if locstream:
-        # conservative does not exist in LocStream
-        method = 'bilinear' if method == 'conservative' else method
-        regridder = xe.Regridder(ds_in, ds_locs, method, locstream_out=True)
-    else:
-        regridder = xe.Regridder(ds_in, ds_out, method)
+@pytest.mark.parametrize("locstream_in,locstream_out,method", [
+                         (False, False, 'conservative'), 
+                         (False, False, 'bilinear'),
+                         (False, True, 'bilinear'),
+                         (False, False, 'nearest_s2d'),
+                         (False, True, 'nearest_s2d'),
+                         (True, False, 'nearest_s2d'),
+                         (True, True, 'nearest_s2d'),
+                         (False, False, 'nearest_d2s'),
+                         (False, True, 'nearest_d2s'),
+                         (True, False, 'nearest_d2s'),
+                         (True, True, 'nearest_d2s')
+                         ])
+def test_build_regridder(method, locstream_in, locstream_out):
+    din = ds_locs if locstream_in else ds_in
+    dout = ds_locs if locstream_out else ds_out
+
+    regridder = xe.Regridder(din, dout, method,
+                             locstream_in=locstream_in,
+                             locstream_out=locstream_out)
 
     # check screen output
     assert repr(regridder) == str(regridder)

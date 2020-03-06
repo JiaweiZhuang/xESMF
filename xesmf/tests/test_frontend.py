@@ -379,7 +379,7 @@ def test_regrid_dataset_to_locstream():
     regridder.clean_weight_file()
 
 
-def test_regrid_dataset_to_locstream():
+def test_regrid_dataset_from_locstream():
     # xarray.Dataset containing in-memory numpy array
 
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)

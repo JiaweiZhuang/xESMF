@@ -47,6 +47,7 @@ Contents
    notebooks/Dask
    notebooks/Compare_algorithms
    notebooks/Reuse_regridder
+   notebooks/Using_LocStream
 
 .. toctree::
    :maxdepth: 1

@@ -3,7 +3,7 @@ import numpy as np
 import ESMF
 import xesmf as xe
 from xesmf.backend import (warn_f_contiguous, warn_lat_range,
-                           esmf_grid, add_corner,
+                           esmf_grid, add_corner, esmf_locstream,
                            esmf_regrid_build, esmf_regrid_apply,
                            esmf_regrid_finalize)
 from xesmf.smm import read_weights, apply_weights
@@ -207,3 +207,19 @@ def test_regrid_periodic_correct():
     assert np.max(np.abs(rel_err)) < 0.065
     # clean-up
     esmf_regrid_finalize(regrid)
+
+
+def test_esmf_locstream():
+    lon = np.arange(5)
+    lat = np.arange(5)
+
+    ls = esmf_locstream(lon, lat)
+    assert isinstance(ls, ESMF.LocStream)
+
+    lon2d, lat2d = np.meshgrid(lon, lat)
+    with pytest.raises(ValueError):
+        ls = esmf_locstream(lon2d, lat2d)
+    with pytest.raises(ValueError):
+        ls = esmf_locstream(lon, lat2d)
+    with pytest.raises(ValueError):
+        ls = esmf_locstream(lon2d, lat)

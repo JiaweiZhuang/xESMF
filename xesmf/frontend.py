@@ -104,7 +104,7 @@ def ds_to_ESMFlocstream(ds):
 
 class Regridder(object):
     def __init__(self, ds_in, ds_out, method, periodic=False,
-                 filename=None, reuse_weights=False, ignore_degenerate=None,
+                 weights=None, ignore_degenerate=None,
                  locstream_in=False, locstream_out=False):
         """
         Make xESMF regridder
@@ -134,16 +134,13 @@ class Regridder(object):
             Only useful for global grids with non-conservative regridding.
             Will be forced to False for conservative regridding.
 
-        filename : str, optional
-            Name for the weight file. The default naming scheme is::
-
-                {method}_{Ny_in}x{Nx_in}_{Ny_out}x{Nx_out}.nc
-
-            e.g. bilinear_400x600_300x400.nc
-
-        reuse_weights : bool, optional
-            Whether to read existing weight file to save computing time.
-            False by default (i.e. re-compute, not reuse).
+        weights : None, coo_matrix, dict, str, Dataset, Path,
+            Regridding weights, stored as
+              - a scipy.sparse COO matrix,
+              - a dictionary with keys `row_dst`, `col_src` and `weights`,
+              - an xarray Dataset with data variables `col`, `row` and `S`,
+              - or a path to a netCDF file created by ESMF.
+            If None, compute the weights.
 
         ignore_degenerate : bool, optional
             If False (default), raise error if grids contain degenerated cells
@@ -170,7 +167,6 @@ class Regridder(object):
 
         self.method = method
         self.periodic = periodic
-        self.reuse_weights = reuse_weights
         self.ignore_degenerate = ignore_degenerate
         self.locstream_in = locstream_in
         self.locstream_out = locstream_out
@@ -226,14 +222,11 @@ class Regridder(object):
         self.n_in = shape_in[0] * shape_in[1]
         self.n_out = shape_out[0] * shape_out[1]
 
-        if filename is None:
-            self.filename = self._get_default_filename()
-        else:
-            self.filename = filename
+        if weights is None:
+            weights = self._compute_weights()  # Dictionary of weights
 
-        # get weight matrix
-        self._write_weight_file()
-        self.weights = read_weights(self.filename, self.n_in, self.n_out)
+        # Convert weights, whatever their format, to a sparse coo matrix
+        self.weights = read_weights(weights, self.n_in, self.n_out)
 
     @property
     def A(self):
@@ -261,49 +254,22 @@ class Regridder(object):
 
         return filename
 
-    def _write_weight_file(self):
-
-        if os.path.exists(self.filename):
-            if self.reuse_weights:
-                print('Reuse existing file: {}'.format(self.filename))
-                return  # do not compute it again, just read it
-            else:
-                print('Overwrite existing file: {} \n'.format(self.filename),
-                      'You can set reuse_weights=True to save computing time.')
-                os.remove(self.filename)
-        else:
-            print('Create weight file: {}'.format(self.filename))
-
+    def _compute_weights(self):
         regrid = esmf_regrid_build(self._grid_in, self._grid_out, self.method,
-                                   filename=self.filename,
                                    ignore_degenerate=self.ignore_degenerate)
+
+        w = regrid.get_weights_dict(deep_copy=True)
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
-
-    def clean_weight_file(self):
-        """
-        Remove the offline weight file on disk.
-
-        To save the time on re-computing weights, you can just keep the file,
-        and set "reuse_weights=True" when initializing the regridder next time.
-        """
-        if os.path.exists(self.filename):
-            print("Remove file {}".format(self.filename))
-            os.remove(self.filename)
-        else:
-            print("File {} is already removed.".format(self.filename))
+        return w
 
     def __repr__(self):
         info = ('xESMF Regridder \n'
                 'Regridding algorithm:       {} \n'
-                'Weight filename:            {} \n'
-                'Reuse pre-computed weights? {} \n'
                 'Input grid shape:           {} \n'
                 'Output grid shape:          {} \n'
                 'Output grid dimension name: {} \n'
                 'Periodic in longitude?      {}'
                 .format(self.method,
-                        self.filename,
-                        self.reuse_weights,
                         self.shape_in,
                         self.shape_out,
                         self.out_horiz_dims,
@@ -509,3 +475,13 @@ class Regridder(object):
             ds_out = ds_out.squeeze(dim='dummy')
 
         return ds_out
+
+    def to_netcdf(self, filename=None):
+        '''Save weights to disk as a netCDF file.'''
+        if filename is None:
+            filename = self._get_default_filename()
+        w = self.weights
+        ds = xr.Dataset({"S": w.data, "col": w.col + 1, "row": w.row + 1})
+        ds.to_netcdf(filename)
+        return filename
+

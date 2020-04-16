@@ -5,9 +5,10 @@ Sparse matrix multiplication (SMM) using scipy.sparse library.
 import xarray as xr
 import scipy.sparse as sps
 import warnings
+from pathlib import Path
 
 
-def read_weights(filename, n_in, n_out):
+def read_weights(weights, n_in, n_out):
     '''
     Read regridding weights into a scipy sparse COO matrix.
 
@@ -31,14 +32,22 @@ def read_weights(filename, n_in, n_out):
     A : scipy sparse COO matrix.
 
     '''
-    ds_w = xr.open_dataset(filename)
+    if isinstance(weights, (str, Path, xr.Dataset)):
+        if not isinstance(weights, xr.Dataset):
+            ds_w = xr.open_dataset(weights)
+        col = ds_w['col'].values - 1  # Python starts with 0
+        row = ds_w['row'].values - 1
+        S = ds_w['S'].values
 
-    col = ds_w['col'].values - 1  # Python starts with 0
-    row = ds_w['row'].values - 1
-    S = ds_w['S'].values
+    elif isinstance(weights, dict):
+        col = weights['col_src'] - 1
+        row = weights['row_dst'] - 1
+        S = weights['weights']
 
-    weights = sps.coo_matrix((S, (row, col)), shape=[n_out, n_in])
-    return weights
+    elif isinstance(weights, sps.coo_matrix):
+        return weights
+
+    return sps.coo_matrix((S, (row, col)), shape=[n_out, n_in])
 
 
 def apply_weights(weights, indata, shape_in, shape_out):

@@ -2,10 +2,11 @@ import os
 import numpy as np
 import xarray as xr
 import xesmf as xe
-from xesmf.frontend import as_2d_mesh
+from xesmf.frontend import as_2d_mesh, default_var_names as dvn
 
 from numpy.testing import assert_equal, assert_almost_equal
 import pytest
+
 
 # same test data as test_backend.py, but here we can use xarray DataSet
 ds_in = xe.util.grid_global(20, 12)
@@ -27,8 +28,9 @@ ds_out['data4D_ref'] = ds_in['time'] * ds_in['lev'] * ds_out['data_ref']
 ds_in_chunked = ds_in.chunk({'time': 3, 'lev': 2})
 
 ds_locs = xr.Dataset()
-ds_locs['lat'] = xr.DataArray(data=[-20, -10, 0, 10], dims=('locations',))
-ds_locs['lon'] = xr.DataArray(data=[0, 5, 10, 15], dims=('locations',))
+ds_locs['lat'] = xr.DataArray(data=[-20, -10, 0, 10], dims=('locations',), attrs={"long_name": "latitude"})
+ds_locs['lon'] = xr.DataArray(data=[0, 5, 10, 15], dims=('locations',), attrs={"long_name": "longitude"})
+
 
 def test_as_2d_mesh():
     # 2D grid should not change
@@ -50,7 +52,7 @@ def test_as_2d_mesh():
 methods_list = ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']
 
 @pytest.mark.parametrize("locstream_in,locstream_out,method", [
-                         (False, False, 'conservative'), 
+                         (False, False, 'conservative'),
                          (False, False, 'bilinear'),
                          (False, True, 'bilinear'),
                          (False, False, 'nearest_s2d'),
@@ -78,15 +80,16 @@ def test_build_regridder(method, locstream_in, locstream_out):
     regridder.clean_weight_file()
 
 
-def test_existing_weights():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_existing_weights(vn):
     # the first run
     method = 'bilinear'
-    regridder = xe.Regridder(ds_in, ds_out, method)
+    regridder = xe.Regridder(ds_in, ds_out, method, var_names=vn)
 
     # make sure we can reuse weights
     assert os.path.exists(regridder.filename)
     regridder_reuse = xe.Regridder(ds_in, ds_out, method,
-                                   reuse_weights=True)
+                                   reuse_weights=True, var_names=vn)
     assert regridder_reuse.A.shape == regridder.A.shape
 
     # or can also overwrite it
@@ -283,7 +286,7 @@ def test_regrid_dask_from_locstream():
 
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
 
-    outdata = regridder(ds_locs['lat'].data) 
+    outdata = regridder(ds_locs['lat'].data)
 
     # clean-up
     regridder.clean_weight_file()
@@ -332,7 +335,7 @@ def test_regrid_dataarray_dask_from_locstream():
 
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
 
-    outdata = regridder(ds_locs['lat']) 
+    outdata = regridder(ds_locs['lat'])
 
     # clean-up
     regridder.clean_weight_file()

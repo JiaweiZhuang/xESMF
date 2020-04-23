@@ -11,12 +11,19 @@ from . backend import (esmf_grid, esmf_locstream, add_corner,
                        esmf_regrid_build, esmf_regrid_finalize)
 
 from . smm import read_weights, apply_weights
+from . util import cf_to_esm_bnds_1d, cf_to_esm_bnds_2d
 
 try:
     import dask.array as da
     dask_array_type = (da.Array,)  # for isinstance checks
 except ImportError:
     dask_array_type = ()
+
+default_var_names = {"lat": "lat",
+                     "lon": "lon",
+                     "lat_b": "lon_b",
+                     "lon_b": "lon_b"}
+
 
 def as_2d_mesh(lon, lat):
 
@@ -30,7 +37,82 @@ def as_2d_mesh(lon, lat):
     return lon, lat
 
 
-def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
+def is_longitude(var):
+    """Return True if variable is a longitude.
+
+    Example
+    -------
+    >>> lon = filter(is_longitude, ds.coords)[0]
+    """
+    return var.attrs.get("long_name") == "longitude"
+
+
+def is_latitude(var):
+    """Return True if variable is a latitude."""
+    return var.attrs.get("long_name") == "latitude"
+
+
+def cf_lon_lat(ds):
+    if isinstance(ds, xr.Dataset):
+        vars = ds.coords.values()
+    else:
+        vars = ds.values()
+
+    lon = list(filter(is_longitude, vars))
+    lat = list(filter(is_longitude, vars))
+
+    if lon == []:
+        raise ValueError("No longitude coordinate found."
+                         "Identify the longitude variable by setting its `long_name` attribute to `longitude`."
+                         )
+
+    if lat == []:
+        raise ValueError("No latitude coordinate found."
+                         "Identify the latitude variable by setting its `long_name` attribute to `latitude`."
+                         )
+
+    return lon[0], lat[0]
+
+
+def cf_lon_lat_bnds(ds):
+    lon, lat = cf_lon_lat(ds)
+    lon_bnds = lon.attrs.get("bounds")
+    lat_bnds = lat.attrs.get("bounds")
+    if lon_bnds is None:
+        raise ValueError("No longitude bounds found."
+                         "Identify the longitude bounds by setting the `bounds` attribute of the longitude variable "
+                         "to an existing variable name.")
+    if lat_bnds is None:
+        raise ValueError("No latitude bounds found."
+                         "Identify the latitude bounds by setting the `bounds` attribute of the latitude variable "
+                         "to an existing variable name.")
+
+    return ds[lon_bnds], ds[lat_bnds]
+
+
+def get_lon_lat(ds, var_names=None):
+    if var_names is None:
+        out = cf_lon_lat(ds)
+    else:
+        out = ds[var_names["lon"]], ds[var_names["lat"]]
+
+    return map(np.asarray, out)
+
+
+def get_lon_lat_bnds(ds, var_names=None):
+    if var_names is None:
+        lon, lat = cf_lon_lat_bnds(ds)
+        if lon.ndim == 1:
+            out = map(cf_to_esm_bnds_1d, [lon, lat])
+        elif lon.ndim == 2:
+            out = map(cf_to_esm_bnds_2d, [lon, lat])
+    else:
+        out = ds[var_names["lon_b"]], ds[var_names["lat_b"]]
+
+    return map(np.asarray, out)
+
+
+def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None, var_names=default_var_names):
     '''
     Convert xarray DataSet or dictionary to ESMF.Grid object.
 
@@ -41,7 +123,7 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
         and optionally ``lon_b``, ``lat_b`` if need_bounds=True.
 
         Shape should be ``(n_lat, n_lon)`` or ``(n_y, n_x)``,
-        as normal C or Python ordering. Will be then tranposed to F-ordered.
+        as normal C or Python ordering. Will be then transposed to F-ordered.
 
     need_bounds : bool, optional
         Need cell boundary values?
@@ -55,24 +137,22 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
 
     '''
 
-    # use np.asarray(dr) instead of dr.values, so it also works for dictionary
-    lon = np.asarray(ds['lon'])
-    lat = np.asarray(ds['lat'])
+    # Need asarray ?
+    lon, lat = get_lon_lat(ds, var_names)
     lon, lat = as_2d_mesh(lon, lat)
 
     # tranpose the arrays so they become Fortran-ordered
     grid = esmf_grid(lon.T, lat.T, periodic=periodic)
 
     if need_bounds:
-        lon_b = np.asarray(ds['lon_b'])
-        lat_b = np.asarray(ds['lat_b'])
+        lon_b, lat_b = get_lon_lat_bnds(ds, var_names)
         lon_b, lat_b = as_2d_mesh(lon_b, lat_b)
         add_corner(grid, lon_b.T, lat_b.T)
 
     return grid, lon.shape
 
 
-def ds_to_ESMFlocstream(ds):
+def ds_to_ESMFlocstream(ds, var_names=default_var_names):
     '''
     Convert xarray DataSet or dictionary to ESMF.LocStream object.
 
@@ -86,9 +166,7 @@ def ds_to_ESMFlocstream(ds):
     locstream : ESMF.LocStream object
 
     '''
-
-    lon = np.asarray(ds['lon'])
-    lat = np.asarray(ds['lat'])
+    lon, lat = get_lon_lat(ds, var_names=var_names)
 
     if len(lon.shape) > 1:
         raise ValueError("lon can only be 1d")
@@ -105,7 +183,7 @@ def ds_to_ESMFlocstream(ds):
 class Regridder(object):
     def __init__(self, ds_in, ds_out, method, periodic=False,
                  filename=None, reuse_weights=False, ignore_degenerate=None,
-                 locstream_in=False, locstream_out=False):
+                 locstream_in=False, locstream_out=False, var_names=default_var_names):
         """
         Make xESMF regridder
 
@@ -185,17 +263,19 @@ class Regridder(object):
 
         # construct ESMF grid, with some shape checking
         if locstream_in:
-            self._grid_in, shape_in = ds_to_ESMFlocstream(ds_in)
+            self._grid_in, shape_in = ds_to_ESMFlocstream(ds_in, var_names=var_names)
         else:
             self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
                                                      need_bounds=self.need_bounds,
-                                                     periodic=periodic
+                                                     periodic=periodic,
+                                                     var_names=var_names
                                                      )
         if locstream_out:
-            self._grid_out, shape_out = ds_to_ESMFlocstream(ds_out)
+            self._grid_out, shape_out = ds_to_ESMFlocstream(ds_out, var_names=var_names)
         else:
             self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
-                                                       need_bounds=self.need_bounds
+                                                       need_bounds=self.need_bounds,
+                                                       var_names=var_names
                                                        )
 
         # record output grid and metadata

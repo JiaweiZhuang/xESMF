@@ -42,7 +42,7 @@ def is_longitude(var):
 
     Example
     -------
-    >>> lon = filter(is_longitude, ds.coords)[0]
+    >>> lon = next(filter(is_longitude, ds.coords))
     """
     return var.attrs.get("long_name") == "longitude"
 
@@ -52,7 +52,22 @@ def is_latitude(var):
     return var.attrs.get("long_name") == "latitude"
 
 
+# TODO: This could potentially support DataArray instances, since lat, lon are coordinates.
 def cf_lon_lat(ds):
+    """Return longitude and latitude.
+
+    Identify the longitude and latitude coordinates based on the value of the `long_name` attribute.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+      Dataset storing coordinate information.
+
+    Return
+    ------
+    xr.DataArray, xr.DataArray
+      Longitude and latitude coordinates.
+    """
     if isinstance(ds, xr.Dataset):
         vars = ds.variables.values()  # Should this be restricted to coords ?
     else:
@@ -61,33 +76,59 @@ def cf_lon_lat(ds):
     lon = list(filter(is_longitude, vars))
     lat = list(filter(is_latitude, vars))
 
+    msg = "No {0} coordinate found." \
+          "Identify the longitude variable by setting its `long_name` attribute to `{0}`."
+    
     if not lon:
-        raise ValueError("No longitude coordinate found."
-                         "Identify the longitude variable by setting its `long_name` attribute to `longitude`."
-                         )
+        raise ValueError(msg.format("longitude"))
 
     if not lat:
-        raise ValueError("No latitude coordinate found."
-                         "Identify the latitude variable by setting its `long_name` attribute to `latitude`."
-                         )
+        raise ValueError(msg.format("latitude"))
 
     return lon[0], lat[0]
 
 
-def cf_lon_lat_bnds(ds):
-    lon, lat = cf_lon_lat(ds)
-    lon_bnds = lon.attrs.get("bounds")
-    lat_bnds = lat.attrs.get("bounds")
-    if lon_bnds is None:
-        raise ValueError("No longitude bounds found."
+def cf_bnds(ds, coord):
+    """Return the coordinate boundaries for a given coordinate.
+
+    Identify the boundaries based on the value of the `bounds` attribute of the coordinate.
+    If coordinate has no `bounds` attribute, raise an error.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+      Dataset storing coordinate information.
+    coord : xr.DataArray
+      Coordinate whose boundaries should be returned.
+
+    Return
+    ------
+    xr.DataArray
+      The coordinate boundaries.
+    """
+    key = coord.attrs.get("bounds")
+    if key is None:
+        raise ValueError(f"No bounds found for {coord.name}."
                          "Identify the longitude bounds by setting the `bounds` attribute of the longitude variable "
                          "to an existing variable name.")
-    if lat_bnds is None:
-        raise ValueError("No latitude bounds found."
-                         "Identify the latitude bounds by setting the `bounds` attribute of the latitude variable "
-                         "to an existing variable name.")
+    return ds[key]
 
-    return ds[lon_bnds], ds[lat_bnds]
+
+def cf_lon_lat_bnds(ds):
+    """Return longitude and latitude boundaries.
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+      Dataset storing coordinate information.
+
+    Return
+    ------
+    xr.DataArray, xr.DataArray
+      Longitude and latitude boundaries.
+    """
+    lon, lat = cf_lon_lat(ds)
+    return cf_bnds(ds ,lon), cf_bnds(ds, lat)
 
 
 def get_lon_lat(ds, var_names=None):

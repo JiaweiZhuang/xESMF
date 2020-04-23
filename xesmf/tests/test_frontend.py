@@ -102,7 +102,7 @@ def test_existing_weights(vn):
 
 def test_conservative_without_bounds():
     with pytest.raises(KeyError):
-        xe.Regridder(ds_in.drop_vars('lon_b'), ds_out, 'conservative')
+        xe.Regridder(ds_in.drop_vars('lon_b'), ds_out, 'conservative', var_names=dvn)
 
 
 def test_build_regridder_from_dict():
@@ -116,9 +116,10 @@ def test_build_regridder_from_dict():
     regridder.clean_weight_file()
 
 
-def test_regrid_periodic_wrong():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_periodic_wrong(vn):
     # not using periodic option
-    regridder = xe.Regridder(ds_in, ds_out, 'bilinear')
+    regridder = xe.Regridder(ds_in, ds_out, 'bilinear', var_names=vn)
 
     dr_out = regridder(ds_in['data'])  # xarray DataArray
 
@@ -130,8 +131,9 @@ def test_regrid_periodic_wrong():
     regridder.clean_weight_file()
 
 
-def test_regrid_periodic_correct():
-    regridder = xe.Regridder(ds_in, ds_out, 'bilinear', periodic=True)
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_periodic_correct(vn):
+    regridder = xe.Regridder(ds_in, ds_out, 'bilinear', periodic=True, var_names=vn)
 
     dr_out = regridder(ds_in['data'])
 
@@ -151,11 +153,12 @@ def ds_2d_to_1d(ds):
     return ds_1d
 
 
-def test_regrid_with_1d_grid():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_with_1d_grid(vn):
     ds_in_1d = ds_2d_to_1d(ds_in)
     ds_out_1d = ds_2d_to_1d(ds_out)
 
-    regridder = xe.Regridder(ds_in_1d, ds_out_1d, 'bilinear', periodic=True)
+    regridder = xe.Regridder(ds_in_1d, ds_out_1d, 'bilinear', periodic=True, var_names=vn)
 
     dr_out = regridder(ds_in['data'])
 
@@ -174,10 +177,11 @@ def test_regrid_with_1d_grid():
 # TODO: consolidate (regrid method, input data types) combination
 # using pytest fixtures and parameterization
 
-def test_regrid_dataarray():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dataarray(vn):
     # xarray.DataArray containing in-memory numpy array
 
-    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
+    regridder = xe.Regridder(ds_in, ds_out, 'conservative', var_names=vn)
 
     outdata = regridder(ds_in['data'].values)  # pure numpy array
     dr_out = regridder(ds_in['data'])  # xarray DataArray
@@ -209,10 +213,11 @@ def test_regrid_dataarray():
     regridder.clean_weight_file()
 
 
-def test_regrid_dataarray_to_locstream():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dataarray_to_locstream(vn):
     # xarray.DataArray containing in-memory numpy array
 
-    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
+    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True, var_names=vn)
 
     outdata = regridder(ds_in['data'].values)  # pure numpy array
     dr_out = regridder(ds_in['data'])  # xarray DataArray
@@ -227,10 +232,11 @@ def test_regrid_dataarray_to_locstream():
         regridder = xe.Regridder(ds_in, ds_locs, 'conservative', locstream_out=True)
 
 
-def test_regrid_dataarray_from_locstream():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dataarray_from_locstream(vn):
     # xarray.DataArray containing in-memory numpy array
 
-    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
+    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True, var_names=vn)
 
     outdata = regridder(ds_locs['lat'].values)  # pure numpy array
     dr_out = regridder(ds_locs['lat'])  # xarray DataArray
@@ -249,10 +255,11 @@ def test_regrid_dataarray_from_locstream():
         regridder = xe.Regridder(ds_locs, ds_in, 'conservative', locstream_in=True)
 
 
-def test_regrid_dask():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dask(vn):
     # chunked dask array (no xarray metadata)
 
-    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
+    regridder = xe.Regridder(ds_in, ds_out, 'conservative', var_names=vn)
 
     indata = ds_in_chunked['data4D'].data
     outdata = regridder(indata)
@@ -269,10 +276,11 @@ def test_regrid_dask():
     regridder.clean_weight_file()
 
 
-def test_regrid_dask_to_locstream():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dask_to_locstream(vn):
     # chunked dask array (no xarray metadata)
 
-    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
+    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True, var_names=vn)
 
     indata = ds_in_chunked['data4D'].data
     outdata = regridder(indata)
@@ -281,10 +289,11 @@ def test_regrid_dask_to_locstream():
     regridder.clean_weight_file()
 
 
-def test_regrid_dask_from_locstream():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dask_from_locstream(vn):
     # chunked dask array (no xarray metadata)
 
-    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
+    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True, var_names=vn)
 
     outdata = regridder(ds_locs['lat'].data)
 
@@ -292,10 +301,11 @@ def test_regrid_dask_from_locstream():
     regridder.clean_weight_file()
 
 
-def test_regrid_dataarray_dask():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dataarray_dask(vn):
     # xarray.DataArray containing chunked dask array
 
-    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
+    regridder = xe.Regridder(ds_in, ds_out, 'conservative', var_names=vn)
 
     dr_in = ds_in_chunked['data4D']
     dr_out = regridder(dr_in)
@@ -318,10 +328,11 @@ def test_regrid_dataarray_dask():
     regridder.clean_weight_file()
 
 
-def test_regrid_dataarray_dask_to_locstream():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dataarray_dask_to_locstream(vn):
     # xarray.DataArray containing chunked dask array
 
-    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
+    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True, var_names=vn)
 
     dr_in = ds_in_chunked['data4D']
     dr_out = regridder(dr_in)
@@ -330,10 +341,11 @@ def test_regrid_dataarray_dask_to_locstream():
     regridder.clean_weight_file()
 
 
-def test_regrid_dataarray_dask_from_locstream():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dataarray_dask_from_locstream(vn):
     # xarray.DataArray containing chunked dask array
 
-    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
+    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True, var_names=vn)
 
     outdata = regridder(ds_locs['lat'])
 
@@ -341,10 +353,11 @@ def test_regrid_dataarray_dask_from_locstream():
     regridder.clean_weight_file()
 
 
-def test_regrid_dataset():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dataset(vn):
     # xarray.Dataset containing in-memory numpy array
 
-    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
+    regridder = xe.Regridder(ds_in, ds_out, 'conservative', var_names=vn)
 
     # `ds_out` already refers to output grid object
     # TODO: use more consistent variable namings across tests
@@ -372,34 +385,38 @@ def test_regrid_dataset():
     regridder.clean_weight_file()
 
 
-def test_regrid_dataset_to_locstream():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dataset_to_locstream(vn):
     # xarray.Dataset containing in-memory numpy array
 
-    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
+    regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True, var_names=vn)
     ds_result = regridder(ds_in)
     # clean-up
     regridder.clean_weight_file()
 
 
-def test_regrid_dataset_from_locstream():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_regrid_dataset_from_locstream(vn):
     # xarray.Dataset containing in-memory numpy array
 
-    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
+    regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True, var_names=vn)
     outdata = regridder(ds_locs)
     # clean-up
     regridder.clean_weight_file()
 
 
-def test_ds_to_ESMFlocstream():
+@pytest.mark.parametrize("vn", [dvn, None])
+def test_ds_to_ESMFlocstream(vn):
     import ESMF
     from xesmf.frontend import ds_to_ESMFlocstream
 
-    locstream, shape = ds_to_ESMFlocstream(ds_locs)
+    locstream, shape = ds_to_ESMFlocstream(ds_locs, var_names=vn)
     assert isinstance(locstream, ESMF.LocStream)
-    assert shape == (1,4,)
+    assert shape == (1, 4,)
     with pytest.raises(ValueError):
-        locstream, shape = ds_to_ESMFlocstream(ds_in)
+        locstream, shape = ds_to_ESMFlocstream(ds_in, var_names=vn)
+
     ds_bogus = ds_in.copy()
     ds_bogus['lon'] = ds_locs['lon']
     with pytest.raises(ValueError):
-        locstream, shape = ds_to_ESMFlocstream(ds_bogus)
+        locstream, shape = ds_to_ESMFlocstream(ds_bogus, var_names=vn)

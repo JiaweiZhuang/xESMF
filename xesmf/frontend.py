@@ -54,7 +54,7 @@ def is_latitude(var):
 
 def cf_lon_lat(ds):
     if isinstance(ds, xr.Dataset):
-        vars = ds.coords.values()
+        vars = ds.variables.values()  # Should this be restricted to coords ?
     else:
         vars = ds.values()
 
@@ -96,17 +96,16 @@ def get_lon_lat(ds, var_names=None):
     else:
         out = ds[var_names["lon"]], ds[var_names["lat"]]
 
-    print(out)
     return map(np.asarray, out)
 
 
 def get_lon_lat_bnds(ds, var_names=None):
     if var_names is None:
-        lon, lat = cf_lon_lat_bnds(ds)
-        if lon.ndim == 1:
-            out = map(cf_to_esm_bnds_1d, [lon, lat])
-        elif lon.ndim == 2:
-            out = map(cf_to_esm_bnds_2d, [lon, lat])
+        lon_bnds, lat_bnds = cf_lon_lat_bnds(ds)
+        if lon_bnds.ndim == 2:
+            out = map(cf_to_esm_bnds_1d, [lon_bnds, lat_bnds])
+        elif lon_bnds.ndim == 3:
+            out = map(cf_to_esm_bnds_2d, [lon_bnds, lat_bnds])
     else:
         out = ds[var_names["lon_b"]], ds[var_names["lat_b"]]
 

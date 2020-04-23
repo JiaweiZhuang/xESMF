@@ -21,7 +21,7 @@ except ImportError:
 
 default_var_names = {"lat": "lat",
                      "lon": "lon",
-                     "lat_b": "lon_b",
+                     "lat_b": "lat_b",
                      "lon_b": "lon_b"}
 
 
@@ -59,14 +59,14 @@ def cf_lon_lat(ds):
         vars = ds.values()
 
     lon = list(filter(is_longitude, vars))
-    lat = list(filter(is_longitude, vars))
+    lat = list(filter(is_latitude, vars))
 
-    if lon == []:
+    if not lon:
         raise ValueError("No longitude coordinate found."
                          "Identify the longitude variable by setting its `long_name` attribute to `longitude`."
                          )
 
-    if lat == []:
+    if not lat:
         raise ValueError("No latitude coordinate found."
                          "Identify the latitude variable by setting its `long_name` attribute to `latitude`."
                          )
@@ -96,6 +96,7 @@ def get_lon_lat(ds, var_names=None):
     else:
         out = ds[var_names["lon"]], ds[var_names["lat"]]
 
+    print(out)
     return map(np.asarray, out)
 
 

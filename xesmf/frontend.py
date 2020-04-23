@@ -11,7 +11,7 @@ from . backend import (esmf_grid, esmf_locstream, add_corner,
                        esmf_regrid_build, esmf_regrid_finalize)
 
 from . smm import read_weights, apply_weights
-from . util import cf_to_esm_bnds_1d, cf_to_esm_bnds_2d
+from . util import get_lon_lat, get_lon_lat_bnds
 
 try:
     import dask.array as da
@@ -35,122 +35,6 @@ def as_2d_mesh(lon, lat):
         raise ValueError('lon and lat should be both 1D or 2D')
 
     return lon, lat
-
-
-def is_longitude(var):
-    """Return True if variable is a longitude.
-
-    Example
-    -------
-    >>> lon = next(filter(is_longitude, ds.coords))
-    """
-    return var.attrs.get("long_name") == "longitude"
-
-
-def is_latitude(var):
-    """Return True if variable is a latitude."""
-    return var.attrs.get("long_name") == "latitude"
-
-
-# TODO: This could potentially support DataArray instances, since lat, lon are coordinates.
-def cf_lon_lat(ds):
-    """Return longitude and latitude.
-
-    Identify the longitude and latitude coordinates based on the value of the `long_name` attribute.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-      Dataset storing coordinate information.
-
-    Return
-    ------
-    xr.DataArray, xr.DataArray
-      Longitude and latitude coordinates.
-    """
-    if isinstance(ds, xr.Dataset):
-        vars = ds.variables.values()  # Should this be restricted to coords ?
-    else:
-        vars = ds.values()
-
-    lon = list(filter(is_longitude, vars))
-    lat = list(filter(is_latitude, vars))
-
-    msg = "No {0} coordinate found." \
-          "Identify the longitude variable by setting its `long_name` attribute to `{0}`."
-    
-    if not lon:
-        raise ValueError(msg.format("longitude"))
-
-    if not lat:
-        raise ValueError(msg.format("latitude"))
-
-    return lon[0], lat[0]
-
-
-def cf_bnds(ds, coord):
-    """Return the coordinate boundaries for a given coordinate.
-
-    Identify the boundaries based on the value of the `bounds` attribute of the coordinate.
-    If coordinate has no `bounds` attribute, raise an error.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-      Dataset storing coordinate information.
-    coord : xr.DataArray
-      Coordinate whose boundaries should be returned.
-
-    Return
-    ------
-    xr.DataArray
-      The coordinate boundaries.
-    """
-    key = coord.attrs.get("bounds")
-    if key is None:
-        raise ValueError(f"No bounds found for {coord.name}."
-                         "Identify the longitude bounds by setting the `bounds` attribute of the longitude variable "
-                         "to an existing variable name.")
-    return ds[key]
-
-
-def cf_lon_lat_bnds(ds):
-    """Return longitude and latitude boundaries.
-
-    Parameters
-    ----------
-    ds : xr.Dataset
-      Dataset storing coordinate information.
-
-    Return
-    ------
-    xr.DataArray, xr.DataArray
-      Longitude and latitude boundaries.
-    """
-    lon, lat = cf_lon_lat(ds)
-    return cf_bnds(ds ,lon), cf_bnds(ds, lat)
-
-
-def get_lon_lat(ds, var_names=None):
-    if var_names is None:
-        out = cf_lon_lat(ds)
-    else:
-        out = ds[var_names["lon"]], ds[var_names["lat"]]
-
-    return map(np.asarray, out)
-
-
-def get_lon_lat_bnds(ds, var_names=None):
-    if var_names is None:
-        lon_bnds, lat_bnds = cf_lon_lat_bnds(ds)
-        if lon_bnds.ndim == 2:
-            out = map(cf_to_esm_bnds_1d, [lon_bnds, lat_bnds])
-        elif lon_bnds.ndim == 3:
-            out = map(cf_to_esm_bnds_2d, [lon_bnds, lat_bnds])
-    else:
-        out = ds[var_names["lon_b"]], ds[var_names["lat_b"]]
-
-    return map(np.asarray, out)
 
 
 def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None, var_names=default_var_names):

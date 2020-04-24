@@ -28,8 +28,12 @@ ds_out['data4D_ref'] = ds_in['time'] * ds_in['lev'] * ds_out['data_ref']
 ds_in_chunked = ds_in.chunk({'time': 3, 'lev': 2})
 
 ds_locs = xr.Dataset()
-ds_locs['lat'] = xr.DataArray(data=[-20, -10, 0, 10], dims=('locations',), attrs={"long_name": "latitude"})
-ds_locs['lon'] = xr.DataArray(data=[0, 5, 10, 15], dims=('locations',), attrs={"long_name": "longitude"})
+ds_locs['lat'] = xr.DataArray(data=[-20, -10, 0, 10],
+                              dims=('locations',),
+                              attrs={"long_name": "latitude", "units": "degrees_north"})
+ds_locs['lon'] = xr.DataArray(data=[0, 5, 10, 15],
+                              dims=('locations',),
+                              attrs={"long_name": "longitude", "units": "degrees_east"})
 
 
 def test_as_2d_mesh():

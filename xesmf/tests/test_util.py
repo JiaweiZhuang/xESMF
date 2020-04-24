@@ -57,12 +57,12 @@ def test_cf_lon_lat():
 
     # Missing attributes
     ds_miss = ds_in.copy()
-    ds_miss.lon.attrs["long_name"] = ""
+    ds_miss.lon.attrs["units"] = ""
     with pytest.raises(ValueError):
         xe.util.cf_lon_lat(ds_miss)
 
     ds_miss = ds_in.copy()
-    ds_miss.lat.attrs["long_name"] = ""
+    ds_miss.lat.attrs["units"] = ""
     with pytest.raises(ValueError):
         xe.util.cf_lon_lat(ds_miss)
 

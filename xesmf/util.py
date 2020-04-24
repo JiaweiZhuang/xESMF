@@ -109,8 +109,10 @@ def grid_2d(lon0_b, lon1_b, d_lon,
     lon, lat = np.meshgrid(lon_1d, lat_1d)
     lon_b, lat_b = np.meshgrid(lon_b_1d, lat_b_1d)
 
-    ds = xr.Dataset(coords={'lon': (['y', 'x'], lon, {"long_name": "longitude", "bounds": "lon_bnds"}),
-                            'lat': (['y', 'x'], lat, {"long_name": "latitude", "bounds": "lat_bnds"}),
+    ds = xr.Dataset(coords={'lon': (['y', 'x'], lon,
+                                    {"standard_name": "longitude", "bounds": "lon_bnds",  "units":"degrees_east"}),
+                            'lat': (['y', 'x'], lat,
+                                    {"standard_name": "latitude", "bounds": "lat_bnds", "units": "degrees_north"}),
                             'lon_b': (['y_b', 'x_b'], lon_b),
                             'lat_b': (['y_b', 'x_b'], lat_b),
                             'lon_bnds': (['y', 'x', 'nv'], _cf_bnds_2d(lon_b)),
@@ -153,7 +155,7 @@ def grid_global(d_lon, d_lat):
 def is_longitude(var):
     """Return True if variable is a longitude.
 
-    A variable is considered a longitude if its `long_name` attribute is 'longitude'.
+    A variable is considered a longitude if its `units` are 'degrees_east' or a synonym.
 
     Parameters
     ----------
@@ -170,13 +172,13 @@ def is_longitude(var):
     >>> # Identify the longitude coordinate in a dataset.
     >>> lon = next(filter(is_longitude, ds.coords))
     """
-    return var.attrs.get("long_name") == "longitude"
+    return has_units_of_longitude(var)
 
 
 def is_latitude(var):
     """Return True if variable is a latitude.
 
-    A variable is considered a latitude if its `long_name` attribute is 'latitude'.
+    A variable is considered a latitude if its `units` are 'degrees_north' or a synonym.
 
     Parameters
     ----------
@@ -188,7 +190,25 @@ def is_latitude(var):
     bool
       True if variable is a latitude.
     """
-    return var.attrs.get("long_name") == "latitude"
+    return has_units_of_latitude(var)
+
+
+def has_name_of_longitude(var):
+    key = "standard_name"
+    return var.attrs.get(key) == "longitude"
+
+
+def has_name_of_latitude(var):
+    key = "standard_name"
+    return var.attrs.get(key) == "latitude"
+
+
+def has_units_of_longitude(var):
+    return var.attrs.get("units") in ("degrees_east", "degree_east", "degree_E", "degrees_E", "degreeE", "degreesE")
+
+
+def has_units_of_latitude(var):
+    return var.attrs.get("units") in ("degrees_north", "degree_north", "degree_N", "degrees_N", "degreeN", "degreesN")
 
 
 def cf_lon_lat(ds):

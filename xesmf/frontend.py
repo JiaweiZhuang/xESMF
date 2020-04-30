@@ -62,6 +62,11 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
 
     # tranpose the arrays so they become Fortran-ordered
     grid = esmf_grid(lon.T, lat.T, periodic=periodic)
+    # detect ds["mask"] and add it to the grid
+    if 'mask' in ds.data_vars:
+        import ESMF
+        grid.add_item(ESMF.GridItem.MASK, staggerloc=ESMF.StaggerLoc.CENTER)
+        grid.mask[0][...] = np.asarray(ds['mask']).T
 
     if need_bounds:
         lon_b = np.asarray(ds['lon_b'])
@@ -104,6 +109,7 @@ def ds_to_ESMFlocstream(ds):
 
 class Regridder(object):
     def __init__(self, ds_in, ds_out, method, periodic=False,
+                 extrap=None, extrap_exp=None, extrap_num_pnts=None,
                  weights=None, ignore_degenerate=None,
                  locstream_in=False, locstream_out=False):
         """
@@ -113,8 +119,8 @@ class Regridder(object):
         ----------
         ds_in, ds_out : xarray DataSet, or dictionary
             Contain input and output grid coordinates. Look for variables
-            ``lon``, ``lat``, and optionally ``lon_b``, ``lat_b`` for
-            conservative method.
+            ``lon``, ``lat``, optionally ``lon_b``, ``lat_b`` for
+            conservative method, and ``mask``. Use 0 to identify cells to mask.
 
             Shape can be 1D (n_lon,) and (n_lat,) for rectilinear grids,
             or 2D (n_y, n_x) for general curvilinear grids.
@@ -133,6 +139,20 @@ class Regridder(object):
             Periodic in longitude? Default to False.
             Only useful for global grids with non-conservative regridding.
             Will be forced to False for conservative regridding.
+
+        extrap : str, optional
+            Extrapolation method. Options are
+
+            - 'inverse_dist'
+            - 'nearest_s2d'
+
+        extrap_exp : float, optional
+            The exponent to raise the distance to when calculating weights for the
+            extrapolation method. If none are specified, defaults to 2.0
+
+        extrap_num_pnts : int, optional
+            The number of source points to use for the extrapolation methods
+            that use more than one source point. If none are specified, defaults to 8
 
         weights : None, coo_matrix, dict, str, Dataset, Path,
             Regridding weights, stored as
@@ -167,6 +187,9 @@ class Regridder(object):
 
         self.method = method
         self.periodic = periodic
+        self.extrap = extrap
+        self.extrap_exp = extrap_exp
+        self.extrap_num_pnts = extrap_num_pnts
         self.ignore_degenerate = ignore_degenerate
         self.locstream_in = locstream_in
         self.locstream_out = locstream_out
@@ -256,6 +279,8 @@ class Regridder(object):
 
     def _compute_weights(self):
         regrid = esmf_regrid_build(self._grid_in, self._grid_out, self.method,
+                                   extrap = self.extrap, extrap_exp = self.extrap_exp,
+                                   extrap_num_pnts = self.extrap_num_pnts,
                                    ignore_degenerate=self.ignore_degenerate)
 
         w = regrid.get_weights_dict(deep_copy=True)

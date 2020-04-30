@@ -189,7 +189,9 @@ def add_corner(grid, lon_b, lat_b):
 
 
 def esmf_regrid_build(sourcegrid, destgrid, method,
-                      filename=None, extra_dims=None, ignore_degenerate=None):
+                      filename=None, extra_dims=None,
+                      extrap=None, extrap_exp=None, extrap_num_pnts=None,
+                      ignore_degenerate=None):
     '''
     Create an ESMF.Regrid object, containing regridding weights.
 
@@ -228,6 +230,20 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
         For example, if extra_dims=[Nlev, Ntime], then the data field dimension
         will be [Nlon, Nlat, Nlev, Ntime]
 
+    extrap : str, optional
+        Extrapolation method. Options are
+
+        - 'inverse_dist'
+        - 'nearest_s2d'
+
+    extrap_exp : float, optional
+        The exponent to raise the distance to when calculating weights for the
+        extrapolation method. If none are specified, defaults to 2.0
+
+    extrap_num_pnts : int, optional
+        The number of source points to use for the extrapolation methods
+        that use more than one source point. If none are specified, defaults to 8
+
     ignore_degenerate : bool, optional
         If False (default), raise error if grids contain degenerated cells
         (i.e. triangles or lines, instead of quadrilaterals)
@@ -250,6 +266,22 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     except:
         raise ValueError('method should be chosen from '
                          '{}'.format(list(method_dict.keys())))
+
+    # use shorter, clearer names for options in ESMF.ExtrapMethod
+    extrap_dict = {'inverse_dist': ESMF.ExtrapMethod.NEAREST_IDAVG,
+                   'nearest_s2d': ESMF.ExtrapMethod.NEAREST_STOD,
+                   None: None
+                   }
+    try:
+        esmf_extrap_method = extrap_dict[extrap]
+    except:
+        raise ValueError('method should be chosen from '
+                         '{}'.format(list(method_dict.keys())))
+
+    # until ESMPy updates ESMP_FieldRegridStoreFile, extrapolation is not possible
+    # if files are written on disk
+    if (extrap is not None) & (filename is not None):
+        raise ValueError('extrap cannot be used aongside a filename.')
 
     # conservative regridding needs cell corner information
     if method == 'conservative':
@@ -276,10 +308,9 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # Must set unmapped_action to IGNORE, otherwise the function will fail,
     # if the destination grid is larger than the source grid.
     regrid = ESMF.Regrid(sourcefield, destfield, filename=filename,
-                         regrid_method=esmf_regrid_method,
-                         unmapped_action=ESMF.UnmappedAction.IGNORE,
-                         ignore_degenerate=ignore_degenerate,
-                         factors=True)
+                         regrid_method=esmf_regrid_method, extrap_method=esmf_extrap_method, extrap_dist_exponent=extrap_exp,
+                         extrap_num_src_pnts=extrap_num_pnts, src_mask_values=[0], dst_mask_values=[0], unmapped_action=ESMF.UnmappedAction.IGNORE,
+                         ignore_degenerate=ignore_degenerate, factors=True)
 
     return regrid
 

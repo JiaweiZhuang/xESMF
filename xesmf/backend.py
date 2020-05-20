@@ -276,7 +276,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
         esmf_extrap_method = extrap_dict[extrap]
     except:
         raise ValueError('method should be chosen from '
-                         '{}'.format(list(method_dict.keys())))
+                         '{}'.format(list(extrap_dict.keys())))
 
     # until ESMPy updates ESMP_FieldRegridStoreFile, extrapolation is not possible
     # if files are written on disk

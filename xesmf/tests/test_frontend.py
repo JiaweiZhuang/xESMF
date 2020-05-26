@@ -151,9 +151,16 @@ def test_regrid_periodic_correct(vn):
 
 def ds_2d_to_1d(ds):
     ds_temp = ds.reset_coords()
-    ds_1d = xr.merge([ds_temp['lon'][0, :], ds_temp['lat'][:, 0]])
+    ds_1d = xr.merge([ds_temp['lon'][0, :],
+                      ds_temp['lat'][:, 0],
+                      ds_temp['lon_bnds'][0, :, :],
+                      ds_temp['lat_bnds'][:, 0, :]]
+                     )
     ds_1d.coords['lon'] = ds_1d['lon']
     ds_1d.coords['lat'] = ds_1d['lat']
+    ds_1d.coords['lon_bnds'] = ds_1d['lon_bnds']
+    ds_1d.coords['lat_bnds'] = ds_1d['lat_bnds']
+
     return ds_1d
 
 

@@ -3,7 +3,7 @@ import xesmf as xe
 import xarray as xr
 import pytest
 
-from . test_frontend import ds_in
+from . test_frontend import ds_in, ds_2d_to_1d
 
 
 def test_grid_global():
@@ -79,3 +79,19 @@ def test_cf_bnds():
     ds_miss.lat.attrs["bounds"] = "kabong"
     with pytest.raises(ValueError):
         xe.util.cf_bnds(ds_miss, ds_miss["lat"])
+
+
+def test_get_lon_lat_bnds():
+    ds2 = xe.util.grid_2d(0, 2, 1, 10, 11, 1)
+    ds1 = ds_2d_to_1d(ds2)
+
+    lon, lat = xe.util.get_lon_lat_bnds(ds2)
+    np.testing.assert_array_equal(lon.shape, np.array(ds2.lon.shape) + 1)
+    np.testing.assert_array_equal(lat.shape, np.array(ds2.lat.shape) + 1)
+
+    lon, lat = xe.util.get_lon_lat_bnds(ds1)
+    assert lon.shape[0] == ds1.lon.shape[0] + 1
+    assert lat.shape[0] == ds1.lat.shape[0] + 1
+
+
+

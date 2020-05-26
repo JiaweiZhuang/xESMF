@@ -237,7 +237,8 @@ def has_standard_name_of_longitude(var):
       True if variable's `standard_name` attribute starts with longitude.
     """
     key = "standard_name"
-    return var.attrs.get(key) == "longitude"
+    value = var.attrs.get(key, "")
+    return value == "longitude" or value.startswith("longitude_at_")
 
 
 def has_standard_name_of_latitude(var):
@@ -254,7 +255,8 @@ def has_standard_name_of_latitude(var):
       True if variable's `standard_name` attribute starts with latitude.
     """
     key = "standard_name"
-    return var.attrs.get(key) == "latitude"
+    value = var.attrs.get(key, "")
+    return value == "latitude" or value.startswith("latitude_at_")
 
 
 def has_units_of_longitude(var):

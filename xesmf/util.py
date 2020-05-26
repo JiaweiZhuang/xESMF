@@ -61,14 +61,40 @@ def _cf_bnds_2d(bounds):
 
 
 def cf_to_esm_bnds_1d(vertices):
-    """Convert 2D CF-compliant bounds to 1D ESM boundaries."""
+    """Convert 2D CF-compliant bounds to 1D ESM boundaries.
+
+    Parameters
+    ----------
+    vertices: array (n, 2)
+      Contiguous left and right cell boundaries.
+
+    Returns
+    -------
+    array (n+1)
+      Corners coordinate.
+    """
     v = vertices
     return np.concatenate((v[:, 0], v[-1:, 1]))
 
 
 # TODO: This is probably not true in general, and depends on the convention used, starting point, clockwise, etc.
 def cf_to_esm_bnds_2d(vertices):
-    """Convert 3D CF-compliant bounds to 2D ESM boundaries."""
+    """Convert 3D CF-compliant bounds to 2D ESM boundaries.
+
+    Parameters
+    ----------
+    vertices: array (n, m, 4)
+      Cell corners coordinate starting from the upper left corner and going in the anti-clockwise direction.
+
+        0 --- 3
+        |  c  |
+        1 --- 2
+
+    Returns
+    -------
+    array (n+1, m+1)
+      Corners coordinate.
+    """
     v = vertices
     tl = v[:, :, 0]
     bl = v[-1:, :, 1]
@@ -155,7 +181,9 @@ def grid_global(d_lon, d_lat):
 def is_longitude(var):
     """Return True if variable is a longitude.
 
-    A variable is considered a longitude if its `units` are 'degrees_east' or a synonym.
+    A variable is considered a longitude if
+    - its `units` are 'degrees_east' or a synonym, or
+    - its `standard_name` is 'longitude'.
 
     Parameters
     ----------
@@ -172,13 +200,15 @@ def is_longitude(var):
     >>> # Identify the longitude coordinate in a dataset.
     >>> lon = next(filter(is_longitude, ds.coords))
     """
-    return has_units_of_longitude(var)
+    return has_units_of_longitude(var) or has_standard_name_of_longitude(var)
 
 
 def is_latitude(var):
     """Return True if variable is a latitude.
 
-    A variable is considered a latitude if its `units` are 'degrees_north' or a synonym.
+    A variable is considered a latitude if
+    - its `units` are 'degrees_north' or a synonym, or
+    - its `standard_name` is 'latitude'.
 
     Parameters
     ----------
@@ -190,31 +220,95 @@ def is_latitude(var):
     bool
       True if variable is a latitude.
     """
-    return has_units_of_latitude(var)
+    return has_units_of_latitude(var) or has_standard_name_of_latitude(var)
 
 
-def has_name_of_longitude(var):
+def has_standard_name_of_longitude(var):
+    """Whether variable has longitude as is `standard_name` attribute.
+
+    Parameters
+    ----------
+    var: xr.Variable, xr.DataArray,
+      Coordinate.
+
+    Returns
+    -------
+    bool
+      True if variable's `standard_name` attribute starts with longitude.
+    """
     key = "standard_name"
     return var.attrs.get(key) == "longitude"
 
 
-def has_name_of_latitude(var):
+def has_standard_name_of_latitude(var):
+    """Whether variable has latitude as is `standard_name` attribute.
+
+    Parameters
+    ----------
+    var: xr.Variable, xr.DataArray,
+      Coordinate.
+
+    Returns
+    -------
+    bool
+      True if variable's `standard_name` attribute starts with latitude.
+    """
     key = "standard_name"
     return var.attrs.get(key) == "latitude"
 
 
 def has_units_of_longitude(var):
+    """Whether variable has units describing longitude coordinates.
+
+    Recognized units of longitude are:
+      - degrees_east
+      - degree_east
+      - degree_E
+      - degrees_E
+      - degreeE
+      - degreesE
+
+    Parameters
+    ----------
+    var: xr.Variable, xr.DataArray,
+      Coordinate.
+
+    Returns
+    -------
+    bool
+      True if variable's `units` attribute has longitude coordinates.
+    """
     return var.attrs.get("units") in ("degrees_east", "degree_east", "degree_E", "degrees_E", "degreeE", "degreesE")
 
 
 def has_units_of_latitude(var):
+    """Whether variable has units describing latitude coordinates.
+
+    Recognized units of longitude are:
+      - degrees_north
+      - degree_north
+      - degree_N
+      - degrees_N
+      - degreeN
+      - degreesN
+
+    Parameters
+    ----------
+    var: xr.Variable, xr.DataArray,
+      Coordinate.
+
+    Returns
+    -------
+    bool
+      True if variable's `units` attribute has latitude coordinates.
+    """
     return var.attrs.get("units") in ("degrees_north", "degree_north", "degree_N", "degrees_N", "degreeN", "degreesN")
 
 
 def cf_lon_lat(ds):
     """Return longitude and latitude.
 
-    Identify the longitude and latitude coordinates based on the value of the `long_name` attribute.
+    Identify the longitude and latitude coordinates based on the value of the `units` or `standard_name` attributes.
 
     Parameters
     ----------
@@ -278,7 +372,7 @@ def cf_bnds(ds, coord):
 
 
 def cf_lon_lat_bnds(ds):
-    """Return longitude and latitude boundaries.
+    """Return longitude and latitude boundary variables.
 
     Parameters
     ----------
@@ -291,7 +385,7 @@ def cf_lon_lat_bnds(ds):
       Longitude and latitude boundaries.
     """
     lon, lat = cf_lon_lat(ds)
-    return cf_bnds(ds ,lon), cf_bnds(ds, lat)
+    return cf_bnds(ds, lon), cf_bnds(ds, lat)
 
 
 def get_lon_lat(ds, var_names=None):
@@ -308,9 +402,10 @@ def get_lon_lat(ds, var_names=None):
     Return
     ------
     np.ndarray, np.ndarray
-      Longitude and latitude arrays.
+      Longitude and latitude arrays with shape (n, ), (m, ) for cartesian (rectangular) coordinates and (n, m), (n, m)
+      otherwise.
     """
-    if var_names is None:
+    if var_names is None or "lon" not in var_names or "lat" not in var_names:
         out = cf_lon_lat(ds)
     else:
         out = ds[var_names["lon"]], ds[var_names["lat"]]
@@ -332,7 +427,8 @@ def get_lon_lat_bnds(ds, var_names=None):
     Return
     ------
     np.ndarray, np.ndarray
-      Longitude and latitude boundary arrays.
+      Longitude and latitude boundary arrays with shape (n+1), (m+1) for cartesian (rectangular) coordinates,
+      and (n+1, m+1), (n+1, m+1) otherwise.
     """
     if var_names is None:
         lon_bnds, lat_bnds = cf_lon_lat_bnds(ds)

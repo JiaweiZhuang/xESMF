@@ -55,14 +55,16 @@ def test_cf_lon_lat():
     xr.testing.assert_equal(lon, ds_in["lon"])
     xr.testing.assert_equal(lat, ds_in["lat"])
 
-    # Missing attributes
+    # Missing attributes and standard name
     ds_miss = ds_in.copy()
     ds_miss.lon.attrs["units"] = ""
+    ds_miss.lon.attrs["standard_name"] = ""
     with pytest.raises(ValueError):
         xe.util.cf_lon_lat(ds_miss)
 
     ds_miss = ds_in.copy()
     ds_miss.lat.attrs["units"] = ""
+    ds_miss.lat.attrs["standard_name"] = ""
     with pytest.raises(ValueError):
         xe.util.cf_lon_lat(ds_miss)
 

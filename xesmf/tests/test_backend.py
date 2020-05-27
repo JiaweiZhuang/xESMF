@@ -7,7 +7,7 @@ from xesmf.backend import (warn_f_contiguous, warn_lat_range,
                            esmf_regrid_build, esmf_regrid_apply,
                            esmf_regrid_finalize)
 from xesmf.smm import read_weights, apply_weights
-
+import xarray as xr
 from numpy.testing import assert_equal, assert_almost_equal
 import pytest
 
@@ -235,11 +235,17 @@ def test_read_weights(tmp_path):
     esmf_regrid_build(grid_in, grid_out, method='bilinear', filename=str(fn))
 
     w = regrid_memory.get_weights_dict(deep_copy=True)
-    sm = read_weights(w, lon_in.size, lon_out.size).todense()
+    sm = read_weights(w, lon_in.size, lon_out.size)
 
     # Test Path and string to netCDF file against weights dictionary
-    np.testing.assert_array_equal(read_weights(fn, lon_in.size, lon_out.size).todense(), sm)
-    np.testing.assert_array_equal(read_weights(str(fn), lon_in.size, lon_out.size).todense(), sm)
+    np.testing.assert_array_equal(read_weights(fn, lon_in.size, lon_out.size).todense(), sm.todense())
+    np.testing.assert_array_equal(read_weights(str(fn), lon_in.size, lon_out.size).todense(), sm.todense())
+
+    # Test xr.Dataset
+    np.testing.assert_array_equal(read_weights(xr.open_dataset(fn), lon_in.size, lon_out.size).todense(), sm.todense())
+
+    # Test COO matrix
+    np.testing.assert_array_equal(read_weights(sm, lon_in.size, lon_out.size).todense(), sm.todense())
 
     # Test failures
     with pytest.raises(IOError):
@@ -247,3 +253,7 @@ def test_read_weights(tmp_path):
 
     with pytest.raises(ValueError):
         read_weights({}, lon_in.size, lon_out.size)
+
+    with pytest.raises(ValueError):
+        ds = xr.open_dataset(fn)
+        read_weights(ds.drop_vars("col"), lon_in.size, lon_out.size)

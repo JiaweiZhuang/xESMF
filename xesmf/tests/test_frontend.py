@@ -30,6 +30,7 @@ ds_locs = xr.Dataset()
 ds_locs['lat'] = xr.DataArray(data=[-20, -10, 0, 10], dims=('locations',))
 ds_locs['lon'] = xr.DataArray(data=[0, 5, 10, 15], dims=('locations',))
 
+
 def test_as_2d_mesh():
     # 2D grid should not change
     lon2d = ds_in['lon'].values
@@ -48,6 +49,7 @@ def test_as_2d_mesh():
 
 # 'patch' is too slow to test
 methods_list = ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']
+
 
 @pytest.mark.parametrize("locstream_in,locstream_out,method", [
                          (False, False, 'conservative'),

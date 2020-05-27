@@ -481,7 +481,8 @@ class Regridder(object):
         if filename is None:
             filename = self._get_default_filename()
         w = self.weights
-        ds = xr.Dataset({"S": w.data, "col": w.col + 1, "row": w.row + 1})
+        dim = "n_s"
+        ds = xr.Dataset({"S": (dim, w.data), "col": (dim, w.col + 1), "row": (dim, w.row + 1)})
         ds.to_netcdf(filename)
         return filename
 

@@ -214,7 +214,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     filename : str, optional
         Offline weight file. **Require ESMPy 7.1.0.dev38 or newer.**
         With the weights available, we can use Scipy's sparse matrix
-        mulplication to apply weights, which is faster and more Pythonic
+        multiplication to apply weights, which is faster and more Pythonic
         than ESMPy's online regridding. If None, weights are stored in
         memory only.
 
@@ -279,7 +279,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
                          regrid_method=esmf_regrid_method,
                          unmapped_action=ESMF.UnmappedAction.IGNORE,
                          ignore_degenerate=ignore_degenerate,
-                         factors=True)
+                         factors=filename is None)
 
     return regrid
 

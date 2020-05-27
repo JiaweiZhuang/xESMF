@@ -92,6 +92,27 @@ def test_existing_weights():
     xe.Regridder(ds_in, ds_out, method)
 
 
+def test_to_netcdf(tmp_path):
+    from xesmf.backend import esmf_grid, esmf_regrid_build
+
+    # Let the frontend write the weights to disk
+    xfn = tmp_path / 'ESMF_weights.nc'
+    method = 'bilinear'
+    regridder = xe.Regridder(ds_in, ds_out, method)
+    regridder.to_netcdf(filename=xfn)
+
+    grid_in = esmf_grid(ds_in['lon'].values.T, ds_in['lat'].values.T)
+    grid_out = esmf_grid(ds_out['lon'].values.T, ds_out['lat'].values.T)
+
+    # Let the ESMPy backend write the weights to disk
+    efn = tmp_path / 'weights.nc'
+    regrid = esmf_regrid_build(grid_in, grid_out, method=method, filename=str(efn))
+
+    x = xr.open_dataset(xfn)
+    e = xr.open_dataset(efn)
+    xr.testing.assert_identical(x, e)
+
+
 def test_conservative_without_bounds():
     with pytest.raises(KeyError):
         xe.Regridder(ds_in.drop_vars('lon_b'), ds_out, 'conservative')

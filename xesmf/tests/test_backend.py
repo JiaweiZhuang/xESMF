@@ -223,3 +223,27 @@ def test_esmf_locstream():
         ls = esmf_locstream(lon, lat2d)
     with pytest.raises(ValueError):
         ls = esmf_locstream(lon2d, lat)
+
+
+def test_read_weights(tmp_path):
+    fn = tmp_path / "weights.nc"
+
+    grid_in = esmf_grid(lon_in.T, lat_in.T)
+    grid_out = esmf_grid(lon_out.T, lat_out.T)
+
+    regrid_memory = esmf_regrid_build(grid_in, grid_out, method='bilinear')
+    esmf_regrid_build(grid_in, grid_out, method='bilinear', filename=str(fn))
+
+    w = regrid_memory.get_weights_dict(deep_copy=True)
+    sm = read_weights(w, lon_in.size, lon_out.size).todense()
+
+    # Test Path and string to netCDF file against weights dictionary
+    np.testing.assert_array_equal(read_weights(fn, lon_in.size, lon_out.size).todense(), sm)
+    np.testing.assert_array_equal(read_weights(str(fn), lon_in.size, lon_out.size).todense(), sm)
+
+    # Test failures
+    with pytest.raises(IOError):
+        read_weights(tmp_path / "wrong_file.nc", lon_in.size, lon_out.size)
+
+    with pytest.raises(ValueError):
+        read_weights({}, lon_in.size, lon_out.size)

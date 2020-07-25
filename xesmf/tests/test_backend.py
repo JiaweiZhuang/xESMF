@@ -3,7 +3,7 @@ import numpy as np
 import ESMF
 import xesmf as xe
 from xesmf.backend import (warn_f_contiguous, warn_lat_range,
-                           esmf_grid, add_corner,
+                           esmf_grid, add_corner, esmf_locstream,
                            esmf_regrid_build, esmf_regrid_apply,
                            esmf_regrid_finalize)
 from xesmf.smm import read_weights, apply_weights
@@ -15,11 +15,11 @@ import pytest
 # xarray DataSet is only used at the very beginning as a quick way to make data
 coord_names = ['lon', 'lat', 'lon_b', 'lat_b']
 
-ds_in = xe.util.grid_global(5, 4)
+ds_in = xe.util.grid_global(20, 12)
 lon_in, lat_in, lon_b_in, lat_b_in = [ds_in[name].values
                                       for name in coord_names]
 
-ds_out = xe.util.grid_global(2, 2)
+ds_out = xe.util.grid_global(15, 9)
 lon_out, lat_out, lon_b_out, lat_b_out = [ds_out[name].values
                                           for name in coord_names]
 
@@ -39,25 +39,6 @@ ds_in.coords['time'] = np.arange(1, 11)
 ds_in.coords['lev'] = np.arange(1, 51)
 ds_in['data4D'] = ds_in['time'] * ds_in['lev'] * ds_in['data']
 data4D_in = ds_in['data4D'].values
-
-
-def test_flag():
-    # some shortcuts for ESMF flags
-    assert ESMF.StaggerLoc.CENTER == 0
-    assert ESMF.StaggerLoc.CORNER == 3
-
-    assert ESMF.CoordSys.CART == 0
-    assert ESMF.CoordSys.SPH_DEG == 1  # only use this!
-    assert ESMF.CoordSys.SPH_RAD == 2
-
-    assert ESMF.UnmappedAction.ERROR == 0
-    assert ESMF.UnmappedAction.IGNORE == 1  # only use this!
-
-    assert ESMF.RegridMethod.BILINEAR == 0
-    assert ESMF.RegridMethod.PATCH == 1
-    assert ESMF.RegridMethod.CONSERVE == 2
-    assert ESMF.RegridMethod.NEAREST_STOD == 3
-    assert ESMF.RegridMethod.NEAREST_DTOS == 4
 
 
 def test_warn_f_on_array():
@@ -94,7 +75,7 @@ def test_esmf_grid_with_corner():
     # make sure meta data agree
     assert not grid.has_corners  # no corner yet!
     assert grid.staggerloc == [True, False, False, False]
-    assert grid.coord_sys == 1
+    assert grid.coord_sys is ESMF.CoordSys.SPH_DEG
     assert grid.rank == 2
     assert_equal(grid.size[0], lon.T.shape)
     assert_equal(grid.upper_bounds[0], lon.T.shape)
@@ -121,8 +102,8 @@ def test_esmf_build_bilinear():
     grid_out = esmf_grid(lon_out.T, lat_out.T)
 
     regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear')
-    assert regrid.unmapped_action == 1
-    assert regrid.regrid_method == 0
+    assert regrid.unmapped_action is ESMF.UnmappedAction.IGNORE
+    assert regrid.regrid_method is ESMF.RegridMethod.BILINEAR
 
     # they should share the same memory
     regrid.srcfield.grid is grid_in
@@ -156,18 +137,19 @@ def test_regrid():
         os.remove(filename)
     regrid = esmf_regrid_build(grid_in, grid_out, 'conservative',
                                filename=filename)
-    assert regrid.regrid_method == 2
+    assert regrid.regrid_method is ESMF.RegridMethod.CONSERVE
 
     # apply regridding using ESMPy's native method
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
 
     rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
-    assert np.max(np.abs(rel_err)) == pytest.approx(0.03126, abs=1e-5)
+    assert np.max(np.abs(rel_err)) < 0.05
 
     # apply regridding using scipy
-    A = read_weights(filename, lon_in.size, lon_out.size)
-    Nlat_out, Nlon_out = lon_out.shape
-    data_out_scipy = apply_weights(A, data_in, Nlat_out, Nlon_out)
+    weights = read_weights(filename, lon_in.size, lon_out.size)
+    shape_in = lon_in.shape
+    shape_out = lon_out.shape
+    data_out_scipy = apply_weights(weights, data_in, shape_in, shape_out)
 
     # must be exactly the same as esmpy's result!
     # TODO: this fails once but I cannot replicate it.
@@ -178,7 +160,7 @@ def test_regrid():
     # TODO: need to test broadcasting with ESMPy backend?
     # We only use Scipy in frontend, and ESMPy is just for backend benchmark
     # However, it is useful to compare performance and show scipy is 3x faster
-    data4D_out = apply_weights(A, data4D_in, Nlat_out, Nlon_out)
+    data4D_out = apply_weights(weights, data4D_in, shape_in, shape_out)
 
     # data over broadcasting dimensions should agree
     assert_almost_equal(data4D_in.mean(axis=(2, 3)),
@@ -222,7 +204,22 @@ def test_regrid_periodic_correct():
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
 
     rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
-    assert np.max(np.abs(rel_err)) == pytest.approx(0.00457, abs=1e-5)
-
+    assert np.max(np.abs(rel_err)) < 0.065
     # clean-up
     esmf_regrid_finalize(regrid)
+
+
+def test_esmf_locstream():
+    lon = np.arange(5)
+    lat = np.arange(5)
+
+    ls = esmf_locstream(lon, lat)
+    assert isinstance(ls, ESMF.LocStream)
+
+    lon2d, lat2d = np.meshgrid(lon, lat)
+    with pytest.raises(ValueError):
+        ls = esmf_locstream(lon2d, lat2d)
+    with pytest.raises(ValueError):
+        ls = esmf_locstream(lon, lat2d)
+    with pytest.raises(ValueError):
+        ls = esmf_locstream(lon2d, lat)

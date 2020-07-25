@@ -132,6 +132,38 @@ def esmf_grid(lon, lat, periodic=False, mask=None):
     return grid
 
 
+def esmf_locstream(lon, lat):
+    '''
+    Create an ESMF.LocStream object, for contrusting ESMF.Field and ESMF.Regrid
+
+    Parameters
+    ----------
+    lon, lat : 1D numpy array
+         Longitute/Latitude of cell centers.
+
+    Returns
+    -------
+    locstream : ESMF.LocStream object
+    '''
+
+    if len(lon.shape) > 1:
+        raise ValueError("lon can only be 1d")
+    if len(lat.shape) > 1:
+        raise ValueError("lat can only be 1d")
+
+    assert lon.shape == lat.shape
+
+    location_count = len(lon)
+
+    locstream = ESMF.LocStream(location_count,
+                               coord_sys=ESMF.CoordSys.SPH_DEG)
+
+    locstream["ESMF:Lon"] = lon.astype(np.dtype('f8'))
+    locstream["ESMF:Lat"] = lat.astype(np.dtype('f8'))
+
+    return locstream
+
+
 def add_corner(grid, lon_b, lat_b):
     '''
     Add corner information to ESMF.Grid for conservative regridding.
@@ -175,7 +207,7 @@ def add_corner(grid, lon_b, lat_b):
 
 
 def esmf_regrid_build(sourcegrid, destgrid, method,
-                      filename=None, extra_dims=None):
+                      filename=None, extra_dims=None, ignore_degenerate=None):
     '''
     Create an ESMF.Regrid object, containing regridding weights.
 
@@ -213,6 +245,10 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
         i.e. following Fortran-like instead of C-like conventions.
         For example, if extra_dims=[Nlev, Ntime], then the data field dimension
         will be [Nlon, Nlat, Nlev, Ntime]
+
+    ignore_degenerate : bool, optional
+        If False (default), raise error if grids contain degenerated cells
+        (i.e. triangles or lines, instead of quadrilaterals)
 
     Returns
     -------
@@ -268,9 +304,9 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     regrid = ESMF.Regrid(sourcefield, destfield, filename=filename,
                          regrid_method=esmf_regrid_method,
                          unmapped_action=ESMF.UnmappedAction.IGNORE,
+                         ignore_degenerate=ignore_degenerate,
                          norm_type=norm_type,
                          src_mask_values=[0], dst_mask_values=[0])
-
     return regrid
 
 
@@ -335,11 +371,15 @@ def esmf_regrid_finalize(regrid):
 
     '''
 
+    regrid.destroy()
     regrid.srcfield.destroy()
     regrid.dstfield.destroy()
-    regrid.destroy()
+    regrid.srcfield.grid.destroy()
+    regrid.dstfield.grid.destroy()
 
     # double check
+    assert regrid.finalized
     assert regrid.srcfield.finalized
     assert regrid.dstfield.finalized
-    assert regrid.finalized
+    assert regrid.srcfield.grid.finalized
+    assert regrid.dstfield.grid.finalized

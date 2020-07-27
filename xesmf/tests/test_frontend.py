@@ -50,7 +50,7 @@ def test_as_2d_mesh():
 methods_list = ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']
 
 @pytest.mark.parametrize("locstream_in,locstream_out,method", [
-                         (False, False, 'conservative'), 
+                         (False, False, 'conservative'),
                          (False, False, 'bilinear'),
                          (False, True, 'bilinear'),
                          (False, False, 'nearest_s2d'),
@@ -283,7 +283,7 @@ def test_regrid_dask_from_locstream():
 
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
 
-    outdata = regridder(ds_locs['lat'].data) 
+    outdata = regridder(ds_locs['lat'].data)
 
     # clean-up
     regridder.clean_weight_file()
@@ -332,7 +332,7 @@ def test_regrid_dataarray_dask_from_locstream():
 
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
 
-    outdata = regridder(ds_locs['lat']) 
+    outdata = regridder(ds_locs['lat'])
 
     # clean-up
     regridder.clean_weight_file()
@@ -384,7 +384,8 @@ def test_build_regridder_with_masks():
         dims=('y', 'x'))
     print(ds_in)
     # 'patch' is too slow to test
-    for method in ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']:
+    for method in ['bilinear', 'conservative', 'conservative_normed',
+                   'nearest_s2d', 'nearest_d2s']:
         regridder = xe.Regridder(ds_in, ds_out, method)
 
         # check screen output

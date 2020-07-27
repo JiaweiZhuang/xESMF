@@ -54,7 +54,7 @@ def warn_lat_range(lat):
 
 def esmf_grid(lon, lat, periodic=False, mask=None):
     '''
-    Create an ESMF.Grid object, for contrusting ESMF.Field and ESMF.Regrid
+    Create an ESMF.Grid object, for constructing ESMF.Field and ESMF.Regrid.
 
     Parameters
     ----------
@@ -71,8 +71,11 @@ def esmf_grid(lon, lat, periodic=False, mask=None):
         Only useful for source grid.
 
     mask : 2D numpy array, optional
-        Grid mask. Follows SCRIP convention where 1 is unmasked and 0 is
-        masked.
+        Grid mask. According to the ESMF convention, masked cells
+        are set to 0 and unmasked cells to 1.
+
+        Shape should be ``(Nlon, Nlat)`` for rectilinear grid,
+        or ``(Nx, Ny)`` for general quadrilateral grid.
 
     Returns
     -------
@@ -118,8 +121,10 @@ def esmf_grid(lon, lat, periodic=False, mask=None):
     # Follows SCRIP convention where 1 is unmasked and 0 is masked.
     # See https://github.com/NCPP/ocgis/blob/61d88c60e9070215f28c1317221c2e074f8fb145/src/ocgis/regrid/base.py#L391-L404
     if mask is not None:
-        grid_mask = np.swapaxes(mask.astype(np.int32), 0, 1)
-        grid_mask = np.where(grid_mask == 0, 0, 1)
+        # remove fractional values
+        mask = np.where(mask == 0, 0, 1)
+        # convert array type to integer (ESMF compat)
+        grid_mask = mask.astype(np.int32)
         if not (grid_mask.shape == lon.shape):
             raise ValueError(
                 "mask must have the same shape as the latitude/longitude"
@@ -285,6 +290,14 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     sourcefield = ESMF.Field(sourcegrid, ndbounds=extra_dims)
     destfield = ESMF.Field(destgrid, ndbounds=extra_dims)
 
+    # ESMF bug? when using locstream objects, options src_mask_values
+    # and dst_mask_values produce runtime errors
+    allow_masked_values = True
+    if isinstance(sourcefield.grid, ESMF.api.locstream.LocStream):
+        allow_masked_values = False
+    if isinstance(destfield.grid, ESMF.api.locstream.LocStream):
+        allow_masked_values = False
+
     # ESMPy will throw an incomprehensive error if the weight file
     # already exists. Better to catch it here!
     if filename is not None:
@@ -301,12 +314,16 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # Calculate regridding weights.
     # Must set unmapped_action to IGNORE, otherwise the function will fail,
     # if the destination grid is larger than the source grid.
-    regrid = ESMF.Regrid(sourcefield, destfield, filename=filename,
-                         regrid_method=esmf_regrid_method,
-                         unmapped_action=ESMF.UnmappedAction.IGNORE,
-                         ignore_degenerate=ignore_degenerate,
-                         norm_type=norm_type,
-                         src_mask_values=[0], dst_mask_values=[0])
+    kwargs=dict(filename=filename,
+                regrid_method=esmf_regrid_method,
+                unmapped_action=ESMF.UnmappedAction.IGNORE,
+                ignore_degenerate=ignore_degenerate,
+                norm_type=norm_type)
+    if allow_masked_values:
+        kwargs.update(dict(src_mask_values=[0], dst_mask_values=[0]))
+
+    regrid = ESMF.Regrid(sourcefield, destfield, **kwargs)
+
     return regrid
 
 

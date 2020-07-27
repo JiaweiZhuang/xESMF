@@ -62,12 +62,14 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
 
     if 'mask' in ds:
         mask = np.asarray(ds['mask'])
-        print(mask.shape)
     else:
         mask = None
 
     # tranpose the arrays so they become Fortran-ordered
-    grid = esmf_grid(lon.T, lat.T, periodic=periodic, mask=mask)
+    if mask is not None:
+        grid = esmf_grid(lon.T, lat.T, periodic=periodic, mask=mask.T)
+    else:
+        grid = esmf_grid(lon.T, lat.T, periodic=periodic, mask=None)
 
     if need_bounds:
         lon_b = np.asarray(ds['lon_b'])
@@ -120,7 +122,7 @@ class Regridder(object):
         ds_in, ds_out : xarray DataSet, or dictionary
             Contain input and output grid coordinates. Look for variables
             ``lon``, ``lat``, and optionally ``lon_b``, ``lat_b`` for
-            add method.
+            conservative methods.
 
             Shape can be 1D (n_lon,) and (n_lat,) for rectilinear grids,
             or 2D (n_y, n_x) for general curvilinear grids.

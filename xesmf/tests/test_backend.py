@@ -223,3 +223,8 @@ def test_esmf_locstream():
         ls = esmf_locstream(lon, lat2d)
     with pytest.raises(ValueError):
         ls = esmf_locstream(lon2d, lat)
+
+    grid_in = esmf_grid(lon_in.T, lat_in.T, periodic=True)
+    regrid = esmf_regrid_build(grid_in, ls, 'bilinear')
+
+    regrid = esmf_regrid_build(ls, grid_in, 'nearest_s2d')

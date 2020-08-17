@@ -1,4 +1,4 @@
-name: test_env
+name: xesmf
 channels:
   - conda-forge
 dependencies:

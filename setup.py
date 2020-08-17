@@ -8,8 +8,8 @@ AUTHOR_EMAIL = 'jiaweizhuang@g.harvard.edu'
 URL = 'https://github.com/pangeo-data/xESMF'
 LICENSE = 'MIT'
 PYTHON_REQUIRES = '>=3.6'
-USE_SCM_VERSION={'version_scheme': 'post-release', 'local_scheme': 'dirty-tag'},
-SETUP_REQUIRES=['setuptools_scm', 'setuptools>=30.3.0'],
+USE_SCM_VERSION={'version_scheme': 'post-release', 'local_scheme': 'dirty-tag'}
+SETUP_REQUIRES=['setuptools_scm', 'setuptools>=30.3.0']
 
 # https://github.com/rtfd/readthedocs.org/issues/5512#issuecomment-475024373
 on_rtd = os.environ.get('READTHEDOCS') == 'True'

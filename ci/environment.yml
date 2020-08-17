@@ -2,12 +2,13 @@ name: xesmf
 channels:
   - conda-forge
 dependencies:
-  - esmpy
-  - xarray
   - dask
+  - esmpy
   - numpy
-  - scipy
+  - pip
   - pytest
+  - scipy
+  - xarray
   - pip:
-    - pytest-cov
-    - codecov
+      - codecov
+      - pytest-cov

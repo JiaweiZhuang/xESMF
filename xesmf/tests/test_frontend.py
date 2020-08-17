@@ -90,8 +90,31 @@ def test_existing_weights():
                                    weights=fn)
     assert regridder_reuse.A.shape == regridder.A.shape
 
+    # this should also work with reuse_weights=True
+    regridder_reuse = xe.Regridder(ds_in, ds_out, method,
+                                   reuse_weights=True, weights=fn)
+    assert regridder_reuse.A.shape == regridder.A.shape
+
     # or can also overwrite it
     xe.Regridder(ds_in, ds_out, method)
+
+    # check legacy args still work
+    regridder = xe.Regridder(ds_in, ds_out, method, filename='wgts.nc')
+    regridder_reuse = xe.Regridder(ds_in, ds_out, method,
+                                   reuse_weights=True,
+                                   filename='wgts.nc')
+    assert regridder_reuse.A.shape == regridder.A.shape
+
+    # check fails on non-existent file
+    with pytest.raises(OSError):
+        regridder_reuse = xe.Regridder(ds_in, ds_out, method,
+                                       reuse_weights=True,
+                                       filename='fakewgts.nc')
+
+    # check fails if no weights are provided
+    with pytest.raises(ValueError):
+        regridder_reuse = xe.Regridder(ds_in, ds_out, method,
+                                       reuse_weights=True)
 
 
 def test_to_netcdf(tmp_path):

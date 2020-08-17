@@ -25,6 +25,7 @@ jobs:
 
       - name: Install xesmf
         run: |
+          conda activate xesmf
           python -m pip install --no-deps -e .
 
       - name: Conda list information
@@ -34,6 +35,7 @@ jobs:
 
       - name: Running tests
         run: |
+          conda activate xesmf
           python -m pytest --cov=./ --cov-report=xml --verbose
 
       - name: Upload coverage to Codecov

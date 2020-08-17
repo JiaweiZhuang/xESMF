@@ -18,8 +18,8 @@ jobs:
         uses: goanpeca/setup-miniconda@v1
         with:
           miniconda-version: "latest"
-          python-version: 3.8
-          environment-file: ci/environment-py${{ matrix.python-version }}.yml
+          python-version: ${{ matrix.python-version }}
+          environment-file: ci/environment.yml
           activate-environment: xesmf
           auto-activate-base: false
 

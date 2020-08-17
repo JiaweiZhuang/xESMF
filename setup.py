@@ -8,7 +8,7 @@ AUTHOR = 'Jiawei Zhuang'
 AUTHOR_EMAIL = 'jiaweizhuang@g.harvard.edu'
 URL = 'https://github.com/JiaweiZhuang/xESMF'
 LICENSE = 'MIT'
-PYTHON_REQUIRES = '>=3.5'
+PYTHON_REQUIRES = '>=3.6'
 
 # https://github.com/rtfd/readthedocs.org/issues/5512#issuecomment-475024373
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
@@ -24,9 +24,9 @@ CLASSIFIERS = [
     'Intended Audience :: Science/Research',
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
     'Topic :: Scientific/Engineering',
 ]
 

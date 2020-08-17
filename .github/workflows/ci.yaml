@@ -24,16 +24,19 @@ jobs:
           auto-activate-base: false
 
       - name: Install xesmf
+        shell: bash -l {0} 
         run: |
           conda activate xesmf
           python -m pip install --no-deps -e .
 
       - name: Conda list information
+        shell: bash -l {0}
         run: |
           conda env list
           conda list
 
       - name: Running tests
+        shell: bash -l {0}
         run: |
           conda activate xesmf
           python -m pytest --cov=./ --cov-report=xml --verbose

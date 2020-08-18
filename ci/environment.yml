@@ -1,0 +1,14 @@
+name: xesmf
+channels:
+  - conda-forge
+dependencies:
+  - dask
+  - esmpy
+  - numpy
+  - pip
+  - pytest
+  - scipy
+  - xarray
+  - pip:
+      - codecov
+      - pytest-cov

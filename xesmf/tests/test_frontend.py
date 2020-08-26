@@ -392,8 +392,6 @@ def test_build_regridder_with_masks():
         assert 'xESMF Regridder' in str(regridder)
         assert method in str(regridder)
 
-        regridder.clean_weight_file()
-
 
 def test_regrid_dataset_from_locstream():
     # xarray.Dataset containing in-memory numpy array

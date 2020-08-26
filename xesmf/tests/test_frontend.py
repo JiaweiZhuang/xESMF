@@ -30,6 +30,7 @@ ds_locs = xr.Dataset()
 ds_locs['lat'] = xr.DataArray(data=[-20, -10, 0, 10], dims=('locations',))
 ds_locs['lon'] = xr.DataArray(data=[0, 5, 10, 15], dims=('locations',))
 
+
 def test_as_2d_mesh():
     # 2D grid should not change
     lon2d = ds_in['lon'].values
@@ -48,6 +49,7 @@ def test_as_2d_mesh():
 
 # 'patch' is too slow to test
 methods_list = ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']
+
 
 @pytest.mark.parametrize("locstream_in,locstream_out,method", [
                          (False, False, 'conservative'),
@@ -75,26 +77,65 @@ def test_build_regridder(method, locstream_in, locstream_out):
     assert 'xESMF Regridder' in str(regridder)
     assert method in str(regridder)
 
-    regridder.clean_weight_file()
-
 
 def test_existing_weights():
     # the first run
     method = 'bilinear'
     regridder = xe.Regridder(ds_in, ds_out, method)
+    fn = regridder.to_netcdf()
 
     # make sure we can reuse weights
-    assert os.path.exists(regridder.filename)
+    assert os.path.exists(fn)
     regridder_reuse = xe.Regridder(ds_in, ds_out, method,
-                                   reuse_weights=True)
+                                   weights=fn)
+    assert regridder_reuse.A.shape == regridder.A.shape
+
+    # this should also work with reuse_weights=True
+    regridder_reuse = xe.Regridder(ds_in, ds_out, method,
+                                   reuse_weights=True, weights=fn)
     assert regridder_reuse.A.shape == regridder.A.shape
 
     # or can also overwrite it
     xe.Regridder(ds_in, ds_out, method)
 
-    # clean-up
-    regridder.clean_weight_file()
-    assert not os.path.exists(regridder.filename)
+    # check legacy args still work
+    regridder = xe.Regridder(ds_in, ds_out, method, filename='wgts.nc')
+    regridder_reuse = xe.Regridder(ds_in, ds_out, method,
+                                   reuse_weights=True,
+                                   filename='wgts.nc')
+    assert regridder_reuse.A.shape == regridder.A.shape
+
+    # check fails on non-existent file
+    with pytest.raises(OSError):
+        regridder_reuse = xe.Regridder(ds_in, ds_out, method,
+                                       reuse_weights=True,
+                                       filename='fakewgts.nc')
+
+    # check fails if no weights are provided
+    with pytest.raises(ValueError):
+        regridder_reuse = xe.Regridder(ds_in, ds_out, method,
+                                       reuse_weights=True)
+
+
+def test_to_netcdf(tmp_path):
+    from xesmf.backend import esmf_grid, esmf_regrid_build
+
+    # Let the frontend write the weights to disk
+    xfn = tmp_path / 'ESMF_weights.nc'
+    method = 'bilinear'
+    regridder = xe.Regridder(ds_in, ds_out, method)
+    regridder.to_netcdf(filename=xfn)
+
+    grid_in = esmf_grid(ds_in['lon'].values.T, ds_in['lat'].values.T)
+    grid_out = esmf_grid(ds_out['lon'].values.T, ds_out['lat'].values.T)
+
+    # Let the ESMPy backend write the weights to disk
+    efn = tmp_path / 'weights.nc'
+    regrid = esmf_regrid_build(grid_in, grid_out, method=method, filename=str(efn))
+
+    x = xr.open_dataset(xfn)
+    e = xr.open_dataset(efn)
+    xr.testing.assert_identical(x, e)
 
 
 def test_conservative_without_bounds():
@@ -110,7 +151,6 @@ def test_build_regridder_from_dict():
     regridder = xe.Regridder({'lon': lon_in, 'lat': lat_in},
                              {'lon': lon_out, 'lat': lat_out},
                              'bilinear')
-    regridder.clean_weight_file()
 
 
 def test_regrid_periodic_wrong():
@@ -123,9 +163,6 @@ def test_regrid_periodic_wrong():
     rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
     assert np.max(np.abs(rel_err)) == 1.0  # some data will be missing
 
-    # clean-up
-    regridder.clean_weight_file()
-
 
 def test_regrid_periodic_correct():
     regridder = xe.Regridder(ds_in, ds_out, 'bilinear', periodic=True)
@@ -135,9 +172,6 @@ def test_regrid_periodic_correct():
     # compare with analytical solution
     rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
     assert np.max(np.abs(rel_err)) < 0.065
-
-    # clean-up
-    regridder.clean_weight_file()
 
 
 def ds_2d_to_1d(ds):
@@ -163,9 +197,6 @@ def test_regrid_with_1d_grid():
     # metadata should be 1D
     assert_equal(dr_out['lon'].values, ds_out_1d['lon'].values)
     assert_equal(dr_out['lat'].values, ds_out_1d['lat'].values)
-
-    # clean-up
-    regridder.clean_weight_file()
 
 
 # TODO: consolidate (regrid method, input data types) combination
@@ -202,9 +233,6 @@ def test_regrid_dataarray():
     xr.testing.assert_identical(dr_out_4D['time'], ds_in['time'])
     xr.testing.assert_identical(dr_out_4D['lev'], ds_in['lev'])
 
-    # clean-up
-    regridder.clean_weight_file()
-
 
 def test_regrid_dataarray_to_locstream():
     # xarray.DataArray containing in-memory numpy array
@@ -216,9 +244,6 @@ def test_regrid_dataarray_to_locstream():
 
     # DataArray and numpy array should lead to the same result
     assert_equal(outdata.squeeze(), dr_out.values)
-
-    # clean-up
-    regridder.clean_weight_file()
 
     with pytest.raises(ValueError):
         regridder = xe.Regridder(ds_in, ds_locs, 'conservative', locstream_out=True)
@@ -234,9 +259,6 @@ def test_regrid_dataarray_from_locstream():
 
     # DataArray and numpy array should lead to the same result
     assert_equal(outdata, dr_out.values)
-
-    # clean-up
-    regridder.clean_weight_file()
 
     with pytest.raises(ValueError):
         regridder = xe.Regridder(ds_locs, ds_in, 'bilinear', locstream_in=True)
@@ -262,9 +284,6 @@ def test_regrid_dask():
     rel_err = (outdata.compute() - outdata_ref) / outdata_ref
     assert np.max(np.abs(rel_err)) < 0.05
 
-    # clean-up
-    regridder.clean_weight_file()
-
 
 def test_regrid_dask_to_locstream():
     # chunked dask array (no xarray metadata)
@@ -274,9 +293,6 @@ def test_regrid_dask_to_locstream():
     indata = ds_in_chunked['data4D'].data
     outdata = regridder(indata)
 
-    # clean-up
-    regridder.clean_weight_file()
-
 
 def test_regrid_dask_from_locstream():
     # chunked dask array (no xarray metadata)
@@ -284,9 +300,6 @@ def test_regrid_dask_from_locstream():
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
 
     outdata = regridder(ds_locs['lat'].data)
-
-    # clean-up
-    regridder.clean_weight_file()
 
 
 def test_regrid_dataarray_dask():
@@ -311,9 +324,6 @@ def test_regrid_dataarray_dask():
     assert_equal(dr_out['lat'].values, ds_out['lat'].values)
     assert_equal(dr_out['lon'].values, ds_out['lon'].values)
 
-    # clean-up
-    regridder.clean_weight_file()
-
 
 def test_regrid_dataarray_dask_to_locstream():
     # xarray.DataArray containing chunked dask array
@@ -323,9 +333,6 @@ def test_regrid_dataarray_dask_to_locstream():
     dr_in = ds_in_chunked['data4D']
     dr_out = regridder(dr_in)
 
-    # clean-up
-    regridder.clean_weight_file()
-
 
 def test_regrid_dataarray_dask_from_locstream():
     # xarray.DataArray containing chunked dask array
@@ -333,9 +340,6 @@ def test_regrid_dataarray_dask_from_locstream():
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
 
     outdata = regridder(ds_locs['lat'])
-
-    # clean-up
-    regridder.clean_weight_file()
 
 
 def test_regrid_dataset():
@@ -365,17 +369,12 @@ def test_regrid_dataset():
     assert_equal(ds_result['lat'].values, ds_out['lat'].values)
     assert_equal(ds_result['lon'].values, ds_out['lon'].values)
 
-    # clean-up
-    regridder.clean_weight_file()
-
 
 def test_regrid_dataset_to_locstream():
     # xarray.Dataset containing in-memory numpy array
 
     regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
     ds_result = regridder(ds_in)
-    # clean-up
-    regridder.clean_weight_file()
 
 
 def test_build_regridder_with_masks():
@@ -401,8 +400,6 @@ def test_regrid_dataset_from_locstream():
 
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
     outdata = regridder(ds_locs)
-    # clean-up
-    regridder.clean_weight_file()
 
 
 def test_ds_to_ESMFlocstream():

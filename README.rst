@@ -14,7 +14,7 @@ It is
   and provides a simple, high-level API, compatible with xarray_ as well as basic numpy arrays.
 - **Fast**: It is faster than ESMPy's original Fortran regridding engine in serial case, and also supports dask_ for `out-of-core, parallel computation <http://xarray.pydata.org/en/stable/dask.html>`_.
 
-Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_, or `play with example notebooks on Binder <https://mybinder.org/v2/gh/JiaweiZhuang/xESMF/master?filepath=doc%2Fnotebooks>`_.
+Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_, or `play with example notebooks on Binder <https://mybinder.org/v2/gh/pangeo-data/xESMF/master?filepath=doc%2Fnotebooks>`_.
 
 For new users, I also recommend reading `How to ask for help <https://xesmf.readthedocs.io/en/latest/#how-to-ask-for-help>`_ and `How to support xESMF <https://xesmf.readthedocs.io/en/latest/#how-to-support-xesmf>`_.
 
@@ -27,12 +27,13 @@ For new users, I also recommend reading `How to ask for help <https://xesmf.read
    :target: https://badge.fury.io/py/xesmf
    :alt: pypi package
 
-.. |Build Status| image:: https://api.travis-ci.org/JiaweiZhuang/xESMF.svg
-   :target: https://travis-ci.org/JiaweiZhuang/xESMF
-   :alt: travis-ci build status
+.. |Build Status| image:: https://img.shields.io/github/workflow/status/pangeo-data/xESMF/CI?logo=github
+   :target: https://github.com/pangeo-data/xESMF/actions
+   :alt: github-ci build status
 
-.. |codecov| image:: https://codecov.io/gh/JiaweiZhuang/xESMF/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/JiaweiZhuang/xESMF
+
+.. |codecov| image:: https://codecov.io/gh/pangeo-data/xESMF/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/pangeo-data/xESMF
    :alt: code coverage
 
 .. |docs| image:: https://readthedocs.org/projects/xesmf/badge/?version=latest
@@ -40,7 +41,7 @@ For new users, I also recommend reading `How to ask for help <https://xesmf.read
    :alt: documentation status
 
 .. |license| image:: https://img.shields.io/badge/License-MIT-blue.svg
-   :target: https://github.com/JiaweiZhuang/xESMF/blob/master/LICENSE
+   :target: https://github.com/pangeo-data/xESMF/blob/master/LICENSE
    :alt: license
 
 .. |DOI| image:: https://zenodo.org/badge/101709596.svg
@@ -48,5 +49,5 @@ For new users, I also recommend reading `How to ask for help <https://xesmf.read
    :alt: DOI
    
 .. |Binder| image:: https://mybinder.org/badge_logo.svg
-   :target: https://mybinder.org/v2/gh/JiaweiZhuang/xESMF/master?filepath=doc%2Fnotebooks
+   :target: https://mybinder.org/v2/gh/pangeo-data/xESMF/master?filepath=doc%2Fnotebooks
    :alt: binder

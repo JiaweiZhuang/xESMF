@@ -31,9 +31,21 @@
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.autodoc', 'numpydoc', 'sphinx.ext.autosummary',
-              'sphinx.ext.mathjax',
-              'nbsphinx', 'IPython.sphinxext.ipython_console_highlighting']
+extensions = [
+    'sphinx.ext.autodoc',
+    'numpydoc',
+    'sphinx.ext.extlinks',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.mathjax',
+    'nbsphinx',
+    'IPython.sphinxext.ipython_console_highlighting'
+]
+
+extlinks = {
+    "issue": ("https://github.com/pangeo-data/xESMF/issues/%s", "GH"),
+    "pull": ("https://github.com/pangeo-data/xESMF/pull/%s", "PR"),
+}
+
 # IPython.sphinxext.ipython_console_highlighting is required for anaconda.
 # See the issue: https://github.com/spatialaudio/nbsphinx/issues/24
 

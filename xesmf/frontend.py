@@ -60,8 +60,16 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     lat = np.asarray(ds['lat'])
     lon, lat = as_2d_mesh(lon, lat)
 
+    if 'mask' in ds:
+        mask = np.asarray(ds['mask'])
+    else:
+        mask = None
+
     # tranpose the arrays so they become Fortran-ordered
-    grid = esmf_grid(lon.T, lat.T, periodic=periodic)
+    if mask is not None:
+        grid = esmf_grid(lon.T, lat.T, periodic=periodic, mask=mask.T)
+    else:
+        grid = esmf_grid(lon.T, lat.T, periodic=periodic, mask=None)
 
     if need_bounds:
         lon_b = np.asarray(ds['lon_b'])
@@ -115,17 +123,21 @@ class Regridder(object):
         ds_in, ds_out : xarray DataSet, or dictionary
             Contain input and output grid coordinates. Look for variables
             ``lon``, ``lat``, and optionally ``lon_b``, ``lat_b`` for
-            conservative method.
+            conservative methods.
 
             Shape can be 1D (n_lon,) and (n_lat,) for rectilinear grids,
             or 2D (n_y, n_x) for general curvilinear grids.
             Shape of bounds should be (n+1,) or (n_y+1, n_x+1).
+
+            If either dataset includes a 2d mask variable, that will also be
+            used to inform the regridding.
 
         method : str
             Regridding method. Options are
 
             - 'bilinear'
             - 'conservative', **need grid corner information**
+            - 'conservative_normed', **need grid corner information**
             - 'patch'
             - 'nearest_s2d'
             - 'nearest_d2s'
@@ -171,7 +183,7 @@ class Regridder(object):
         """
 
         # record basic switches
-        if method == 'conservative':
+        if method in ['conservative', 'conservative_normed']:
             self.need_bounds = True
             periodic = False  # bound shape will not be N+1 for periodic grid
         else:

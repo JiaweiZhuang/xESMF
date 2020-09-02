@@ -48,6 +48,7 @@ Contents
    notebooks/Compare_algorithms
    notebooks/Reuse_regridder
    notebooks/Using_LocStream
+   notebooks/Masking
    large_problems_on_HPC
 
 .. toctree::

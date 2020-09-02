@@ -224,6 +224,11 @@ def test_esmf_locstream():
     with pytest.raises(ValueError):
         ls = esmf_locstream(lon2d, lat)
 
+    grid_in = esmf_grid(lon_in.T, lat_in.T, periodic=True)
+    regrid = esmf_regrid_build(grid_in, ls, 'bilinear')
+
+    regrid = esmf_regrid_build(ls, grid_in, 'nearest_s2d')
+
 
 def test_read_weights(tmp_path):
     fn = tmp_path / "weights.nc"
@@ -257,3 +262,4 @@ def test_read_weights(tmp_path):
     with pytest.raises(ValueError):
         ds = xr.open_dataset(fn)
         read_weights(ds.drop_vars("col"), lon_in.size, lon_out.size)
+

@@ -75,7 +75,7 @@ Check out this `tutorial on using Docker with Anaconda
 how-docker-can-help-you-become-a-more-effective-data-scientist-7fc048ef91d5>`_.
 
 This problem is being investigated.
-See `this issue <https://github.com/conda-forge/esmpy-feedstock/issues/8>`_.
+See `this other issue <https://github.com/conda-forge/esmpy-feedstock/issues/8>`_.
 
 Install development version from GitHub repo
 --------------------------------------------

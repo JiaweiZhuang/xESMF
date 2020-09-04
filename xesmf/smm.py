@@ -127,9 +127,16 @@ def add_nans_to_weights(weights):
     
     Parameters
     ----------
-    weights : ...
-"""
-# Taken from @trondkr and adapted by @raphaeldussin to use `lil`.
+    weights : scipy.sparse.coo_matrix
+      Sparse weights matrix.
+    
+    Returns
+    -------
+    weights : scipy.sparse.coo_matrix
+      Sparse weights matrix.
+    """
+    
+    # Taken from @trondkr and adapted by @raphaeldussin to use `lil`.
     # lil matrix is better than CSR when changing sparsity
     M = weights.tolil()
     # replace empty rows by one NaN value at element 0 (arbitrary)

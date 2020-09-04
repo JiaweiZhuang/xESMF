@@ -122,7 +122,10 @@ def test_esmf_extrapolation():
     # without extrapolation, the first and last lines/columns = 0
     assert data_out_esmpy[0, 0] == 0
 
-    regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear', extrap='inverse_dist', extrap_num_pnts=3, extrap_exp=1)
+    regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear',
+                               extrap_method='inverse_dist',
+                               extrap_num_src_pnts=3,
+                               extrap_dist_exponent=1)
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
     # the 3 closest points in data_in are 2.010, 2.005, and 1.992. The result should be roughly equal to 2.0
     assert np.round(data_out_esmpy[0, 0], 1) == 2.0

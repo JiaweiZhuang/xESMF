@@ -8,6 +8,7 @@ dependencies:
   - pip
   - pytest
   - scipy
+  - shapely
   - xarray
   - pip:
       - codecov

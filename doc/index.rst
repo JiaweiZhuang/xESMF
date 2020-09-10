@@ -55,6 +55,7 @@ Contents
    :maxdepth: 1
    :caption: Technical notes
 
+   changes
    notebooks/Backend
 
 .. toctree::

@@ -14,9 +14,9 @@ It is
   and provides a simple, high-level API, compatible with xarray_ as well as basic numpy arrays.
 - **Fast**: It is faster than ESMPy's original Fortran regridding engine in serial case, and also supports dask_ for `out-of-core, parallel computation <http://xarray.pydata.org/en/stable/dask.html>`_.
 
-Please see `online documentation <http://xesmf.readthedocs.io/en/latest/>`_, or `play with example notebooks on Binder <https://mybinder.org/v2/gh/pangeo-data/xESMF/master?filepath=doc%2Fnotebooks>`_.
+Please see `online documentation <http://pangeo-xesmf.readthedocs.io/en/latest/>`_, or `play with example notebooks on Binder <https://mybinder.org/v2/gh/pangeo-data/xESMF/master?filepath=doc%2Fnotebooks>`_.
 
-For new users, I also recommend reading `How to ask for help <https://xesmf.readthedocs.io/en/latest/#how-to-ask-for-help>`_ and `How to support xESMF <https://xesmf.readthedocs.io/en/latest/#how-to-support-xesmf>`_.
+For new users, I also recommend reading `How to ask for help <https://pangeo-xesmf.readthedocs.io/en/latest/#how-to-ask-for-help>`_ and `How to support xESMF <https://pangeo-xesmf.readthedocs.io/en/latest/#how-to-support-xesmf>`_.
 
 .. _ESMF: https://www.earthsystemcog.org/projects/esmf/
 .. _ESMPy: https://www.earthsystemcog.org/projects/esmpy/
@@ -36,8 +36,8 @@ For new users, I also recommend reading `How to ask for help <https://xesmf.read
    :target: https://codecov.io/gh/pangeo-data/xESMF
    :alt: code coverage
 
-.. |docs| image:: https://readthedocs.org/projects/xesmf/badge/?version=latest
-   :target: http://xesmf.readthedocs.io/en/latest/?badge=latest
+.. |docs| image:: https://readthedocs.org/projects/pangeo-xesmf/badge/?version=latest
+   :target: http://pangeo-xesmf.readthedocs.io/en/latest/?badge=latest
    :alt: documentation status
 
 .. |license| image:: https://img.shields.io/badge/License-MIT-blue.svg

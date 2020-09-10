@@ -112,6 +112,25 @@ def test_esmf_build_bilinear():
     esmf_regrid_finalize(regrid)
 
 
+def test_esmf_extrapolation():
+
+    grid_in = esmf_grid(lon_in.T, lat_in.T)
+    grid_out = esmf_grid(lon_out.T, lat_out.T)
+
+    regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear')
+    data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
+    # without extrapolation, the first and last lines/columns = 0
+    assert data_out_esmpy[0, 0] == 0
+
+    regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear',
+                               extrap_method='inverse_dist',
+                               extrap_num_src_pnts=3,
+                               extrap_dist_exponent=1)
+    data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
+    # the 3 closest points in data_in are 2.010, 2.005, and 1.992. The result should be roughly equal to 2.0
+    assert np.round(data_out_esmpy[0, 0], 1) == 2.0
+
+
 def test_regrid():
 
     # use conservative regridding as an example,

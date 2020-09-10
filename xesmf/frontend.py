@@ -7,10 +7,12 @@ import xarray as xr
 import os
 import warnings
 
-from . backend import (esmf_grid, esmf_locstream, add_corner,
+from . backend import (esmf_grid, esmf_locstream, esmf_mesh, add_corner,
                        esmf_regrid_build, esmf_regrid_finalize)
 
 from . smm import read_weights, apply_weights
+
+from . util import split_polygons_and_holes
 
 try:
     import dask.array as da
@@ -110,17 +112,46 @@ def ds_to_ESMFlocstream(ds):
     return locstream, (1,) + lon.shape
 
 
+def polys_to_ESMFmesh(polys):
+    """
+    Convert a sequence of shapely Polygons to a ESMF.Mesh object.
+
+    MultiPolygons are split in their polygon parts.
+
+    Parameters
+    ----------
+    polys : sequence of shapely Polygon or MultiPolygon
+
+    Returns
+    -------
+    exterior : ESMF.Mesh
+        A mesh where elements are the exterior rings of the polygons
+    holes    : ESMF.Mesh or None
+        A mesh where elements are the holes of the polygons, None if there were no holes.
+    """
+    # Test for overlaps
+    for i in range(len(polys) + 1):
+        for j in range(i + 1, len(polys)):
+            if polys[i].overlaps(polys[j]):
+                raise ValueError(f"Polygon can not overlap (#{i} and #{j}).")
+    ext, holes = split_polygons_and_holes(polys)
+    if len(holes) > 0:
+        warnings.warn('Some passed polygons have holes, those will be ignored.')
+    return esmf_mesh(ext), (1, len(ext))
+
+
 class Regridder(object):
     def __init__(self, ds_in, ds_out, method, periodic=False,
                  filename=None, reuse_weights=False,
                  weights=None, ignore_degenerate=None,
-                 locstream_in=False, locstream_out=False):
+                 locstream_in=False, locstream_out=False,
+                 polylist_out=False):
         """
         Make xESMF regridder
 
         Parameters
         ----------
-        ds_in, ds_out : xarray DataSet, or dictionary
+        ds_in, ds_out : xarray DataSet, or dictionary, or sequence of Polygons
             Contain input and output grid coordinates. Look for variables
             ``lon``, ``lat``, and optionally ``lon_b``, ``lat_b`` for
             conservative methods.
@@ -131,6 +162,9 @@ class Regridder(object):
 
             If either dataset includes a 2d mask variable, that will also be
             used to inform the regridding.
+
+            ds_out can be a sequence of Polygons. In that case the output is 1D.
+            Holes in polygons are ignored and MultiPolygons are split in their polygon parts.
 
         method : str
             Regridding method. Options are
@@ -176,6 +210,9 @@ class Regridder(object):
         locstream_out: bool, optional
             output is a LocStream (list of locations)
 
+        polylist_out: bool, optional
+            output is a sequence of Polygons
+
         Returns
         -------
         regridder : xESMF regridder object
@@ -198,11 +235,14 @@ class Regridder(object):
 
         methods_avail_ls_in = ['nearest_s2d', 'nearest_d2s']
         methods_avail_ls_out = ['bilinear', 'patch'] + methods_avail_ls_in
+        methods_avail_poly_out = ["nearest_d2s", "conservative", "conservative_normed"]
 
         if locstream_in and self.method not in methods_avail_ls_in:
             raise ValueError(f'locstream input is only available for method in {methods_avail_ls_in}')
         if locstream_out and self.method not in methods_avail_ls_out:
             raise ValueError(f'locstream output is only available for method in {methods_avail_ls_out}')
+        if polylist_out and self.method not in methods_avail_poly_out:
+            raise ValueError(f'polygon list output is only available for method in {methods_avail_poly_out}')
 
         # construct ESMF grid, with some shape checking
         if locstream_in:
@@ -214,6 +254,14 @@ class Regridder(object):
                                                      )
         if locstream_out:
             self._grid_out, shape_out = ds_to_ESMFlocstream(ds_out)
+        elif polylist_out:
+            self._grid_out, shape_out = polys_to_ESMFmesh(ds_out)
+            # create fake grid in the same type as a locstream:
+            ds_out = {
+                'lon': self._grid_out.coords[1][0],
+                'lat': self._grid_out.coords[1][1],
+            }
+            self.locstream_out = True  # Output will act the same
         else:
             self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
                                                        need_bounds=self.need_bounds
@@ -417,7 +465,6 @@ class Regridder(object):
 
         if self.locstream_in and not self.locstream_out:
             temp_horiz_dims = ['dummy_new'] + temp_horiz_dims
-
 
         dr_out = xr.apply_ufunc(
             self.regrid_numpy, dr_in,

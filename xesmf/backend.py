@@ -17,6 +17,7 @@ So it would be helpful to catch some common mistakes in Python level.
 
 import numpy as np
 import ESMF
+from shapely.geometry import MultiPolygon
 import warnings
 import os
 
@@ -211,6 +212,44 @@ def add_corner(grid, lon_b, lat_b):
     lat_b_pointer[...] = lat_b
 
 
+def esmf_mesh(polys):
+    """
+    Create an ESMF.Mesh object from a list of polygons.
+
+    All exterior ring points are added to the mesh as nodes and each polygon
+    is added as an element, with the polygon centroid as the element's coordinates.
+
+    Parameters
+    ----------
+    polys : sequence of shapely Polygon
+        There must be no overlap between any of the polygons, holes are ignored.
+
+    Returns
+    -------
+    mesh : ESMF.Mesh
+        A mesh where each polygon is represented as an Element.
+    """
+    node_coords = []
+    element_types = []
+    element_conn = []
+    element_coords = []
+    for poly in polys:
+        ring = poly.exterior
+        element_coords.append(poly.centroid.xy)
+        element_types.append(len(ring.coords) - 1)
+        for coord in (ring.coords[:-1] if ring.is_ccw else ring.coords[:0:-1]):
+            if coord not in node_coords:
+                node_coords.append(coord)
+            element_conn.append(node_coords.index(coord))
+
+    mesh = ESMF.Mesh(2, 2, coord_sys=ESMF.CoordSys.SPH_DEG)
+    node_num = len(node_coords)
+    mesh.add_nodes(node_num, np.arange(node_num) + 1, np.array(node_coords).ravel(), np.zeros(node_num))
+    elem_num = len(element_types)
+    mesh.add_elements(elem_num, np.arange(elem_num) + 1, np.array(element_types), np.array(element_conn), element_coords=np.array(element_coords).ravel() + 1)
+    return mesh
+
+
 def esmf_regrid_build(sourcegrid, destgrid, method,
                       filename=None, extra_dims=None, ignore_degenerate=None):
     '''
@@ -218,7 +257,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
 
     Parameters
     ----------
-    sourcegrid, destgrid : ESMF.Grid object
+    sourcegrid, destgrid : ESMF.Grid or ESMF.Mesh object
         Source and destination grids.
 
         Should create them by ``esmf_grid()``
@@ -281,7 +320,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
         if not sourcegrid.has_corners:
             raise ValueError('source grid has no corner information. '
                              'cannot use conservative regridding.')
-        if not destgrid.has_corners:
+        if not isinstance(destgrid, ESMF.Mesh) and not destgrid.has_corners:
             raise ValueError('destination grid has no corner information. '
                              'cannot use conservative regridding.')
 
@@ -289,7 +328,10 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # Extra dimensions are specified when constructing the Field objects,
     # not when constructing the Regrid object later on.
     sourcefield = ESMF.Field(sourcegrid, ndbounds=extra_dims)
-    destfield = ESMF.Field(destgrid, ndbounds=extra_dims)
+    if isinstance(destgrid, ESMF.Mesh):
+        destfield = ESMF.Field(destgrid, meshloc=ESMF.MeshLoc.ELEMENT, ndbounds=extra_dims)
+    else:
+        destfield = ESMF.Field(destgrid, ndbounds=extra_dims)
 
     # ESMF bug? when using locstream objects, options src_mask_values
     # and dst_mask_values produce runtime errors

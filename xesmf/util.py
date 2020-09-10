@@ -1,4 +1,5 @@
 import numpy as np
+from shapely.geometry import MultiPolygon, Polygon
 import xarray as xr
 import warnings
 
@@ -96,3 +97,40 @@ def grid_global(d_lon, d_lat):
                       'might not cover the globe uniformally'.format(d_lat))
 
     return grid_2d(-180, 180, d_lon, -90, 90, d_lat)
+
+
+def _flatten_poly_list(polys):
+    """Iterator flattening MultiPolygons."""
+    for poly in polys:
+        if isinstance(poly, MultiPolygon):
+            warnings.warn("MultiPolygons were found in the list of polygons, they will be flattened out.", RuntimeWarning)
+            for sub_poly in poly:
+                yield sub_poly
+        else:
+            yield poly
+
+
+def split_polygons_and_holes(polys):
+    """Split the exterior boundaries and the holes for a list of polygons.
+
+    If MultiPolygons are encountered in the list, they are flattened out.
+
+    Parameters
+    ----------
+    polys : Sequence of shapely Polygons or MultiPolygons
+
+    Returns
+    -------
+    exteriors : list of Polygon
+        The polygons without any holes
+    holes : list of Polygon
+        Holes of the polygons as polygons
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter('once', RuntimeWarning)
+        exteriors = []
+        holes = []
+        for poly in _flatten_poly_list(polys):
+            exteriors.append(Polygon(poly.exterior))
+            holes.extend(map(Polygon, poly.interiors))
+        return exteriors, holes

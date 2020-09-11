@@ -1,4 +1,6 @@
 numpydoc
 ipython
+Pygments>=2.6
 nbsphinx
+sphinx==3.2.1
 sphinx_rtd_theme

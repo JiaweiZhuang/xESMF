@@ -257,16 +257,19 @@ class Regridder(object):
 
         methods_avail_ls_in = ['nearest_s2d', 'nearest_d2s']
         methods_avail_ls_out = ['bilinear', 'patch'] + methods_avail_ls_in
-        methods_avail_poly_regular = ["nearest_s2d", "bilinear", "patch"]
 
         if locstream_in and self.method not in methods_avail_ls_in:
             raise ValueError(f'locstream input is only available for method in {methods_avail_ls_in}')
         if locstream_out and self.method not in methods_avail_ls_out:
             raise ValueError(f'locstream output is only available for method in {methods_avail_ls_out}')
-        if self.method in methods_avail_poly_regular:
+        if polylist_in or polylist_out:
             if (
-                (polylist_out and any([len(p.exterior.coords) - 1 > 4 for p in ds_out]))
-                or (polylist_in and any([len(p.exterior.coords) - 1 > 4 for p in ds_in]))
+                any([len(p.exterior.coords) - 1 > 4 for p in (ds_out if polylist_out else ds_in)])
+                and (
+                    self.method in ["bilinear", "patch"]
+                    or (self.method == 'nearest_s2d' and polylist_out)
+                    or (self.method == 'nearest_d2s' and polylist_in)
+                )
             ):
                 # This contradicts the documentation of ESMF, but doesn't seem to work anyway!
                 raise ValueError(f'polygon list input/output is only available for {method} if all polygons have 4 or fewer nodes.')

@@ -246,7 +246,7 @@ def esmf_mesh(polys):
     node_num = len(node_coords)
     mesh.add_nodes(node_num, np.arange(node_num) + 1, np.array(node_coords).ravel(), np.zeros(node_num))
     elem_num = len(element_types)
-    mesh.add_elements(elem_num, np.arange(elem_num) + 1, np.array(element_types), np.array(element_conn), element_coords=np.array(element_coords).ravel() + 1)
+    mesh.add_elements(elem_num, np.arange(elem_num) + 1, np.array(element_types), np.array(element_conn), element_coords=np.array(element_coords).ravel())
     return mesh
 
 
@@ -360,7 +360,10 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # ESMF.Regrid requires Field (Grid+data) as input, not just Grid.
     # Extra dimensions are specified when constructing the Field objects,
     # not when constructing the Regrid object later on.
-    sourcefield = ESMF.Field(sourcegrid, ndbounds=extra_dims)
+    if isinstance(sourcegrid, ESMF.Mesh):
+        sourcefield = ESMF.Field(sourcegrid, meshloc=ESMF.MeshLoc.ELEMENT, ndbounds=extra_dims)
+    else:
+        sourcefield = ESMF.Field(sourcegrid, ndbounds=extra_dims)
     if isinstance(destgrid, ESMF.Mesh):
         destfield = ESMF.Field(destgrid, meshloc=ESMF.MeshLoc.ELEMENT, ndbounds=extra_dims)
     else:

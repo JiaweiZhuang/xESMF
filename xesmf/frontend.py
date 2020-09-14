@@ -3,6 +3,7 @@ Frontend for xESMF, exposed to users.
 '''
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 import os
 import warnings
@@ -147,7 +148,7 @@ class Regridder(object):
                  extrap_num_src_pnts=None,
                  weights=None, ignore_degenerate=None,
                  locstream_in=False, locstream_out=False,
-                 polylist_out=False):
+                 polylist_in=False, polylist_out=False):
         """
         Make xESMF regridder
 
@@ -256,18 +257,26 @@ class Regridder(object):
 
         methods_avail_ls_in = ['nearest_s2d', 'nearest_d2s']
         methods_avail_ls_out = ['bilinear', 'patch'] + methods_avail_ls_in
-        methods_avail_poly_out = ["nearest_d2s", "conservative", "conservative_normed"]
+        methods_avail_poly_regular = ["nearest_s2d", "bilinear", "patch"]
 
         if locstream_in and self.method not in methods_avail_ls_in:
             raise ValueError(f'locstream input is only available for method in {methods_avail_ls_in}')
         if locstream_out and self.method not in methods_avail_ls_out:
             raise ValueError(f'locstream output is only available for method in {methods_avail_ls_out}')
-        if polylist_out and self.method not in methods_avail_poly_out:
-            raise ValueError(f'polygon list output is only available for method in {methods_avail_poly_out}')
+        if self.method in methods_avail_poly_regular:
+            if (
+                (polylist_out and any([len(p.exterior.coords) - 1 > 4 for p in ds_out]))
+                or (polylist_in and any([len(p.exterior.coords) - 1 > 4 for p in ds_in]))
+            ):
+                # This contradicts the documentation of ESMF, but doesn't seem to work anyway!
+                raise ValueError(f'polygon list input/output is only available for {method} if all polygons have 4 or fewer nodes.')
 
         # construct ESMF grid, with some shape checking
         if locstream_in:
             self._grid_in, shape_in = ds_to_ESMFlocstream(ds_in)
+        elif polylist_in:
+            self._grid_in, shape_in = polys_to_ESMFmesh(ds_in)
+            self.locstream_in = True  # Input will act the same
         else:
             self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
                                                      need_bounds=self.need_bounds,
@@ -434,7 +443,6 @@ class Regridder(object):
               (n_time, n_lev, n_y, n_x)
 
         """
-
         if isinstance(indata, np.ndarray):
             return self.regrid_numpy(indata)
         elif isinstance(indata, dask_array_type):

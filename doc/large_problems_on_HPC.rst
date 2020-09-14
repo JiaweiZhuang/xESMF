@@ -1,5 +1,13 @@
 .. _largeproblems-label:
 
+.. |polarstereo| image:: images/elevation_southpolarstero.png
+  :width: 600
+  :alt: elevation in polar stereographic
+
+.. |regular| image:: images/elevation_regulargrid.png
+  :width: 600
+  :alt: elevation on regular lat/lon grid
+
 Solving large problems using HPC
 ================================
 
@@ -7,12 +15,21 @@ In some cases, the sizes of the source and target grids lead to weights that eit
 too long to compute or can't fit into memory on a regular desktop/laptop machine. But fear not,
 there are solutions to solve large regridding problems, provided you have access to a High
 Performance Computing machine. Your ESMF installation (from conda or equivalent) comes with
-command line tools (ESMF_RegridWeightGen and ESMF_Regrid) that can be executed in parallel with
+command line tools (`ESMF_RegridWeightGen and ESMF_Regrid <http://www.earthsystemmodeling.org/esmf_releases/public/ESMF_8_0_0/ESMF_refdoc/node3.html>`_) that can be executed in parallel with
 MPI. This allows very large regridding to be performed in minutes on hundred of compute cores.
+Using these tools, we are able to regrid data at 500 meters resolution (13300x13300 pts) from 
+a South Polar Stereographic projection to a 15' regular longitude/latitude grid (6720x86400 pts).
+The original:
+
+|polarstereo|
+
+and after regridding:
+
+|regular|
+
 Although these tools are very performant, they lack critical documentation which makes them
 hard to understand and operate. We're going to try to bridge those gaps with some real-life 
 examples.
-
 The roadblocks that you are most likely to find on your way are related to netcdf attributes
 required by the ESMF tools. Error messages are not very informative and one may need to read the
 source code to figure out what the problem is. The first **trick** you need to know is that
@@ -137,7 +154,7 @@ mpirun in it will not work on your HPC system because it hasn't been set up prop
 The solution is to install mpi4py from scratch and customize its mpi.cfg file to your MPI libraries
 specifications. The block to add to mpi.cfg should look like this:
 
-.. code-block::
+.. code-block:: bash
 
   [gaea-gnu]
   mpi_dir              = /opt/cray/pe/mpt/7.7.11/gni/mpich-gnu/8.2
@@ -150,7 +167,7 @@ specifications. The block to add to mpi.cfg should look like this:
 
 And then recompile mpi4py from scratch:
 
-.. code-block::
+.. code-block:: bash
 
     wget https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.0.3.tar.gz
     tar -zxf mpi4py-3.0.3.tar.gz
@@ -159,4 +176,3 @@ And then recompile mpi4py from scratch:
     pushd mpi4py-3.0.3
     python setup.py build --mpi=gaea-gnu
     python setup.py install
-

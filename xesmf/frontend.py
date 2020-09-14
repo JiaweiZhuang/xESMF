@@ -10,7 +10,7 @@ import warnings
 from . backend import (esmf_grid, esmf_locstream, esmf_mesh, add_corner,
                        esmf_regrid_build, esmf_regrid_finalize)
 
-from . smm import read_weights, apply_weights
+from . smm import read_weights, apply_weights, add_nans_to_weights
 
 from . util import split_polygons_and_holes
 
@@ -329,6 +329,10 @@ class Regridder(object):
 
         # Convert weights, whatever their format, to a sparse coo matrix
         self.weights = read_weights(weights, self.n_in, self.n_out)
+
+        # replace zeros by NaN in mask
+        if 'mask' in ds_out:
+            self.weights = add_nans_to_weights(self.weights)
 
         # follows legacy logic of writing weights if filename is provided
         if filename is not None and not reuse_weights:

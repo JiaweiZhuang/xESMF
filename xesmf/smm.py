@@ -6,6 +6,7 @@ import xarray as xr
 import scipy.sparse as sps
 import warnings
 from pathlib import Path
+import numpy as np
 
 
 def read_weights(weights, n_in, n_out):
@@ -115,3 +116,34 @@ def apply_weights(weights, indata, shape_in, shape_out):
     outdata = outdata_flat.reshape(
         [*extra_shape, shape_out[0], shape_out[1]])
     return outdata
+
+
+def add_nans_to_weights(weights):
+    """Add NaN in empty rows of the regridding weights sparse matrix.
+    
+    By default, empty rows in the weights sparse matrix are interpreted as zeroes. This can become problematic 
+    when the field being interpreted has legitimate null values. This function inserts NaN values in each row to 
+    make sure empty weights are propagated as NaNs instead of zeros. 
+    
+    Parameters
+    ----------
+    weights : scipy.sparse.coo_matrix
+      Sparse weights matrix.
+    
+    Returns
+    -------
+    weights : scipy.sparse.coo_matrix
+      Sparse weights matrix.
+    """
+    
+    # Taken from @trondkr and adapted by @raphaeldussin to use `lil`.
+    # lil matrix is better than CSR when changing sparsity
+    M = weights.tolil()
+    # replace empty rows by one NaN value at element 0 (arbitrary)
+    # so that remapped element become NaN instead of zero
+    for krow in range(len(M.rows)):
+        M.rows[krow] = [0] if M.rows[krow] == [] else M.rows[krow]
+        M.data[krow] = [np.NaN] if M.data[krow] == [] else M.data[krow]
+    # update regridder weights (in COO)
+    weights = sps.coo_matrix(M)
+    return weights

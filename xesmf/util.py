@@ -101,16 +101,15 @@ def grid_global(d_lon, d_lat):
 
 def _flatten_poly_list(polys):
     """Iterator flattening MultiPolygons."""
-    for poly in polys:
+    for i, poly in enumerate(polys):
         if isinstance(poly, MultiPolygon):
-            warnings.warn("MultiPolygons were found in the list of polygons, they will be flattened out.", RuntimeWarning)
             for sub_poly in poly:
-                yield sub_poly
+                yield (i, sub_poly)
         else:
-            yield poly
+            yield (i, poly)
 
 
-def split_polygons_and_holes(polys):
+def split_polygons_and_holes(polys, return_idx=False, warn_multi=True):
     """Split the exterior boundaries and the holes for a list of polygons.
 
     If MultiPolygons are encountered in the list, they are flattened out.
@@ -118,19 +117,44 @@ def split_polygons_and_holes(polys):
     Parameters
     ----------
     polys : Sequence of shapely Polygons or MultiPolygons
+    return_idx : bool
+      If True, returns the index of the polygon in `polys` of each returned
+      single polygon and hole. Defaults to False.
+    warn_multi : bool
+      If True (default), raises a Warning if MultiPolygons were encountered.
 
     Returns
     -------
-    exteriors : list of Polygon
+    exteriors : list of Polygons
         The polygons without any holes
-    holes : list of Polygon
+    holes : list of Polygons
         Holes of the polygons as polygons
+    i_ext : list of integers
+       The index in `polys` of each polygon in `exteriors`.
+       Returned if `return_idx` is True.
+    i_hol : list of integers
+       The index in `polys` of the owner of each hole in `holes`.
+       Returned if `return_idx` is True.
     """
-    with warnings.catch_warnings():
-        warnings.simplefilter('once', RuntimeWarning)
-        exteriors = []
-        holes = []
-        for poly in _flatten_poly_list(polys):
-            exteriors.append(Polygon(poly.exterior))
-            holes.extend(map(Polygon, poly.interiors))
-        return exteriors, holes
+    exteriors = []
+    holes = []
+    i_ext = []
+    i_hol = []
+    for (i, poly) in _flatten_poly_list(polys):
+        exteriors.append(Polygon(poly.exterior))
+        i_ext.append(i)
+        holes.extend(map(Polygon, poly.interiors))
+        i_hol.extend([i] * len(poly.interiors))
+    if warn_multi and len(exteriors) > len(polys):
+        warnings.warn("MultiPolygons were found in the list of polygons, they will be flattened out.", RuntimeWarning)
+    if return_idx:
+        return exteriors, holes, i_ext, i_hol
+    return exteriors, holes
+
+
+def max_polygon_size(polys):
+    """Maximum number of nodes in a list of polygons."""
+    N = 0
+    for i, p in _flatten_poly_list(polys):
+        N = max(N, len(p.exterior.coords) - 1)
+    return N

@@ -4,6 +4,7 @@ Frontend for xESMF, exposed to users.
 
 import numpy as np
 import pandas as pd
+import scipy.sparse as sps
 import xarray as xr
 import os
 import warnings
@@ -11,9 +12,9 @@ import warnings
 from . backend import (esmf_grid, esmf_locstream, esmf_mesh, add_corner,
                        esmf_regrid_build, esmf_regrid_finalize)
 
-from . smm import read_weights, apply_weights, add_nans_to_weights
+from . smm import read_weights, apply_weights, add_nans_to_weights, _combine_weight_columns
 
-from . util import split_polygons_and_holes
+from . util import split_polygons_and_holes, max_polygon_size
 
 try:
     import dask.array as da
@@ -264,7 +265,7 @@ class Regridder(object):
             raise ValueError(f'locstream output is only available for method in {methods_avail_ls_out}')
         if polylist_in or polylist_out:
             if (
-                any([len(p.exterior.coords) - 1 > 4 for p in (ds_out if polylist_out else ds_in)])
+                max_polygon_size(ds_out if polylist_out else ds_in) > 4
                 and (
                     self.method in ["bilinear", "patch"]
                     or (self.method == 'nearest_s2d' and polylist_out)
@@ -616,3 +617,50 @@ class Regridder(object):
         ds.to_netcdf(filename)
         return filename
 
+
+def spatial_averager(ds_in, polys, ignore_holes=False):
+    """Average `ds_in` for each polygon in `polys`.
+
+    Compared to simple regridding, here `MultiPolygons` are treated as single `locations`.
+
+    Parameters
+    ----------
+    ds_in : xr.DataArray or xr.Dataset
+      xarray object defining the grid and the variables to average. Averages are done
+      using the `conservative` regridding method, so grid corners must be included in
+      the input data.
+    polys : sequence of shapely Polygons or MultiPolygons or pd.Series.
+      Sequence of polygons over which to average ds_in.
+    ignore_holes : bool
+      Whether to ignore holes in polygons.
+      Default (True) is to substract the weight of holes from the weight of the polygon.
+
+    Returns
+    -------
+    Regridder
+      Regridder object with custom-computed weights and 1D output.
+    """
+    # Split all (multi-)polygons into single polygons and holes. Keep track of owners.
+    exts, holes, i_ext, i_hol = split_polygons_and_holes(polys, return_idx=True, warn_multi=False)
+    owners = np.array(i_ext + i_hol)
+
+    # Get weights for single polygons and holes
+    # Stack everything together
+    reg_ext = Regridder(exts, ds_in, 'conservative', polylist_in=True)
+    if len(holes) > 0:
+        reg_holes = Regridder(holes, ds_in, 'conservative', polylist_in=True)
+        w_all = sps.hstack((reg_ext.weights.tocsc(), -reg_holes.weights.tocsc()))
+    else:
+        w_all = reg_ext.weights.tocsc()
+
+    # Combine weights of same owner and normalize
+    weights = _combine_weight_columns(w_all, owners)
+    weights = weights.multiply(1 / weights.sum(axis=0))
+    weights = weights.tocoo().T
+
+    # Create fake poly list that conserves the center coordinates
+    dummy_polys = [poly.centroid.buffer(0.1) for poly in polys]
+
+    # Regridder with custom-computed weights and dummy out grid
+    # And perform regridding.
+    return Regridder(ds_in, dummy_polys, 'conservative', weights=weights, polylist_out=True)

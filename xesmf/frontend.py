@@ -618,49 +618,106 @@ class Regridder(object):
         return filename
 
 
-def spatial_averager(ds_in, polys, ignore_holes=False):
-    """Average `ds_in` for each polygon in `polys`.
+class SpatialAverager(Regridder):
+    def __init__(self, ds_in, polys, ignore_holes=False,
+                 filename=None, reuse_weights=False,
+                 weights=None, polylist_in=False, ignore_degenerate=False):
+        """Special Regridder object for performing polygon averages of grids.
 
-    Compared to simple regridding, here `MultiPolygons` are treated as single `locations`.
+        Compared to simple regridding, this object only accepts 2D grids as input and
+        polygons as output, forces the `conservative` method and
+        treats multi-part geometries are as single `locations` instead of splitting them.
 
-    Parameters
-    ----------
-    ds_in : xr.DataArray or xr.Dataset
-      xarray object defining the grid and the variables to average. Averages are done
-      using the `conservative` regridding method, so grid corners must be included in
-      the input data.
-    polys : sequence of shapely Polygons or MultiPolygons or pd.Series.
-      Sequence of polygons over which to average ds_in.
-    ignore_holes : bool
-      Whether to ignore holes in polygons.
-      Default (True) is to substract the weight of holes from the weight of the polygon.
+        Parameters
+        ----------
+        ds_in : xr.DataArray or xr.Dataset or dictionary
+            Contain input and output grid coordinates. Look for variables
+            ``lon``, ``lat``, ``lon_b`` and ``lat_b``.
 
-    Returns
-    -------
-    Regridder
-      Regridder object with custom-computed weights and 1D output.
-    """
-    # Split all (multi-)polygons into single polygons and holes. Keep track of owners.
-    exts, holes, i_ext, i_hol = split_polygons_and_holes(polys, return_idx=True, warn_multi=False)
-    owners = np.array(i_ext + i_hol)
+            Optionnaly looks for ``mask``, in which case  the ESMF convention is used,
+            where masked values are identified by 0, and non-masked values by 1.
 
-    # Get weights for single polygons and holes
-    # Stack everything together
-    reg_ext = Regridder(exts, ds_in, 'conservative', polylist_in=True)
-    if len(holes) > 0:
-        reg_holes = Regridder(holes, ds_in, 'conservative', polylist_in=True)
-        w_all = sps.hstack((reg_ext.weights.tocsc(), -reg_holes.weights.tocsc()))
-    else:
-        w_all = reg_ext.weights.tocsc()
+            Shape can be 1D (n_lon,) and (n_lat,) for rectilinear grids,
+            or 2D (n_y, n_x) for general curvilinear grids.
+            Shape of bounds should be (n+1,) or (n_y+1, n_x+1).
 
-    # Combine weights of same owner and normalize
-    weights = _combine_weight_columns(w_all, owners)
-    weights = weights.multiply(1 / weights.sum(axis=0))
-    weights = weights.tocoo().T
+        polys : sequence of shapely Polygons and MultiPolygons
+            Sequence of polygons over which to average ds_in.
 
-    # Create fake poly list that conserves the center coordinates
-    dummy_polys = [poly.centroid.buffer(0.1) for poly in polys]
+        ignore_holes : bool
+            Whether to ignore holes in polygons.
+            Default (True) is to substract the weight of holes from the weight of the polygon.
 
-    # Regridder with custom-computed weights and dummy out grid
-    # And perform regridding.
-    return Regridder(ds_in, dummy_polys, 'conservative', weights=weights, polylist_out=True)
+        filename : str, optional
+            Name for the weight file. The default naming scheme is::
+
+                spatialavg_{Ny_in}x{Nx_in}_{Npoly_out}.nc
+
+            e.g. spatialavg_400x600_30.nc
+
+        reuse_weights : bool, optional
+            Whether to read existing weight file to save computing time.
+            False by default (i.e. re-compute, not reuse).
+
+        weights : None, coo_matrix, dict, str, Dataset, Path,
+            Regridding weights, stored as
+              - a scipy.sparse COO matrix,
+              - a dictionary with keys `row_dst`, `col_src` and `weights`,
+              - an xarray Dataset with data variables `col`, `row` and `S`,
+              - or a path to a netCDF file created by ESMF.
+            If None, compute the weights.
+
+        ignore_degenerate : bool, optional
+            If False (default), raise error if grids contain degenerated cells
+            (i.e. triangles or lines, instead of quadrilaterals)
+        """
+
+        if not reuse_weights and weights is None:
+            # Split all (multi-)polygons into single polygons and holes. Keep track of owners.
+            exts, holes, i_ext, i_hol = split_polygons_and_holes(polys, return_idx=True, warn_multi=False)
+            owners = np.array(i_ext + i_hol)
+
+            # Get weights for single polygons and holes
+            # Stack everything together
+            reg_ext = Regridder(exts, ds_in, 'conservative', polylist_in=True, ignore_degenerate=ignore_degenerate)
+            if len(holes) > 0:
+                reg_holes = Regridder(holes, ds_in, 'conservative', polylist_in=True, ignore_degenerate=ignore_degenerate)
+                w_all = sps.hstack((reg_ext.weights.tocsc(), -reg_holes.weights.tocsc()))
+            else:
+                w_all = reg_ext.weights.tocsc()
+
+            # Combine weights of same owner and normalize
+            weights = _combine_weight_columns(w_all, owners)
+            weights = weights.multiply(1 / weights.sum(axis=0))
+            weights = weights.tocoo().T
+
+        # Create fake poly list that conserves the center coordinates
+        dummy_polys = [poly.centroid.buffer(0.1) for poly in polys]
+
+        # Regridder with custom-computed weights and dummy out grid
+        # And perform regridding.
+        return super().__init__(ds_in, dummy_polys, 'conservative', weights=weights,
+                                polylist_out=True, filename=filename, reuse_weights=reuse_weights,
+                                ignore_degenerate=ignore_degenerate)
+
+    def _get_default_filename(self):
+        # e.g. bilinear_400x600_300x400.nc
+        filename = 'spatialavg_{0}x{1}_{2}.nc'.format(
+            self.shape_in[0], self.shape_in[1], self.n_out
+        )
+
+        return filename
+
+    def __repr__(self):
+        info = ('xESMF SpatialAverager \n'
+                'Weight filename:            {} \n'
+                'Reuse pre-computed weights? {} \n'
+                'Input grid shape:           {} \n'
+                'Output list length:         {} \n'
+                .format(self.filename,
+                        self.reuse_weights,
+                        self.shape_in,
+                        self.n_out)
+                )
+
+        return info

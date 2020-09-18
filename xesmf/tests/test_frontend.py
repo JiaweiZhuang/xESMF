@@ -1,10 +1,12 @@
 import os
 import numpy as np
+from shapely.geometry import Polygon, MultiPolygon
 import xarray as xr
 import xesmf as xe
 from xesmf.frontend import as_2d_mesh
+import warnings
 
-from numpy.testing import assert_equal, assert_almost_equal
+from numpy.testing import assert_equal, assert_almost_equal, assert_allclose
 import pytest
 
 # same test data as test_backend.py, but here we can use xarray DataSet
@@ -29,6 +31,28 @@ ds_in_chunked = ds_in.chunk({'time': 3, 'lev': 2})
 ds_locs = xr.Dataset()
 ds_locs['lat'] = xr.DataArray(data=[-20, -10, 0, 10], dims=('locations',))
 ds_locs['lon'] = xr.DataArray(data=[0, 5, 10, 15], dims=('locations',))
+
+
+# For polygon handling and spatial average
+ds_savg = xr.Dataset(
+    coords={
+        'lat': (('lat',), [0.5, 1.5]),
+        'lon': (('lon',), [0.5, 1.5]),
+        'lat_b': (('lat_b',), [0, 1, 2]),
+        'lon_b': (('lon_b',), [0, 1, 2])
+    },
+    data_vars={'abc': (('lon', 'lat'), [[1, 2], [3, 4]])}
+)
+polys = [
+    Polygon([[0.5, 0.5], [0.5, 1.5], [1.5, 0.5]]),  # Simple triangle polygon
+    MultiPolygon([Polygon([[0.25, 1.25], [0.25, 1.75], [0.75, 1.75], [0.75, 1.25]]),
+                  Polygon([[1.25, 1.25], [1.25, 1.75], [1.75, 1.75], [1.75, 1.25]])]),  # Multipolygon on 3 and 4
+    Polygon([[0, 0], [0, 1], [2, 1], [2, 0]], holes=[[[0.5, 0.25], [0.5, 0.75], [1., 0.75], [1., 0.25]]]),  # Simple polygon covering 1 and 2 with hole spanning on both
+    Polygon([[1, 1], [1, 3], [3, 3], [3, 1]]),  # Polygon partially outside, covering a part of 4
+    Polygon([[3, 3], [3, 4], [4, 4], [4, 3]]),  # Polygon totally outside
+    Polygon([[0, 0], [0.5, 0.5], [0, 1], [0.5, 1.5], [0, 2], [2, 2], [1.5, 1.5], [2, 1], [1.5, 0.5], [2, 0]])  # Long multifaceted polygon
+]
+exps_polys = [1.75, 3.5, 1.5716, 4, 0, 2.5]
 
 
 def test_as_2d_mesh():
@@ -413,3 +437,56 @@ def test_ds_to_ESMFlocstream():
     ds_bogus['lon'] = ds_locs['lon']
     with pytest.raises(ValueError):
         locstream, shape = ds_to_ESMFlocstream(ds_bogus)
+
+
+@pytest.mark.parametrize("poly,exp", list(zip(polys, exps_polys)))
+def test_spatial_averager(poly, exp):
+    savg = xe.SpatialAverager(ds_savg, [poly])
+    out = savg(ds_savg.abc)
+    assert_allclose(out, exp, rtol=1e-3)
+
+
+def test_regridding_polyout():
+    reg = xe.Regridder(ds_savg, [polys[1], polys[2]], 'conservative', polylist_out=True)
+    out = reg(ds_savg.abc)
+    assert_allclose(out, [3, 4, 1.5], rtol=1e-3)
+
+
+def test_regridding_polyin():
+    reg = xe.Regridder([polys[0]], ds_savg, 'conservative', polylist_in=True)
+    out = reg(np.array([100]))
+    assert_allclose(out, [[25, 12.5], [12.5, 0]], rtol=1e-3, atol=1e-2)
+
+
+@pytest.mark.parametrize("method", ['patch', 'bilinear', 'nearest_d2s'])
+def test_polyin_illegalmethods(method):
+    # some methods are unavailable with more than 4 nodes
+    with pytest.raises(ValueError, match="polygon list input is only available for"):
+        xe.Regridder([polys[-1]], ds_savg, method, polylist_in=True)
+
+
+@pytest.mark.parametrize("method", ['patch', 'bilinear', 'nearest_s2d'])
+def test_polyout_illegalmethods(method):
+    # some methods are unavailable with more than 4 nodes
+    with pytest.raises(ValueError, match="polygon list output is only available for"):
+        xe.Regridder(ds_savg, [polys[-1]], method, polylist_out=True)
+    xe.Regridder(ds_savg, [polys[0]], method, polylist_out=True)
+
+
+def test_polys_to_ESMFmesh():
+    import ESMF
+    from xesmf.frontend import polys_to_ESMFmesh
+
+    # No overlap but multi + holes
+    with warnings.catch_warnings(record=True) as rec:
+        mesh, shape = polys_to_ESMFmesh([polys[1], polys[2], polys[4]])
+
+    assert isinstance(mesh, ESMF.Mesh)
+    assert shape == (1, 4)
+    assert len(rec) == 2
+    assert 'MultiPolygons were found' in rec[0].message.args[0]
+    assert 'Some passed polygons have holes' in rec[1].message.args[0]
+
+    # Fails because of poly overlap
+    with pytest.raises(ValueError, match="Polygon can not overlap"):
+        mesh, shape = polys_to_ESMFmesh([polys[0], polys[1]])

@@ -258,22 +258,27 @@ class Regridder(object):
 
         methods_avail_ls_in = ['nearest_s2d', 'nearest_d2s']
         methods_avail_ls_out = ['bilinear', 'patch'] + methods_avail_ls_in
+        methods_avail_poly = ["conservative", "conservative_normed"]
 
         if locstream_in and self.method not in methods_avail_ls_in:
             raise ValueError(f'locstream input is only available for method in {methods_avail_ls_in}')
         if locstream_out and self.method not in methods_avail_ls_out:
             raise ValueError(f'locstream output is only available for method in {methods_avail_ls_out}')
-        if polylist_in or polylist_out:
-            if (
-                max_polygon_size(ds_out if polylist_out else ds_in) > 4
-                and (
-                    self.method in ["bilinear", "patch"]
-                    or (self.method == 'nearest_s2d' and polylist_out)
-                    or (self.method == 'nearest_d2s' and polylist_in)
-                )
-            ):
-                # This contradicts the documentation of ESMF, but doesn't seem to work anyway!
-                raise ValueError(f'polygon list input/output is only available for {method} if all polygons have 4 or fewer nodes.')
+        if (
+            polylist_in
+            and (
+                self.method in ["bilinear", "patch"]
+                or (max_polygon_size(ds_in) > 4 and self.method == 'nearest_d2s')
+            )
+        ):
+            raise ValueError(f'polygon list input is only available for {methods_avail_poly}, and for nearest_d2s if all polygons have 4 or fewer nodes.')
+        if (
+            polylist_out
+            and max_polygon_size(ds_out) > 4
+            and self.method in ["bilinear", "patch", "nearest_s2d"]
+        ):
+            # This contradicts the documentation of ESMF, but doesn't seem to work anyway!
+            raise ValueError(f'polygon list output is only available for {methods_avail_poly}, and for bilinear, nearest_s2d or patch if all polygons have 4 or fewer nodes.')
 
         # construct ESMF grid, with some shape checking
         if locstream_in:

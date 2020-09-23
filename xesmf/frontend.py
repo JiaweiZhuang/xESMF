@@ -624,7 +624,7 @@ class Regridder(object):
 class SpatialAverager(Regridder):
     def __init__(self, ds_in, polys, ignore_holes=False,
                  filename=None, reuse_weights=False,
-                 weights=None, polylist_in=False, ignore_degenerate=False):
+                 weights=None, ignore_degenerate=False):
         """Special Regridder object for performing polygon averages of grids.
 
         Compared to simple regridding, this object only accepts 2D grids as input and

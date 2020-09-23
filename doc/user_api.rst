@@ -8,6 +8,11 @@ Regridder
     :members:
     :special-members: __init__, __call__
 
+.. autoclass:: xesmf.frontend.SpatialAverager
+    :members:
+    :special-members: __init__,
+
+
 util
 ====
 

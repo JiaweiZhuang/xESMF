@@ -1,4 +1,6 @@
 numpydoc
+geopandas
+descartes
 ipython
 Pygments>=2.6
 nbsphinx

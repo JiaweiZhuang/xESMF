@@ -39,6 +39,7 @@ Contents
    notebooks/Curvilinear_grid
    notebooks/Pure_numpy
    notebooks/Dataset
+   notebooks/Spatial_Averaging
 
 .. toctree::
    :maxdepth: 1

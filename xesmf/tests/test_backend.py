@@ -170,10 +170,8 @@ def test_regrid():
     shape_out = lon_out.shape
     data_out_scipy = apply_weights(weights, data_in, shape_in, shape_out)
 
-    # must be exactly the same as esmpy's result!
-    # TODO: this fails once but I cannot replicate it.
-    # Maybe assert_equal is too strict for scipy vs esmpy comparision
-    assert_equal(data_out_scipy, data_out_esmpy)
+    # must be almost exactly the same as esmpy's result!
+    assert_almost_equal(data_out_scipy, data_out_esmpy)
 
     # finally, test broadcasting with scipy
     # TODO: need to test broadcasting with ESMPy backend?

@@ -625,7 +625,7 @@ class SpatialAverager(Regridder):
     def __init__(self, ds_in, polys, ignore_holes=False,
                  filename=None, reuse_weights=False,
                  weights=None, ignore_degenerate=False):
-        """Special Regridder object for performing polygon averages of grids.
+        """Regridder object for performing polygon averages of grids.
 
         Compared to simple regridding, this object only accepts 2D grids as input and
         polygons as output, forces the `conservative` method and
@@ -683,7 +683,7 @@ class SpatialAverager(Regridder):
             # Get weights for single polygons and holes
             # Stack everything together
             reg_ext = Regridder(exts, ds_in, 'conservative', polylist_in=True, ignore_degenerate=ignore_degenerate)
-            if len(holes) > 0:
+            if len(holes) > 0 and not ignore_holes:
                 reg_holes = Regridder(holes, ds_in, 'conservative', polylist_in=True, ignore_degenerate=ignore_degenerate)
                 w_all = sps.hstack((reg_ext.weights.tocsc(), -reg_holes.weights.tocsc()))
             else:

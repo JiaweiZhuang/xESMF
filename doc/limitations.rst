@@ -6,9 +6,9 @@ Current limitations
 Irregular meshes
 ----------------
 
-xESMF supports quadrilateral grids and has very limited support of weirder grids
-like triangular or hexagonal meshes. Meshes are implemented in xESMF through
-the support of lists of shapely polygons.
+xESMF supports quadrilateral grids and has limited support of
+triangular or hexagonal meshes. Meshes are implemented in xESMF through
+the lists of shapely polygons.
 
 ESMPy is actually able to deal with general irregular meshes
 (`example <http://www.earthsystemmodeling.org/esmf_releases/

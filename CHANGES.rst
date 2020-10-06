@@ -1,7 +1,7 @@
 What's new
 ==========
 
-0.4.x (01-10-2020)
+0.4.0 (01-10-2020)
 ------------------
 The git repo is now hosted by pangeo-data (https://github.com/pangeo-data/xESMF)
 

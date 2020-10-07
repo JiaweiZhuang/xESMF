@@ -126,6 +126,9 @@ def polys_to_ESMFmesh(polys):
     -------
     exterior : ESMF.Mesh
         A mesh where elements are the exterior rings of the polygons
+    tuple
+        The shape of the mesh : (1, N_elements)
+
     """
     ext, holes, _, _ = split_polygons_and_holes(polys)
     if len(holes) > 0:
@@ -142,7 +145,7 @@ class BaseRegridder(object):
         """
         Make xESMF BaseRegridder. Don't use this class directly.
         For Grid/Locstream cases use "Regridder" and for polygon
-        averaging use SpatialAverager.
+        averaging over a grid use SpatialAverager.
 
         Parameters
         ----------
@@ -626,9 +629,12 @@ class SpatialAverager(BaseRegridder):
                  weights=None, ignore_degenerate=False):
         """Regridder object for performing polygon averages of grids.
 
+        The average is exact and not an approximation.
+
         Compared to simple regridding, this object only accepts 2D grids as input and
-        polygons as output, forces the `conservative` method and
-        treats multi-part geometries are as single `locations` instead of splitting them.
+        polygons as output, forces the `conservative` method.
+        It treats multi-part geometries as single `locations`, combining the weights
+        from their constituent polygons.
 
         Parameters
         ----------

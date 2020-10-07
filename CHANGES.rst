@@ -1,6 +1,16 @@
 What's new
 ==========
 
+0.5.0 (11-11-2020)
+------------------
+
+New features
+~~~~~~~~~~~~
+* Create `ESMFpy.Mesh` objects from `shapely.polygons` (:pull:`24`). By `Pascal Bourgault <https://github.com/aulemahal>`_
+* New class `SpatialAverager` offers user-friendly mechanism to average a field over a polygon. (:pull:`24`) By `Pascal Bourgault <https://github.com/aulemahal>`_
+
+
+
 0.4.0 (01-10-2020)
 ------------------
 The git repo is now hosted by pangeo-data (https://github.com/pangeo-data/xESMF)
@@ -24,7 +34,7 @@ New features
   `conservative_normed` to properly handle normalization (:pull:`1`).
   By `Raphael Dussin <https://github.com/raphaeldussin>`_
 * Add support for list of polygons as regridding arguments. They are transformed as ESMF Meshes,
-  ignoring holes and flattening multi-part geometries. For input data or output, they act the 
+  ignoring holes and flattening multi-part geometries. For input data or output, they act the
   same a locstreams. For now, not all regridding methods supported by ESMF when using Meshes
   are supported.
 * Add the `SpatialAverager` object to perform spatial averaging of 2D grids using polygons. Understands holes and multi-part geometries.

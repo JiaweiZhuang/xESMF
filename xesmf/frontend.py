@@ -626,15 +626,23 @@ class SpatialAverager(BaseRegridder):
     def __init__(self, ds_in, polys, ignore_holes=False,
                  periodic=False,
                  filename=None, reuse_weights=False,
-                 weights=None, ignore_degenerate=False):
-        """Regridder object for performing polygon averages of grids.
+                 weights=None, ignore_degenerate=False,
+                 geom_dim_name="geom"):
+        """Compute the exact average of a gridded array over a geometry.
 
-        The average is exact and not an approximation.
+        This uses the ESMF `conservative` regridding method to compute and apply weights
+        mapping a 2D field unto geometries defined by polygons. The `conservative` method
+        preserves the areal average of the input field. That is, *the value at each output
+        grid cell is the average input value over the output grid area*. Here, the output
+        grid cells are not rectangles defined by four corners, but polygons defined by
+        multiple vertices (`ESMF.Mesh` objects). The regridding weights thus compute the
+        areal-average of the input grid over each polygon.
 
-        Compared to simple regridding, this object only accepts 2D grids as input and
-        polygons as output, forces the `conservative` method.
-        It treats multi-part geometries as single `locations`, combining the weights
-        from their constituent polygons.
+        For multi-parts geometries (shapely.MultiPolygon), weights are computed for each
+        geometry, then added, to compute the average over all geometries.
+
+        When polygons include holes, the weights over the holes can either be substracted,
+        or ignored.
 
         Parameters
         ----------
@@ -650,7 +658,7 @@ class SpatialAverager(BaseRegridder):
             Shape of bounds should be (n+1,) or (n_y+1, n_x+1).
 
         polys : sequence of shapely Polygons and MultiPolygons
-            Sequence of polygons over which to average ds_in.
+            Sequence of polygons over which to average `ds_in`.
 
         ignore_holes : bool
             Whether to ignore holes in polygons.
@@ -678,15 +686,30 @@ class SpatialAverager(BaseRegridder):
         ignore_degenerate : bool, optional
             If False (default), raise error if grids contain degenerated cells
             (i.e. triangles or lines, instead of quadrilaterals)
+
+        self.geom_dim_name : str
+            Name of dimension along which averages for each polygon are stored.
+
+        Returns
+        -------
+        xarray.DataArray
+          Average over polygons along `geom_dim_name` dimension. The `lon` and
+          `lat` coordinates are the polygon centroid coordinates. 
+
+        References
+        ----------
+        This approach is inspired by `OCGIS <https://github.com/NCPP/ocgis>`_.
         """
         self.ignore_holes = ignore_holes
         self.polys = polys
         self.ignore_degenerate = ignore_degenerate
+        self.geom_dim_name = geom_dim_name
 
         grid_in, shape_in = ds_to_ESMFgrid(ds_in, need_bounds=True, periodic=periodic)
         self.grid_in = grid_in
 
-        # Create a fake output locstream so that the regridder knows the output shape and coords.
+        # Create an output locstream so that the regridder knows the output shape and coords.
+        # Latitude and longitude coordinates are the polygon centroid.
         poly_centers = [poly.centroid.xy for poly in polys]
         ds_out = xr.Dataset(
             data_vars={'lon': (('poly',), [c[0][0] for c in poly_centers]), 'lat': (('poly',), [c[1][0] for c in poly_centers])}
@@ -752,11 +775,11 @@ class SpatialAverager(BaseRegridder):
         out = out.squeeze(dim='dummy')
 
         # rename dimension name to match output grid
-        out = out.rename(locations='polygon')
+        out = out.rename(locations=self.geom_dim_name)
 
         # append output horizontal coordinate values
         # extra coordinates are automatically tracked by apply_ufunc
-        out.coords['lon'] = xr.DataArray(self._lon_out, dims=('polygon',))
-        out.coords['lat'] = xr.DataArray(self._lat_out, dims=('polygon',))
+        out.coords['lon'] = xr.DataArray(self._lon_out, dims=(self.geom_dim_name,))
+        out.coords['lat'] = xr.DataArray(self._lat_out, dims=(self.geom_dim_name,))
         out.attrs['regrid_method'] = self.method
         return out

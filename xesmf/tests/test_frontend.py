@@ -441,9 +441,11 @@ def test_ds_to_ESMFlocstream():
 
 @pytest.mark.parametrize("poly,exp", list(zip(polys, exps_polys)))
 def test_spatial_averager(poly, exp):
-    savg = xe.SpatialAverager(ds_savg, [poly])
+    savg = xe.SpatialAverager(ds_savg, [poly], geom_dim_name="my_geom")
     out = savg(ds_savg.abc)
     assert_allclose(out, exp, rtol=1e-3)
+
+    assert "my_geom" in out.dims
 
 
 def test_polys_to_ESMFmesh():

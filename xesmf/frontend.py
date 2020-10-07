@@ -224,7 +224,7 @@ class BaseRegridder(object):
 
         # some logic about reusing weights with either filename or weights args
         if reuse_weights and (filename is None) and (weights is None):
-            raise ValueError("to reuse weights, you need to provide either filename or weights")
+            raise ValueError("To reuse weights, you need to provide either filename or weights.")
 
         if not reuse_weights and weights is None:
             weights = self._compute_weights()  # Dictionary of weights
@@ -679,29 +679,12 @@ class SpatialAverager(BaseRegridder):
             If False (default), raise error if grids contain degenerated cells
             (i.e. triangles or lines, instead of quadrilaterals)
         """
+        self.ignore_holes = ignore_holes
+        self.polys = polys
+        self.ignore_degenerate = ignore_degenerate
+
         grid_in, shape_in = ds_to_ESMFgrid(ds_in, need_bounds=True, periodic=periodic)
-
-        if not reuse_weights and weights is None:
-            # Split all (multi-)polygons into single polygons and holes. Keep track of owners.
-            exts, holes, i_ext, i_hol = split_polygons_and_holes(polys)
-            owners = np.array(i_ext + i_hol)
-
-            mesh_ext, shape_ext = polys_to_ESMFmesh(exts)
-
-            # Get weights for single polygons and holes
-            # Stack everything together
-            reg_ext = BaseRegridder(mesh_ext, grid_in, 'conservative', ignore_degenerate=ignore_degenerate)
-            if len(holes) > 0 and not ignore_holes:
-                mesh_holes, shape_holes = polys_to_ESMFmesh(holes)
-                reg_holes = BaseRegridder(mesh_holes, grid_in, 'conservative', ignore_degenerate=ignore_degenerate)
-                w_all = sps.hstack((reg_ext.weights.tocsc(), -reg_holes.weights.tocsc()))
-            else:
-                w_all = reg_ext.weights.tocsc()
-
-            # Combine weights of same owner and normalize
-            weights = _combine_weight_columns(w_all, owners)
-            weights = weights.multiply(1 / weights.sum(axis=0))
-            weights = weights.tocoo().T
+        self.grid_in = grid_in
 
         # Create a fake output locstream so that the regridder knows the output shape and coords.
         poly_centers = [poly.centroid.xy for poly in polys]
@@ -712,11 +695,36 @@ class SpatialAverager(BaseRegridder):
         self._lon_out = ds_out.lon
         self._lat_out = ds_out.lat
 
-        # Regridder with custom-computed weights and dummy out grid
-        # And perform regridding.
+        # BaseRegridder with custom-computed weights and dummy out grid
         super().__init__(grid_in, locstream_out, 'conservative', weights=weights,
                          filename=filename, reuse_weights=reuse_weights,
                          ignore_degenerate=ignore_degenerate)
+
+    def _compute_weights(self):
+        """Return weight sparse matrix."""
+
+        # Split all (multi-)polygons into single polygons and holes. Keep track of owners.
+        exts, holes, i_ext, i_hol = split_polygons_and_holes(self.polys)
+        owners = np.array(i_ext + i_hol)
+
+        mesh_ext, shape_ext = polys_to_ESMFmesh(exts)
+
+        # Get weights for single polygons and holes
+        # Stack everything together
+        reg_ext = BaseRegridder(mesh_ext, self.grid_in, 'conservative', ignore_degenerate=self.ignore_degenerate)
+        if len(holes) > 0 and not self.ignore_holes:
+            mesh_holes, shape_holes = polys_to_ESMFmesh(holes)
+            reg_holes = BaseRegridder(mesh_holes, self.grid_in, 'conservative',
+                                      ignore_degenerate=self.ignore_degenerate)
+            w_all = sps.hstack((reg_ext.weights.tocsc(), -reg_holes.weights.tocsc()))
+        else:
+            w_all = reg_ext.weights.tocsc()
+
+        # Combine weights of same owner and normalize
+        weights = _combine_weight_columns(w_all, owners)
+        weights = weights.multiply(1 / weights.sum(axis=0))
+        return weights.tocoo().T
+
 
     def _get_default_filename(self):
         # e.g. bilinear_400x600_300x400.nc

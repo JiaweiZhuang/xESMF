@@ -1,4 +1,3 @@
-from ESMF import Grid, LocStream, Mesh
 import numpy as np
 from shapely.geometry import MultiPolygon, Polygon
 import xarray as xr
@@ -24,8 +23,8 @@ def _grid_1d(start_b, end_b, step):
     bounds : 1D numpy array, with one more element than centers
 
     '''
-    bounds = np.arange(start_b, end_b+step, step)
-    centers = (bounds[:-1] + bounds[1:])/2
+    bounds = np.arange(start_b, end_b + step, step)
+    centers = (bounds[:-1] + bounds[1:]) / 2
 
     return centers, bounds
 

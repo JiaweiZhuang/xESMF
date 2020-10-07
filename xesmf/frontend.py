@@ -143,9 +143,10 @@ class BaseRegridder(object):
                  extrap_num_src_pnts=None, add_nans=False,
                  weights=None, ignore_degenerate=None):
         """
-        Make xESMF BaseRegridder. Don't use this class directly.
-        For Grid/Locstream cases use "Regridder" and for polygon
-        averaging over a grid use SpatialAverager.
+        Base xESMF regridding class supporting ESMF objects: `Grid`, `Mesh` and `LocStream`. 
+        
+        Create or use existing subclasses to support other types of input objects. See for example `Regridder` 
+        to regrid `xarray.DataArray` objects, or `SpatialAverager` to average grids over regions defined by polygons. 
 
         Parameters
         ----------
@@ -217,8 +218,9 @@ class BaseRegridder(object):
         self.sequence_out = isinstance(self.grid_out, (LocStream, Mesh))
 
         # record grid shape information
-        self.shape_in = self.grid_in.shape
-        self.shape_out = self.grid_out.shape
+        # We need to invert Grid shapes to respect xESMF's convention (y, x).
+        self.shape_in = self.grid_in.get_shape()[::-1]
+        self.shape_out = self.grid_out.get_shape()[::-1]
         self.n_in = self.shape_in[0] * self.shape_in[1]
         self.n_out = self.shape_out[0] * self.shape_out[1]
 
@@ -469,7 +471,7 @@ class Regridder(BaseRegridder):
 
         Parameters
         ----------
-        ds_in, ds_out : xarray DataSet, or dictionary, or sequence of Polygons
+        ds_in, ds_out : xarray DataSet, or dictionary
             Contain input and output grid coordinates. Look for variables
             ``lon``, ``lat``, optionally ``lon_b``, ``lat_b`` for
             conservative methods, and ``mask``. Note that for `mask`,
@@ -482,9 +484,6 @@ class Regridder(BaseRegridder):
 
             If either dataset includes a 2d mask variable, that will also be
             used to inform the regridding.
-
-            ds_out can be a sequence of Polygons. In that case the output is 1D.
-            Holes in polygons are ignored and MultiPolygons are split in their polygon parts.
 
         method : str
             Regridding method. Options are
@@ -694,7 +693,7 @@ class SpatialAverager(BaseRegridder):
         -------
         xarray.DataArray
           Average over polygons along `geom_dim_name` dimension. The `lon` and
-          `lat` coordinates are the polygon centroid coordinates. 
+          `lat` coordinates are the polygon centroid coordinates.
 
         References
         ----------
@@ -747,7 +746,6 @@ class SpatialAverager(BaseRegridder):
         weights = _combine_weight_columns(w_all, owners)
         weights = weights.multiply(1 / weights.sum(axis=0))
         return weights.tocoo().T
-
 
     def _get_default_filename(self):
         # e.g. bilinear_400x600_300x400.nc

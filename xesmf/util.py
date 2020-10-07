@@ -142,17 +142,3 @@ def split_polygons_and_holes(polys):
         i_hol.extend([i] * len(poly.interiors))
 
     return exteriors, holes, i_ext, i_hol
-
-
-def esmf_get_shape(obj):
-    """Return the shape and size of an ESMF object."""
-    if isinstance(obj, Grid):
-        # Shape and size of grid centers
-        # xESMF and ESMF.Grid use different dim orders
-        return tuple(obj.size[0][::-1])
-    if isinstance(obj, LocStream):
-        # Number of items
-        return (1, obj.size)
-    if isinstance(obj, Mesh):
-        # Size and shape are number of elements
-        return (1, obj.size[1])

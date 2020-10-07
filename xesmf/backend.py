@@ -139,6 +139,10 @@ class Grid(ESMF.Grid):
 
         return grid
 
+    @property
+    def shape(self):
+        return tuple(self.size[0][::-1])
+
 
 class LocStream(ESMF.LocStream):
 
@@ -173,6 +177,10 @@ class LocStream(ESMF.LocStream):
         locstream["ESMF:Lat"] = lat.astype(np.dtype('f8'))
 
         return locstream
+
+    @property
+    def shape(self):
+        return (1, self.size)
 
 
 def add_corner(grid, lon_b, lat_b):
@@ -259,6 +267,10 @@ class Mesh(ESMF.Mesh):
         except ValueError as err:
             raise ValueError('ESMF failed to create the Mesh, this usually happen when some polygons are invalid (test with `poly.is_valid`)') from err
         return mesh
+
+    @property
+    def shape(self):
+        return (1, self.size[1])
 
 
 def esmf_regrid_build(sourcegrid, destgrid, method,

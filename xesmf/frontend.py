@@ -12,7 +12,7 @@ from . backend import (Grid, LocStream, Mesh, add_corner,
 
 from . smm import read_weights, apply_weights, add_nans_to_weights, _combine_weight_columns
 
-from . util import split_polygons_and_holes, esmf_get_shape
+from . util import split_polygons_and_holes
 
 try:
     import dask.array as da
@@ -116,7 +116,7 @@ def polys_to_ESMFmesh(polys):
     """
     Convert a sequence of shapely Polygons to a ESMF.Mesh object.
 
-    MultiPolygons are split in their polygon parts.
+    MultiPolygons are split in their polygon parts and holes are ignored.
 
     Parameters
     ----------
@@ -126,8 +126,6 @@ def polys_to_ESMFmesh(polys):
     -------
     exterior : ESMF.Mesh
         A mesh where elements are the exterior rings of the polygons
-    holes    : ESMF.Mesh or None
-        A mesh where elements are the holes of the polygons, None if there were no holes.
     """
     ext, holes, _, _ = split_polygons_and_holes(polys)
     if len(holes) > 0:
@@ -216,8 +214,8 @@ class BaseRegridder(object):
         self.sequence_out = isinstance(self.grid_out, (LocStream, Mesh))
 
         # record grid shape information
-        self.shape_in = esmf_get_shape(self.grid_in)
-        self.shape_out = esmf_get_shape(self.grid_out)
+        self.shape_in = self.grid_in.shape
+        self.shape_out = self.grid_out.shape
         self.n_in = self.shape_in[0] * self.shape_in[1]
         self.n_out = self.shape_out[0] * self.shape_out[1]
 
@@ -638,7 +636,7 @@ class SpatialAverager(BaseRegridder):
             Contain input and output grid coordinates. Look for variables
             ``lon``, ``lat``, ``lon_b`` and ``lat_b``.
 
-            Optionnaly looks for ``mask``, in which case  the ESMF convention is used,
+            Optionaly looks for ``mask``, in which case  the ESMF convention is used,
             where masked values are identified by 0, and non-masked values by 1.
 
             Shape can be 1D (n_lon,) and (n_lat,) for rectilinear grids,

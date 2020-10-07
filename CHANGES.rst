@@ -6,8 +6,12 @@ What's new
 
 New features
 ~~~~~~~~~~~~
-* Create `ESMFpy.Mesh` objects from `shapely.polygons` (:pull:`24`). By `Pascal Bourgault <https://github.com/aulemahal>`_
+* Create `ESMF.Mesh` objects from `shapely.polygons` (:pull:`24`). By `Pascal Bourgault <https://github.com/aulemahal>`_
 * New class `SpatialAverager` offers user-friendly mechanism to average a field over a polygon. (:pull:`24`) By `Pascal Bourgault <https://github.com/aulemahal>`_
+
+Internal changes
+~~~~~~~~~~~~~~~~
+* Subclass `ESMF.Grid` and `ESMF.LocStream` and create `from_xarray` methods.
 
 
 

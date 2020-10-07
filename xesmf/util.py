@@ -1,3 +1,4 @@
+from ESMF import Grid, LocStream, Mesh
 import numpy as np
 from shapely.geometry import MultiPolygon, Polygon
 import xarray as xr
@@ -109,19 +110,15 @@ def _flatten_poly_list(polys):
             yield (i, poly)
 
 
-def split_polygons_and_holes(polys, return_idx=False, warn_multi=True):
+def split_polygons_and_holes(polys):
     """Split the exterior boundaries and the holes for a list of polygons.
 
-    If MultiPolygons are encountered in the list, they are flattened out.
+    If MultiPolygons are encountered in the list, they are flattened out
+    in their constituents.
 
     Parameters
     ----------
     polys : Sequence of shapely Polygons or MultiPolygons
-    return_idx : bool
-      If True, returns the index of the polygon in `polys` of each returned
-      single polygon and hole. Defaults to False.
-    warn_multi : bool
-      If True (default), raises a Warning if MultiPolygons were encountered.
 
     Returns
     -------
@@ -131,10 +128,8 @@ def split_polygons_and_holes(polys, return_idx=False, warn_multi=True):
         Holes of the polygons as polygons
     i_ext : list of integers
        The index in `polys` of each polygon in `exteriors`.
-       Returned if `return_idx` is True.
     i_hol : list of integers
        The index in `polys` of the owner of each hole in `holes`.
-       Returned if `return_idx` is True.
     """
     exteriors = []
     holes = []
@@ -145,16 +140,19 @@ def split_polygons_and_holes(polys, return_idx=False, warn_multi=True):
         i_ext.append(i)
         holes.extend(map(Polygon, poly.interiors))
         i_hol.extend([i] * len(poly.interiors))
-    if warn_multi and len(exteriors) > len(polys):
-        warnings.warn("MultiPolygons were found in the list of polygons, they will be flattened out.", RuntimeWarning)
-    if return_idx:
-        return exteriors, holes, i_ext, i_hol
-    return exteriors, holes
+
+    return exteriors, holes, i_ext, i_hol
 
 
-def max_polygon_size(polys):
-    """Maximum number of nodes in a list of polygons."""
-    N = 0
-    for i, p in _flatten_poly_list(polys):
-        N = max(N, len(p.exterior.coords) - 1)
-    return N
+def esmf_get_shape(obj):
+    """Return the shape and size of an ESMF object."""
+    if isinstance(obj, Grid):
+        # Shape and size of grid centers
+        # xESMF and ESMF.Grid use different dim orders
+        return tuple(obj.size[0][::-1])
+    if isinstance(obj, LocStream):
+        # Number of items
+        return (1, obj.size)
+    if isinstance(obj, Mesh):
+        # Size and shape are number of elements
+        return (1, obj.size[1])

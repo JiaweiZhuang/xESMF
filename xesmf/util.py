@@ -113,7 +113,8 @@ def _flatten_poly_list(polys):
 def split_polygons_and_holes(polys):
     """Split the exterior boundaries and the holes for a list of polygons.
 
-    If MultiPolygons are encountered in the list, they are flattened out.
+    If MultiPolygons are encountered in the list, they are flattened out
+    in their constituents.
 
     Parameters
     ----------
@@ -141,14 +142,6 @@ def split_polygons_and_holes(polys):
         i_hol.extend([i] * len(poly.interiors))
 
     return exteriors, holes, i_ext, i_hol
-
-
-def max_polygon_size(polys):
-    """Maximum number of nodes in a list of polygons."""
-    N = 0
-    for i, p in _flatten_poly_list(polys):
-        N = max(N, len(p.exterior.coords) - 1)
-    return N
 
 
 def esmf_get_shape(obj):

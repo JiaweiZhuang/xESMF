@@ -230,7 +230,7 @@ class Mesh(ESMF.Mesh):
         Parameters
         ----------
         polys : sequence of shapely Polygon
-            There must be no overlap between any of the polygons, holes are ignored.
+           Holes are not represented by the Mesh.
 
         Returns
         -------
@@ -254,7 +254,10 @@ class Mesh(ESMF.Mesh):
         node_num = len(node_coords)
         mesh.add_nodes(node_num, np.arange(node_num) + 1, np.array(node_coords).ravel(), np.zeros(node_num))
         elem_num = len(element_types)
-        mesh.add_elements(elem_num, np.arange(elem_num) + 1, np.array(element_types), np.array(element_conn), element_coords=np.array(element_coords).ravel())
+        try:
+            mesh.add_elements(elem_num, np.arange(elem_num) + 1, np.array(element_types), np.array(element_conn), element_coords=np.array(element_coords).ravel())
+        except ValueError as err:
+            raise ValueError('ESMF failed to create the Mesh, this usually happen when some polygons are invalid (test with `poly.is_valid`)') from err
         return mesh
 
 

@@ -12,7 +12,7 @@ from . backend import (Grid, LocStream, Mesh, add_corner,
 
 from . smm import read_weights, apply_weights, add_nans_to_weights, _combine_weight_columns
 
-from . util import split_polygons_and_holes, max_polygon_size, esmf_get_shape
+from . util import split_polygons_and_holes, esmf_get_shape
 
 try:
     import dask.array as da

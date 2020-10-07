@@ -142,7 +142,7 @@ def test_existing_weights():
 
 
 def test_to_netcdf(tmp_path):
-    from xesmf.backend import esmf_grid, esmf_regrid_build
+    from xesmf.backend import Grid, esmf_regrid_build
 
     # Let the frontend write the weights to disk
     xfn = tmp_path / 'ESMF_weights.nc'
@@ -150,8 +150,8 @@ def test_to_netcdf(tmp_path):
     regridder = xe.Regridder(ds_in, ds_out, method)
     regridder.to_netcdf(filename=xfn)
 
-    grid_in = esmf_grid(ds_in['lon'].values.T, ds_in['lat'].values.T)
-    grid_out = esmf_grid(ds_out['lon'].values.T, ds_out['lat'].values.T)
+    grid_in = Grid.from_xarray(ds_in['lon'].values.T, ds_in['lat'].values.T)
+    grid_out = Grid.from_xarray(ds_out['lon'].values.T, ds_out['lat'].values.T)
 
     # Let the ESMPy backend write the weights to disk
     efn = tmp_path / 'weights.nc'
@@ -446,33 +446,6 @@ def test_spatial_averager(poly, exp):
     assert_allclose(out, exp, rtol=1e-3)
 
 
-def test_regridding_polyout():
-    reg = xe.Regridder(ds_savg, [polys[1], polys[2]], 'conservative', polylist_out=True)
-    out = reg(ds_savg.abc)
-    assert_allclose(out, [3, 4, 1.5], rtol=1e-3)
-
-
-def test_regridding_polyin():
-    reg = xe.Regridder([polys[0]], ds_savg, 'conservative', polylist_in=True)
-    out = reg(np.array([100]))
-    assert_allclose(out, [[25, 12.5], [12.5, 0]], rtol=1e-3, atol=1e-2)
-
-
-@pytest.mark.parametrize("method", ['patch', 'bilinear', 'nearest_d2s'])
-def test_polyin_illegalmethods(method):
-    # some methods are unavailable with more than 4 nodes
-    with pytest.raises(ValueError, match="polygon list input is only available for"):
-        xe.Regridder([polys[-1]], ds_savg, method, polylist_in=True)
-
-
-@pytest.mark.parametrize("method", ['patch', 'bilinear', 'nearest_s2d'])
-def test_polyout_illegalmethods(method):
-    # some methods are unavailable with more than 4 nodes
-    with pytest.raises(ValueError, match="polygon list output is only available for"):
-        xe.Regridder(ds_savg, [polys[-1]], method, polylist_out=True)
-    xe.Regridder(ds_savg, [polys[0]], method, polylist_out=True)
-
-
 def test_polys_to_ESMFmesh():
     import ESMF
     from xesmf.frontend import polys_to_ESMFmesh
@@ -483,10 +456,5 @@ def test_polys_to_ESMFmesh():
 
     assert isinstance(mesh, ESMF.Mesh)
     assert shape == (1, 4)
-    assert len(rec) == 2
-    assert 'MultiPolygons were found' in rec[0].message.args[0]
-    assert 'Some passed polygons have holes' in rec[1].message.args[0]
-
-    # Fails because of poly overlap
-    with pytest.raises(ValueError, match="Polygon can not overlap"):
-        mesh, shape = polys_to_ESMFmesh([polys[0], polys[1]])
+    assert len(rec) == 1
+    assert 'Some passed polygons have holes' in rec[0].message.args[0]

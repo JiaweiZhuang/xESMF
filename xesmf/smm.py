@@ -149,8 +149,10 @@ def add_nans_to_weights(weights):
     return weights
 
 
-def _combine_weight_columns(weights, indexes):
+def _combine_weight_multipoly(weights, indexes):
     """Reduce a weight sparse matrix (csc format) by combining (adding) columns.
+
+    This is used to sum individual weight matrices from multi-part geometries.
 
     Parameters
     ----------
@@ -162,6 +164,7 @@ def _combine_weight_columns(weights, indexes):
     Returns
     -------
     sparse matrix (CSC)
+      Sum of weights from individual geometries.
     """
     columns = []
     for i in range(indexes.max() + 1):

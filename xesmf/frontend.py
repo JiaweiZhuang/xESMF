@@ -10,7 +10,7 @@ import warnings
 from . backend import (Grid, LocStream, Mesh, add_corner,
                        esmf_regrid_build, esmf_regrid_finalize)
 
-from . smm import read_weights, apply_weights, add_nans_to_weights, _combine_weight_columns
+from . smm import read_weights, apply_weights, add_nans_to_weights, _combine_weight_multipoly
 
 from . util import split_polygons_and_holes
 
@@ -143,10 +143,10 @@ class BaseRegridder(object):
                  extrap_num_src_pnts=None, add_nans=False,
                  weights=None, ignore_degenerate=None):
         """
-        Base xESMF regridding class supporting ESMF objects: `Grid`, `Mesh` and `LocStream`. 
-        
-        Create or use existing subclasses to support other types of input objects. See for example `Regridder` 
-        to regrid `xarray.DataArray` objects, or `SpatialAverager` to average grids over regions defined by polygons. 
+        Base xESMF regridding class supporting ESMF objects: `Grid`, `Mesh` and `LocStream`.
+
+        Create or use existing subclasses to support other types of input objects. See for example `Regridder`
+        to regrid `xarray.DataArray` objects, or `SpatialAverager` to average grids over regions defined by polygons.
 
         Parameters
         ----------
@@ -743,7 +743,7 @@ class SpatialAverager(BaseRegridder):
             w_all = reg_ext.weights.tocsc()
 
         # Combine weights of same owner and normalize
-        weights = _combine_weight_columns(w_all, owners)
+        weights = _combine_weight_multipoly(w_all, owners)
         weights = weights.multiply(1 / weights.sum(axis=0))
         return weights.tocoo().T
 

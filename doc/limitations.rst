@@ -6,23 +6,22 @@ Current limitations
 Irregular meshes
 ----------------
 
-xESMF supports quadrilateral grids and has limited support of
-triangular or hexagonal meshes. Meshes are implemented in xESMF through
-the lists of shapely polygons.
-
 ESMPy is actually able to deal with general irregular meshes
 (`example <http://www.earthsystemmodeling.org/esmf_releases/
 last_built/esmpy_doc/html/examples.html#create-a-5-element-mesh>`_),
 but designing an elegant front-end for that is very challenging.
 Plain 2D arrays cannot describe irregular meshes.
-There needs to be additional information for connectivitity, as suggested by
+There needs to be additional information for connectivity, as suggested by
 `UGRID Conventions <http://ugrid-conventions.github.io/ugrid-conventions/>`_.
+
+xESMF supports quadrilateral grids and has limited support of
+triangular or hexagonal meshes. xESMF also supports complex polygonal
+meshes, but only in the context of regional averaging.
 
 xarray's data model, although powerful, can only describe quadrilateral grids
 (including multi-tile quadrilateral grids like the cubed-sphere).
-If there is an elegant data model in Python for irregular meshes, more elegant
-than the list of polygons approach, interfacing that with ESMPy should not be
-super difficult.
+If there is an elegant data model in Python for irregular meshes, interfacing
+with ESMPy should not be very difficult. Pull requests along these lines are welcome.
 
 
 Vector regridding

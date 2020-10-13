@@ -16,6 +16,7 @@ So it would be helpful to catch some common mistakes in Python level.
 '''
 
 import numpy as np
+import numpy.lib.recfunctions as nprec
 import ESMF
 import warnings
 import os
@@ -228,7 +229,7 @@ def add_corner(grid, lon_b, lat_b):
 class Mesh(ESMF.Mesh):
 
     @classmethod
-    def from_polygons(cls, polys):
+    def from_polygons(cls, polys, element_coords='centroid'):
         """
         Create an ESMF.Mesh object from a list of polygons.
 
@@ -239,31 +240,54 @@ class Mesh(ESMF.Mesh):
         ----------
         polys : sequence of shapely Polygon
            Holes are not represented by the Mesh.
+        element_coords : array or "centroid", optional
+            If "centroid", the polygon centroids will be used (default)
+            If an array of shape (len(polys), 2) : the element coordinates of the mesh.
+            If None, the Mesh's elements will not have coordinates.
 
         Returns
         -------
         mesh : ESMF.Mesh
             A mesh where each polygon is represented as an Element.
         """
-        node_coords = []
-        element_types = []
-        element_conn = []
-        element_coords = []
-        for poly in polys:
+        node_num = sum(e.exterior.coords.array_interface()['shape'][0] - 1 for e in polys)
+        elem_num = len(polys)
+        # Pre alloc arrays. Special stucture for coords makes the code faster.
+        crd_dt = np.dtype([('x', np.float32), ('y', np.float32)])
+        node_coords = np.zeros(node_num, dtype=crd_dt)
+        element_types = np.empty(elem_num, dtype=np.uint32)
+        element_conn = np.empty(node_num, dtype=np.uint32)
+        # Flag for centroid calculation
+        calc_centroid = isinstance(element_coords, str) and element_coords == 'centroid'
+        if calc_centroid:
+            element_coords = np.empty(elem_num, dtype=crd_dt)
+        inode = 0
+        iconn = 0
+        for ipoly, poly in enumerate(polys):
             ring = poly.exterior
-            element_coords.append(poly.centroid.xy)
-            element_types.append(len(ring.coords) - 1)
+            if calc_centroid:
+                element_coords[ipoly] = poly.centroid.coords[0]
+            element_types[ipoly] = len(ring.coords) - 1
             for coord in (ring.coords[:-1] if ring.is_ccw else ring.coords[:0:-1]):
-                if coord not in node_coords:
-                    node_coords.append(coord)
-                element_conn.append(node_coords.index(coord))
+                crd = np.asarray(coord, dtype=crd_dt)  # Cast so we can compare
+                node_index = np.where(node_coords == crd)[0]
+                if node_index.size == 0:  # New node
+                    node_coords[inode] = crd
+                    element_conn[iconn] = inode
+                    inode += 1
+                else:  # Node already exists
+                    element_conn[iconn] = node_index[0]
+                iconn += 1
+        node_num = inode  # With duplicate nodes, inode < node_num
 
         mesh = cls(2, 2, coord_sys=ESMF.CoordSys.SPH_DEG)
-        node_num = len(node_coords)
-        mesh.add_nodes(node_num, np.arange(node_num) + 1, np.array(node_coords).ravel(), np.zeros(node_num))
-        elem_num = len(element_types)
+        mesh.add_nodes(node_num, np.arange(node_num) + 1, nprec.structured_to_unstructured(node_coords[:node_num]).ravel(), np.zeros(node_num))
+        if calc_centroid:
+            element_coords = nprec.structured_to_unstructured(element_coords)
+        if element_coords is not None:
+            element_coords = element_coords.ravel()
         try:
-            mesh.add_elements(elem_num, np.arange(elem_num) + 1, np.array(element_types), np.array(element_conn), element_coords=np.array(element_coords).ravel())
+            mesh.add_elements(elem_num, np.arange(elem_num) + 1, element_types, element_conn, element_coords=element_coords)
         except ValueError as err:
             raise ValueError('ESMF failed to create the Mesh, this usually happen when some polygons are invalid (test with `poly.is_valid`)') from err
         return mesh

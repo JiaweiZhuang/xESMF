@@ -254,7 +254,8 @@ class Mesh(ESMF.Mesh):
         elem_num = len(polys)
         # Pre alloc arrays. Special stucture for coords makes the code faster.
         crd_dt = np.dtype([('x', np.float32), ('y', np.float32)])
-        node_coords = np.zeros(node_num, dtype=crd_dt)
+        node_coords = np.empty(node_num, dtype=crd_dt)
+        node_coords[:] = (np.nan, np.nan)  # Fill with impossible values
         element_types = np.empty(elem_num, dtype=np.uint32)
         element_conn = np.empty(node_num, dtype=np.uint32)
         # Flag for centroid calculation

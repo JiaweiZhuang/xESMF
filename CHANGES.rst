@@ -24,6 +24,11 @@ New features
   `conservative_normed` to properly handle normalization (:pull:`1`).
   By `Raphael Dussin <https://github.com/raphaeldussin>`_
 
+Bug fixes
+~~~~~~~~~
+* Fix serialization bug when using dask's distributed scheduler (:pull:`39`).
+  By `Pascal Bourgault <https://github.com/aulemahal>`_.
+
 
 
 0.3.0 (06-03-2020)

@@ -7,12 +7,20 @@ What's new
 New features
 ~~~~~~~~~~~~
 * Create `ESMF.Mesh` objects from `shapely.polygons` (:pull:`24`). By `Pascal Bourgault <https://github.com/aulemahal>`_
-* New class `SpatialAverager` offers user-friendly mechanism to average a field over a polygon. (:pull:`24`) By `Pascal Bourgault <https://github.com/aulemahal>`_
+* New class `SpatialAverager` offers user-friendly mechanism to average a 2-D field over a polygon. Includes support to handle interior holes and multi-part geometries. (:pull:`24`) By `Pascal Bourgault <https://github.com/aulemahal>`_
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+* Deprecate `esmf_grid` in favor of `Grid.from_xarray`
+* Deprecate `esmf_locstream` in favor of `LocStream.from_xarray`
+* Installation requires numpy>=1.16
 
 Internal changes
 ~~~~~~~~~~~~~~~~
+* Subclass `ESMF.Mesh` and create `from_polygon` method
 * Subclass `ESMF.Grid` and `ESMF.LocStream` and create `from_xarray` methods.
-
+* New `BaseRegridder` class, with support for `Grid`, `LocStream` and `Mesh` objects. Not all regridding methods are supported for `Mesh` objects.
+* Refactor `Regridder` to subclass `BaseRegridder`.
 
 
 0.4.0 (01-10-2020)
@@ -37,12 +45,6 @@ New features
   When using a mask and the `conservative` regridding method, use a new method called
   `conservative_normed` to properly handle normalization (:pull:`1`).
   By `Raphael Dussin <https://github.com/raphaeldussin>`_
-* Add support for list of polygons as regridding arguments. They are transformed as ESMF Meshes,
-  ignoring holes and flattening multi-part geometries. For input data or output, they act the
-  same a locstreams. For now, not all regridding methods supported by ESMF when using Meshes
-  are supported.
-* Add the `SpatialAverager` object to perform spatial averaging of 2D grids using polygons. Understands holes and multi-part geometries.
-
 
 
 0.3.0 (06-03-2020)

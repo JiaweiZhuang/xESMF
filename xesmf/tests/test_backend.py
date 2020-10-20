@@ -280,3 +280,19 @@ def test_read_weights(tmp_path):
         ds = xr.open_dataset(fn)
         read_weights(ds.drop_vars("col"), lon_in.size, lon_out.size)
 
+def test_deprecated():
+    from xesmf.backend import esmf_grid, esmf_locstream
+    lon = np.arange(5)
+    lat = np.arange(5)
+    gr = Grid.from_xarray(lon_in.T, lat_in.T)
+    ls = LocStream.from_xarray(lon, lat)
+
+    with pytest.warns(DeprecationWarning):
+        np.testing.assert_allclose(gr.coords[0], esmf_grid(lon_in.T, lat_in.T).coords[0])
+
+    with pytest.warns(DeprecationWarning):
+        out = dict(esmf_locstream(lon, lat).items())
+        for key, val in ls.items():
+            np.testing.assert_array_equal(val, out[key])
+
+

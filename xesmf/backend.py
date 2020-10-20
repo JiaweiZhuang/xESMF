@@ -531,3 +531,16 @@ def esmf_regrid_finalize(regrid):
     assert regrid.dstfield.finalized
     # assert regrid.srcfield.grid.finalized
     # assert regrid.dstfield.grid.finalized
+
+
+# Deprecated as of version 0.5.0
+
+
+def esmf_locstream(lon, lat):
+    warnings.warn("`esmf_locstream` is being deprecated in favor of `LocStream.from_xarray`", DeprecationWarning)
+    return LocStream.from_xarray(lon, lat)
+
+
+def esmf_grid(lon, lat, periodic=False, mask=None):
+    warnings.warn("`esmf_grid` is being deprecated in favor of `Grid.from_xarray`", DeprecationWarning)
+    return Grid.from_xarray(lon, lat)

@@ -4,16 +4,21 @@ What's new
 0.5.0 (11-11-2020)
 ------------------
 
-New features
-~~~~~~~~~~~~
-* Create `ESMF.Mesh` objects from `shapely.polygons` (:pull:`24`). By `Pascal Bourgault <https://github.com/aulemahal>`_
-* New class `SpatialAverager` offers user-friendly mechanism to average a 2-D field over a polygon. Includes support to handle interior holes and multi-part geometries. (:pull:`24`) By `Pascal Bourgault <https://github.com/aulemahal>`_
-
 Breaking changes
 ~~~~~~~~~~~~~~~~
 * Deprecate `esmf_grid` in favor of `Grid.from_xarray`
 * Deprecate `esmf_locstream` in favor of `LocStream.from_xarray`
 * Installation requires numpy>=1.16
+
+New features
+~~~~~~~~~~~~
+* Create `ESMF.Mesh` objects from `shapely.polygons` (:pull:`24`). By `Pascal Bourgault <https://github.com/aulemahal>`_
+* New class `SpatialAverager` offers user-friendly mechanism to average a 2-D field over a polygon. Includes support to handle interior holes and multi-part geometries. (:pull:`24`) By `Pascal Bourgault <https://github.com/aulemahal>`_
+
+Bug fixes
+~~~~~~~~~
+* Fix serialization bug when using dask's distributed scheduler (:pull:`39`).
+  By `Pascal Bourgault <https://github.com/aulemahal>`_.
 
 Internal changes
 ~~~~~~~~~~~~~~~~

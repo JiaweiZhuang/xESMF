@@ -337,14 +337,20 @@ class BaseRegridder(object):
                 "input must be numpy array, dask array, "
                 "xarray DataArray or Dataset!")
 
+    @staticmethod
+    def _regrid_array(indata, *, weights, shape_in, shape_out, sequence_in):
+        if sequence_in:
+            indata = np.expand_dims(indata, axis=-2)
+        return apply_weights(weights, indata, shape_in, shape_out)
+
+    @property
+    def _regrid_kwargs(self):
+        return {'weights': self.weights, 'sequence_in': self.sequence_in,
+                'shape_in': self.shape_in, 'shape_out': self.shape_out}
+
     def regrid_numpy(self, indata):
         """See __call__()."""
-
-        if self.sequence_in:
-            indata = np.expand_dims(indata, axis=-2)
-
-        outdata = apply_weights(self.weights, indata,
-                                self.shape_in, self.shape_out)
+        outdata = self._regrid_array(indata, **self._regrid_kwargs)
         return outdata
 
     def regrid_dask(self, indata):
@@ -355,10 +361,11 @@ class BaseRegridder(object):
         output_chunk_shape = extra_chunk_shape + self.shape_out
 
         outdata = da.map_blocks(
-            self.regrid_numpy,
+            self._regrid_array,
             indata,
             dtype=float,
-            chunks=output_chunk_shape
+            chunks=output_chunk_shape,
+            **self._regrid_kwargs
         )
 
         return outdata
@@ -369,7 +376,8 @@ class BaseRegridder(object):
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(dr_in)
 
         dr_out = xr.apply_ufunc(
-            self.regrid_numpy, dr_in,
+            self._regrid_array, dr_in,
+            kwargs=self._regrid_kwargs,
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
@@ -400,7 +408,8 @@ class BaseRegridder(object):
               )
 
         ds_out = xr.apply_ufunc(
-            self.regrid_numpy, ds_in,
+            self._regrid_array, ds_in,
+            kwargs=self._regrid_kwargs,
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',

@@ -9,6 +9,7 @@ dependencies:
   - pytest
   - scipy
   - xarray
+  - pre-commit
   - pip:
       - codecov
       - pytest-cov

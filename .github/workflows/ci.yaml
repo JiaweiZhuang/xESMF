@@ -39,7 +39,7 @@ jobs:
         shell: bash -l {0}
         run: |
           conda activate xesmf
-          python -m pytest --cov=./ --cov-report=xml --verbose
+          python -m pytest --setup-show --cov=./ --cov-report=xml --verbose
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1

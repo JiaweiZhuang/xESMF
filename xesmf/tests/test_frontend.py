@@ -3,9 +3,12 @@ import numpy as np
 import xarray as xr
 import xesmf as xe
 from xesmf.frontend import as_2d_mesh
-
+import dask
 from numpy.testing import assert_equal, assert_almost_equal
 import pytest
+
+dask_schedulers = ['threaded_scheduler', 'processes_scheduler', 'distributed_scheduler']
+
 
 # same test data as test_backend.py, but here we can use xarray DataSet
 ds_in = xe.util.grid_global(20, 12)
@@ -268,13 +271,16 @@ def test_regrid_dataarray_from_locstream():
         regridder = xe.Regridder(ds_locs, ds_in, 'conservative', locstream_in=True)
 
 
-def test_regrid_dask():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dask(request, scheduler):
     # chunked dask array (no xarray metadata)
-
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_in, ds_out, 'conservative')
 
     indata = ds_in_chunked['data4D'].data
     outdata = regridder(indata)
+
+    assert dask.is_dask_collection(outdata)
 
     # lazy dask arrays have incorrect shape attribute due to last chunk
     assert outdata.compute().shape == indata.shape[:-2] + horiz_shape_out
@@ -285,30 +291,38 @@ def test_regrid_dask():
     assert np.max(np.abs(rel_err)) < 0.05
 
 
-def test_regrid_dask_to_locstream():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dask_to_locstream(request, scheduler):
     # chunked dask array (no xarray metadata)
-
+    
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
 
     indata = ds_in_chunked['data4D'].data
     outdata = regridder(indata)
+    assert dask.is_dask_collection(outdata)
 
 
-def test_regrid_dask_from_locstream():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dask_from_locstream(request, scheduler):
     # chunked dask array (no xarray metadata)
-
+    
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
 
-    outdata = regridder(ds_locs['lat'].data)
+    outdata = regridder(ds_locs.chunk()['lat'].data)
+    assert dask.is_dask_collection(outdata)
 
 
-def test_regrid_dataarray_dask():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dataarray_dask(request, scheduler):
     # xarray.DataArray containing chunked dask array
-
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_in, ds_out, 'conservative')
 
     dr_in = ds_in_chunked['data4D']
     dr_out = regridder(dr_in)
+    assert dask.is_dask_collection(dr_out)
 
     assert dr_out.data.shape == dr_in.data.shape[:-2] + horiz_shape_out
     assert dr_out.data.chunksize == dr_in.data.chunksize[:-2] + horiz_shape_out
@@ -324,22 +338,26 @@ def test_regrid_dataarray_dask():
     assert_equal(dr_out['lat'].values, ds_out['lat'].values)
     assert_equal(dr_out['lon'].values, ds_out['lon'].values)
 
-
-def test_regrid_dataarray_dask_to_locstream():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dataarray_dask_to_locstream(request, scheduler):
     # xarray.DataArray containing chunked dask array
-
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
 
     dr_in = ds_in_chunked['data4D']
     dr_out = regridder(dr_in)
+    assert dask.is_dask_collection(dr_out)
 
 
-def test_regrid_dataarray_dask_from_locstream():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dataarray_dask_from_locstream(request, scheduler):
     # xarray.DataArray containing chunked dask array
-
+    
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
 
-    outdata = regridder(ds_locs['lat'])
+    outdata = regridder(ds_locs.chunk()['lat'])
+    assert dask.is_dask_collection(outdata)
 
 
 def test_regrid_dataset():

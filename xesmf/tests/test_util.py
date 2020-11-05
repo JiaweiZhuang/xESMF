@@ -1,5 +1,6 @@
-import xesmf as xe
 import pytest
+
+import xesmf as xe
 
 
 def test_grid_global():

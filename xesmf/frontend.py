@@ -1,22 +1,22 @@
-'''
+"""
 Frontend for xESMF, exposed to users.
-'''
+"""
+
+import warnings
 
 import numpy as np
 import xarray as xr
-import os
-import warnings
 
-from . backend import (esmf_grid, esmf_locstream, add_corner,
-                       esmf_regrid_build, esmf_regrid_finalize)
-
-from . smm import read_weights, apply_weights, add_nans_to_weights
+from .backend import add_corner, esmf_grid, esmf_locstream, esmf_regrid_build, esmf_regrid_finalize
+from .smm import add_nans_to_weights, apply_weights, read_weights
 
 try:
     import dask.array as da
+
     dask_array_type = (da.Array,)  # for isinstance checks
 except ImportError:
     dask_array_type = ()
+
 
 def as_2d_mesh(lon, lat):
 
@@ -31,7 +31,7 @@ def as_2d_mesh(lon, lat):
 
 
 def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
-    '''
+    """
     Convert xarray DataSet or dictionary to ESMF.Grid object.
 
     Parameters
@@ -53,7 +53,7 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     -------
     grid : ESMF.Grid object
 
-    '''
+    """
 
     # use np.asarray(dr) instead of dr.values, so it also works for dictionary
     lon = np.asarray(ds['lon'])
@@ -81,7 +81,7 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
 
 
 def ds_to_ESMFlocstream(ds):
-    '''
+    """
     Convert xarray DataSet or dictionary to ESMF.LocStream object.
 
     Parameters
@@ -93,15 +93,15 @@ def ds_to_ESMFlocstream(ds):
     -------
     locstream : ESMF.LocStream object
 
-    '''
+    """
 
     lon = np.asarray(ds['lon'])
     lat = np.asarray(ds['lat'])
 
     if len(lon.shape) > 1:
-        raise ValueError("lon can only be 1d")
+        raise ValueError('lon can only be 1d')
     if len(lat.shape) > 1:
-        raise ValueError("lat can only be 1d")
+        raise ValueError('lat can only be 1d')
 
     assert lon.shape == lat.shape
 
@@ -111,12 +111,22 @@ def ds_to_ESMFlocstream(ds):
 
 
 class Regridder(object):
-    def __init__(self, ds_in, ds_out, method, periodic=False,
-                 filename=None, reuse_weights=False,
-                 extrap_method=None, extrap_dist_exponent=None,
-                 extrap_num_src_pnts=None,
-                 weights=None, ignore_degenerate=None,
-                 locstream_in=False, locstream_out=False):
+    def __init__(
+        self,
+        ds_in,
+        ds_out,
+        method,
+        periodic=False,
+        filename=None,
+        reuse_weights=False,
+        extrap_method=None,
+        extrap_dist_exponent=None,
+        extrap_num_src_pnts=None,
+        weights=None,
+        ignore_degenerate=None,
+        locstream_in=False,
+        locstream_out=False,
+    ):
         """
         Make xESMF regridder
 
@@ -221,24 +231,25 @@ class Regridder(object):
         methods_avail_ls_out = ['bilinear', 'patch'] + methods_avail_ls_in
 
         if locstream_in and self.method not in methods_avail_ls_in:
-            raise ValueError(f'locstream input is only available for method in {methods_avail_ls_in}')
+            raise ValueError(
+                f'locstream input is only available for method in {methods_avail_ls_in}'
+            )
         if locstream_out and self.method not in methods_avail_ls_out:
-            raise ValueError(f'locstream output is only available for method in {methods_avail_ls_out}')
+            raise ValueError(
+                f'locstream output is only available for method in {methods_avail_ls_out}'
+            )
 
         # construct ESMF grid, with some shape checking
         if locstream_in:
             self._grid_in, shape_in = ds_to_ESMFlocstream(ds_in)
         else:
-            self._grid_in, shape_in = ds_to_ESMFgrid(ds_in,
-                                                     need_bounds=self.need_bounds,
-                                                     periodic=periodic
-                                                     )
+            self._grid_in, shape_in = ds_to_ESMFgrid(
+                ds_in, need_bounds=self.need_bounds, periodic=periodic
+            )
         if locstream_out:
             self._grid_out, shape_out = ds_to_ESMFlocstream(ds_out)
         else:
-            self._grid_out, shape_out = ds_to_ESMFgrid(ds_out,
-                                                       need_bounds=self.need_bounds
-                                                       )
+            self._grid_out, shape_out = ds_to_ESMFgrid(ds_out, need_bounds=self.need_bounds)
 
         # record output grid and metadata
         self._lon_out = np.asarray(ds_out['lon'])
@@ -247,16 +258,16 @@ class Regridder(object):
         if self._lon_out.ndim == 2:
             try:
                 self.lon_dim = self.lat_dim = ds_out['lon'].dims
-            except:
+            except Exception:
                 self.lon_dim = self.lat_dim = ('y', 'x')
 
             self.out_horiz_dims = self.lon_dim
 
         elif self._lon_out.ndim == 1:
             try:
-                self.lon_dim, = ds_out['lon'].dims
-                self.lat_dim, = ds_out['lat'].dims
-            except:
+                (self.lon_dim,) = ds_out['lon'].dims
+                (self.lat_dim,) = ds_out['lat'].dims
+            except Exception:
                 self.lon_dim = 'lon'
                 self.lat_dim = 'lat'
 
@@ -270,7 +281,7 @@ class Regridder(object):
 
         # some logic about reusing weights with either filename or weights args
         if reuse_weights and (filename is None) and (weights is None):
-            raise ValueError("to reuse weights, you need to provide either filename or weights")
+            raise ValueError('to reuse weights, you need to provide either filename or weights')
 
         if not reuse_weights and weights is None:
             weights = self._compute_weights()  # Dictionary of weights
@@ -296,8 +307,8 @@ class Regridder(object):
     @property
     def A(self):
         message = (
-            "regridder.A is deprecated and will be removed in future versions. "
-            "Use regridder.weights instead."
+            'regridder.A is deprecated and will be removed in future versions. '
+            'Use regridder.weights instead.'
         )
 
         warnings.warn(message, DeprecationWarning)
@@ -308,10 +319,13 @@ class Regridder(object):
 
     def _get_default_filename(self):
         # e.g. bilinear_400x600_300x400.nc
-        filename = ('{0}_{1}x{2}_{3}x{4}'.format(self.method,
-                    self.shape_in[0], self.shape_in[1],
-                    self.shape_out[0], self.shape_out[1],)
-                    )
+        filename = '{0}_{1}x{2}_{3}x{4}'.format(
+            self.method,
+            self.shape_in[0],
+            self.shape_in[1],
+            self.shape_out[0],
+            self.shape_out[1],
+        )
         if self.periodic:
             filename += '_peri.nc'
         else:
@@ -320,33 +334,39 @@ class Regridder(object):
         return filename
 
     def _compute_weights(self):
-        regrid = esmf_regrid_build(self._grid_in, self._grid_out, self.method,
-                                   extrap_method = self.extrap_method,
-                                   extrap_dist_exponent = self.extrap_dist_exponent,
-                                   extrap_num_src_pnts = self.extrap_num_src_pnts,
-                                   ignore_degenerate=self.ignore_degenerate)
+        regrid = esmf_regrid_build(
+            self._grid_in,
+            self._grid_out,
+            self.method,
+            extrap_method=self.extrap_method,
+            extrap_dist_exponent=self.extrap_dist_exponent,
+            extrap_num_src_pnts=self.extrap_num_src_pnts,
+            ignore_degenerate=self.ignore_degenerate,
+        )
 
         w = regrid.get_weights_dict(deep_copy=True)
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
         return w
 
     def __repr__(self):
-        info = ('xESMF Regridder \n'
-                'Regridding algorithm:       {} \n'
-                'Weight filename:            {} \n'
-                'Reuse pre-computed weights? {} \n'
-                'Input grid shape:           {} \n'
-                'Output grid shape:          {} \n'
-                'Output grid dimension name: {} \n'
-                'Periodic in longitude?      {}'
-                .format(self.method,
-                        self.filename,
-                        self.reuse_weights,
-                        self.shape_in,
-                        self.shape_out,
-                        self.out_horiz_dims,
-                        self.periodic)
-                )
+        info = (
+            'xESMF Regridder \n'
+            'Regridding algorithm:       {} \n'
+            'Weight filename:            {} \n'
+            'Reuse pre-computed weights? {} \n'
+            'Input grid shape:           {} \n'
+            'Output grid shape:          {} \n'
+            'Output grid dimension name: {} \n'
+            'Periodic in longitude?      {}'.format(
+                self.method,
+                self.filename,
+                self.reuse_weights,
+                self.shape_in,
+                self.shape_out,
+                self.out_horiz_dims,
+                self.periodic,
+            )
+        )
 
         return info
 
@@ -397,8 +417,8 @@ class Regridder(object):
             return self.regrid_dataset(indata, keep_attrs=keep_attrs)
         else:
             raise TypeError(
-                "input must be numpy array, dask array, "
-                "xarray DataArray or Dataset!")
+                'input must be numpy array, dask array, ' 'xarray DataArray or Dataset!'
+            )
 
     @staticmethod
     def _regrid_array(indata, *, weights, shape_in, shape_out, locstream_in):
@@ -408,8 +428,12 @@ class Regridder(object):
 
     @property
     def _regrid_kwargs(self):
-        return {'weights': self.weights, 'locstream_in': self.locstream_in,
-                'shape_in': self.shape_in, 'shape_out': self.shape_out}
+        return {
+            'weights': self.weights,
+            'locstream_in': self.locstream_in,
+            'shape_in': self.shape_in,
+            'shape_out': self.shape_out,
+        }
 
     def regrid_numpy(self, indata):
         """See __call__()."""
@@ -428,7 +452,7 @@ class Regridder(object):
             indata,
             dtype=float,
             chunks=output_chunk_shape,
-            **self._regrid_kwargs
+            **self._regrid_kwargs,
         )
 
         return outdata
@@ -453,25 +477,27 @@ class Regridder(object):
         if self.locstream_in and not self.locstream_out:
             temp_horiz_dims = ['dummy_new'] + temp_horiz_dims
 
-
         dr_out = xr.apply_ufunc(
-            self._regrid_array, dr_in,
+            self._regrid_array,
+            dr_in,
             kwargs=self._regrid_kwargs,
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
             output_dtypes=[float],
-            output_sizes={temp_horiz_dims[0]: self.shape_out[0],
-                          temp_horiz_dims[1]: self.shape_out[1]
-                          },
-            keep_attrs=keep_attrs
+            output_sizes={
+                temp_horiz_dims[0]: self.shape_out[0],
+                temp_horiz_dims[1]: self.shape_out[1],
+            },
+            keep_attrs=keep_attrs,
         )
 
         if not self.locstream_out:
             # rename dimension name to match output grid
             dr_out = dr_out.rename(
-                {temp_horiz_dims[0]: self.out_horiz_dims[0],
-                 temp_horiz_dims[1]: self.out_horiz_dims[1]
+                {
+                    temp_horiz_dims[0]: self.out_horiz_dims[0],
+                    temp_horiz_dims[1]: self.out_horiz_dims[1],
                 }
             )
 
@@ -515,29 +541,32 @@ class Regridder(object):
             temp_horiz_dims = ['dummy_new'] + temp_horiz_dims
 
         # help user debugging invalid horizontal dimensions
-        print('using dimensions {} from data variable {} '
-              'as the horizontal dimensions for this dataset.'
-              .format(input_horiz_dims, name)
-              )
+        print(
+            'using dimensions {} from data variable {} '
+            'as the horizontal dimensions for this dataset.'.format(input_horiz_dims, name)
+        )
 
         ds_out = xr.apply_ufunc(
-            self._regrid_array, ds_in,
+            self._regrid_array,
+            ds_in,
             kwargs=self._regrid_kwargs,
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
             output_dtypes=[float],
-            output_sizes={temp_horiz_dims[0]: self.shape_out[0],
-                          temp_horiz_dims[1]: self.shape_out[1]
-                          },
-            keep_attrs=keep_attrs
+            output_sizes={
+                temp_horiz_dims[0]: self.shape_out[0],
+                temp_horiz_dims[1]: self.shape_out[1],
+            },
+            keep_attrs=keep_attrs,
         )
 
         if not self.locstream_out:
             # rename dimension name to match output grid
             ds_out = ds_out.rename(
-                {temp_horiz_dims[0]: self.out_horiz_dims[0],
-                 temp_horiz_dims[1]: self.out_horiz_dims[1]
+                {
+                    temp_horiz_dims[0]: self.out_horiz_dims[0],
+                    temp_horiz_dims[1]: self.out_horiz_dims[1],
                 }
             )
 
@@ -558,12 +587,11 @@ class Regridder(object):
         return ds_out
 
     def to_netcdf(self, filename=None):
-        '''Save weights to disk as a netCDF file.'''
+        """Save weights to disk as a netCDF file."""
         if filename is None:
             filename = self.filename
         w = self.weights
-        dim = "n_s"
-        ds = xr.Dataset({"S": (dim, w.data), "col": (dim, w.col + 1), "row": (dim, w.row + 1)})
+        dim = 'n_s'
+        ds = xr.Dataset({'S': (dim, w.data), 'col': (dim, w.col + 1), 'row': (dim, w.row + 1)})
         ds.to_netcdf(filename)
         return filename
-

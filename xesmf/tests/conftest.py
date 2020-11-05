@@ -2,19 +2,19 @@ import dask
 import pytest
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope='function')
 def threaded_scheduler():
-    with dask.config.set(scheduler="threads"):
+    with dask.config.set(scheduler='threads'):
         yield
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope='function')
 def processes_scheduler():
-    with dask.config.set(scheduler="processes"):
+    with dask.config.set(scheduler='processes'):
         yield
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope='module')
 def distributed_scheduler():
     from dask.distributed import Client, LocalCluster
 

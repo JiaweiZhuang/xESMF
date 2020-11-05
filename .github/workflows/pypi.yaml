@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: "3.x"
+          python-version: '3.x'
 
       - name: Install dependencies
         run: |
@@ -28,7 +28,7 @@ jobs:
         run: |
           python setup.py sdist
           python -m pip wheel . -w dist --no-deps
-  
+
       - name: Test the artifacts
         run: |
           python -m check_manifest --verbose

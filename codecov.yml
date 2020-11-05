@@ -5,8 +5,8 @@ codecov:
 comment: false
 
 ignore:
-  - "xesmf/tests/*"
-  - "setup.py"
+  - 'xesmf/tests/*'
+  - 'setup.py'
 
 coverage:
   precision: 2

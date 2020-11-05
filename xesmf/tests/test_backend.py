@@ -1,27 +1,33 @@
 import os
-import numpy as np
+
 import ESMF
-import xesmf as xe
-from xesmf.backend import (warn_f_contiguous, warn_lat_range,
-                           esmf_grid, add_corner, esmf_locstream,
-                           esmf_regrid_build, esmf_regrid_apply,
-                           esmf_regrid_finalize)
-from xesmf.smm import read_weights, apply_weights
-import xarray as xr
-from numpy.testing import assert_equal, assert_almost_equal
+import numpy as np
 import pytest
+import xarray as xr
+from numpy.testing import assert_almost_equal, assert_equal
+
+import xesmf as xe
+from xesmf.backend import (
+    add_corner,
+    esmf_grid,
+    esmf_locstream,
+    esmf_regrid_apply,
+    esmf_regrid_build,
+    esmf_regrid_finalize,
+    warn_f_contiguous,
+    warn_lat_range,
+)
+from xesmf.smm import apply_weights, read_weights
 
 # We use pure numpy arrays to test backend
 # xarray DataSet is only used at the very beginning as a quick way to make data
 coord_names = ['lon', 'lat', 'lon_b', 'lat_b']
 
 ds_in = xe.util.grid_global(20, 12)
-lon_in, lat_in, lon_b_in, lat_b_in = [ds_in[name].values
-                                      for name in coord_names]
+lon_in, lat_in, lon_b_in, lat_b_in = [ds_in[name].values for name in coord_names]
 
 ds_out = xe.util.grid_global(15, 9)
-lon_out, lat_out, lon_b_out, lat_b_out = [ds_out[name].values
-                                          for name in coord_names]
+lon_out, lat_out, lon_b_out, lat_b_out = [ds_out[name].values for name in coord_names]
 
 # shortcut to test a single grid
 lon, lat, lon_b, lat_b = [lon_in, lat_in, lon_b_in, lat_b_in]
@@ -122,10 +128,14 @@ def test_esmf_extrapolation():
     # without extrapolation, the first and last lines/columns = 0
     assert data_out_esmpy[0, 0] == 0
 
-    regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear',
-                               extrap_method='inverse_dist',
-                               extrap_num_src_pnts=3,
-                               extrap_dist_exponent=1)
+    regrid = esmf_regrid_build(
+        grid_in,
+        grid_out,
+        'bilinear',
+        extrap_method='inverse_dist',
+        extrap_num_src_pnts=3,
+        extrap_dist_exponent=1,
+    )
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
     # the 3 closest points in data_in are 2.010, 2.005, and 1.992. The result should be roughly equal to 2.0
     assert np.round(data_out_esmpy[0, 0], 1) == 2.0
@@ -154,14 +164,13 @@ def test_regrid():
     filename = 'test_weights.nc'
     if os.path.exists(filename):
         os.remove(filename)
-    regrid = esmf_regrid_build(grid_in, grid_out, 'conservative',
-                               filename=filename)
+    regrid = esmf_regrid_build(grid_in, grid_out, 'conservative', filename=filename)
     assert regrid.regrid_method is ESMF.RegridMethod.CONSERVE
 
     # apply regridding using ESMPy's native method
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
 
-    rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
+    rel_err = (data_out_esmpy - data_ref) / data_ref  # relative error
     assert np.max(np.abs(rel_err)) < 0.05
 
     # apply regridding using scipy
@@ -180,9 +189,7 @@ def test_regrid():
     data4D_out = apply_weights(weights, data4D_in, shape_in, shape_out)
 
     # data over broadcasting dimensions should agree
-    assert_almost_equal(data4D_in.mean(axis=(2, 3)),
-                        data4D_out.mean(axis=(2, 3)),
-                        decimal=10)
+    assert_almost_equal(data4D_in.mean(axis=(2, 3)), data4D_out.mean(axis=(2, 3)), decimal=10)
 
     # clean-up
     esmf_regrid_finalize(regrid)
@@ -201,7 +208,7 @@ def test_regrid_periodic_wrong():
     regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear')
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
 
-    rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
+    rel_err = (data_out_esmpy - data_ref) / data_ref  # relative error
     assert np.max(np.abs(rel_err)) == 1.0  # some data will be missing
 
     # clean-up
@@ -220,7 +227,7 @@ def test_regrid_periodic_correct():
     regrid = esmf_regrid_build(grid_in, grid_out, 'bilinear')
     data_out_esmpy = esmf_regrid_apply(regrid, data_in.T).T
 
-    rel_err = (data_out_esmpy - data_ref)/data_ref  # relative error
+    rel_err = (data_out_esmpy - data_ref) / data_ref  # relative error
     assert np.max(np.abs(rel_err)) < 0.065
     # clean-up
     esmf_regrid_finalize(regrid)
@@ -242,13 +249,13 @@ def test_esmf_locstream():
         ls = esmf_locstream(lon2d, lat)
 
     grid_in = esmf_grid(lon_in.T, lat_in.T, periodic=True)
-    regrid = esmf_regrid_build(grid_in, ls, 'bilinear')
+    esmf_regrid_build(grid_in, ls, 'bilinear')
 
-    regrid = esmf_regrid_build(ls, grid_in, 'nearest_s2d')
+    esmf_regrid_build(ls, grid_in, 'nearest_s2d')
 
 
 def test_read_weights(tmp_path):
-    fn = tmp_path / "weights.nc"
+    fn = tmp_path / 'weights.nc'
 
     grid_in = esmf_grid(lon_in.T, lat_in.T)
     grid_out = esmf_grid(lon_out.T, lat_out.T)
@@ -260,23 +267,31 @@ def test_read_weights(tmp_path):
     sm = read_weights(w, lon_in.size, lon_out.size)
 
     # Test Path and string to netCDF file against weights dictionary
-    np.testing.assert_array_equal(read_weights(fn, lon_in.size, lon_out.size).todense(), sm.todense())
-    np.testing.assert_array_equal(read_weights(str(fn), lon_in.size, lon_out.size).todense(), sm.todense())
+    np.testing.assert_array_equal(
+        read_weights(fn, lon_in.size, lon_out.size).todense(), sm.todense()
+    )
+    np.testing.assert_array_equal(
+        read_weights(str(fn), lon_in.size, lon_out.size).todense(), sm.todense()
+    )
 
     # Test xr.Dataset
-    np.testing.assert_array_equal(read_weights(xr.open_dataset(fn), lon_in.size, lon_out.size).todense(), sm.todense())
+    np.testing.assert_array_equal(
+        read_weights(xr.open_dataset(fn), lon_in.size, lon_out.size).todense(),
+        sm.todense(),
+    )
 
     # Test COO matrix
-    np.testing.assert_array_equal(read_weights(sm, lon_in.size, lon_out.size).todense(), sm.todense())
+    np.testing.assert_array_equal(
+        read_weights(sm, lon_in.size, lon_out.size).todense(), sm.todense()
+    )
 
     # Test failures
     with pytest.raises(IOError):
-        read_weights(tmp_path / "wrong_file.nc", lon_in.size, lon_out.size)
+        read_weights(tmp_path / 'wrong_file.nc', lon_in.size, lon_out.size)
 
     with pytest.raises(ValueError):
         read_weights({}, lon_in.size, lon_out.size)
 
     with pytest.raises(ValueError):
         ds = xr.open_dataset(fn)
-        read_weights(ds.drop_vars("col"), lon_in.size, lon_out.size)
-
+        read_weights(ds.drop_vars('col'), lon_in.size, lon_out.size)

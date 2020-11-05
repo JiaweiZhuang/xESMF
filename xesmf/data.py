@@ -6,7 +6,7 @@ import numpy as np
 
 
 def wave_smooth(lon, lat):
-    '''
+    """
     Spherical harmonic with low frequency.
 
     Parameters
@@ -35,10 +35,10 @@ def wave_smooth(lon, lat):
        Geometrically exact conservative remapping (GECoRe): regular
        latitude–longitude and cubed-sphere grids. Monthly Weather Review,
        137(6), 1721-1741.
-    '''
+    """
     # degree to radius, make a copy
-    lat = lat/180.0*np.pi
-    lon = lon/180.0*np.pi
+    lat = lat / 180.0 * np.pi
+    lon = lon / 180.0 * np.pi
 
-    f = 2 + np.cos(lat)**2 * np.cos(2*lon)
+    f = 2 + np.cos(lat) ** 2 * np.cos(2 * lon)
     return f

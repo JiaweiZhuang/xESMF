@@ -1,4 +1,4 @@
-'''
+"""
 Backend for xESMF. This module wraps ESMPy's complicated API and can create
 ESMF Grid and Regrid objects only using basic numpy arrays.
 
@@ -13,16 +13,17 @@ complicated enough, building new Classes will make debugging very difficult.
 3) Add some basic error checking in this wrapper level.
 ESMPy is hard to debug because the program often dies in the Fortran level.
 So it would be helpful to catch some common mistakes in Python level.
-'''
+"""
 
-import numpy as np
-import ESMF
-import warnings
 import os
+import warnings
+
+import ESMF
+import numpy as np
 
 
 def warn_f_contiguous(a):
-    '''
+    """
     Give a warning if input array if not Fortran-ordered.
 
     ESMPy expects Fortran-ordered array. Passing C-ordered array will slow down
@@ -31,14 +32,13 @@ def warn_f_contiguous(a):
     Parameters
     ----------
     a : numpy array
-    '''
+    """
     if not a.flags['F_CONTIGUOUS']:
-        warnings.warn("Input array is not F_CONTIGUOUS. "
-                      "Will affect performance.")
+        warnings.warn('Input array is not F_CONTIGUOUS. ' 'Will affect performance.')
 
 
 def warn_lat_range(lat):
-    '''
+    """
     Give a warning if latitude is outside of [-90, 90]
 
     Longitute, on the other hand, can be in any range,
@@ -47,13 +47,13 @@ def warn_lat_range(lat):
     Parameters
     ----------
     lat : numpy array
-    '''
+    """
     if (lat.max() > 90.0) or (lat.min() < -90.0):
-        warnings.warn("Latitude is outside of [-90, 90]")
+        warnings.warn('Latitude is outside of [-90, 90]')
 
 
 def esmf_grid(lon, lat, periodic=False, mask=None):
-    '''
+    """
     Create an ESMF.Grid object, for constructing ESMF.Field and ESMF.Regrid.
 
     Parameters
@@ -80,7 +80,7 @@ def esmf_grid(lon, lat, periodic=False, mask=None):
     Returns
     -------
     grid : ESMF.Grid object
-    '''
+    """
 
     # ESMPy expects Fortran-ordered array.
     # Passing C-ordered array will slow down performance.
@@ -91,8 +91,8 @@ def esmf_grid(lon, lat, periodic=False, mask=None):
 
     # ESMF.Grid can actually take 3D array (lon, lat, radius),
     # but regridding only works for 2D array
-    assert lon.ndim == 2, "Input grid must be 2D array"
-    assert lon.shape == lat.shape, "lon and lat must have same shape"
+    assert lon.ndim == 2, 'Input grid must be 2D array'
+    assert lon.shape == lat.shape, 'lon and lat must have same shape'
 
     staggerloc = ESMF.StaggerLoc.CENTER  # actually just integer 0
 
@@ -105,9 +105,12 @@ def esmf_grid(lon, lat, periodic=False, mask=None):
     # they will be set to default values (CENTER and SPH_DEG).
     # However, they actually need to be set explicitly,
     # otherwise grid._coord_sys and grid._staggerloc will still be None.
-    grid = ESMF.Grid(np.array(lon.shape), staggerloc=staggerloc,
-                     coord_sys=ESMF.CoordSys.SPH_DEG,
-                     num_peri_dims=num_peri_dims)
+    grid = ESMF.Grid(
+        np.array(lon.shape),
+        staggerloc=staggerloc,
+        coord_sys=ESMF.CoordSys.SPH_DEG,
+        num_peri_dims=num_peri_dims,
+    )
 
     # The grid object points to the underlying Fortran arrays in ESMF.
     # To modify lat/lon coordinates, need to get pointers to them
@@ -127,18 +130,17 @@ def esmf_grid(lon, lat, periodic=False, mask=None):
         grid_mask = mask.astype(np.int32)
         if not (grid_mask.shape == lon.shape):
             raise ValueError(
-                "mask must have the same shape as the latitude/longitude"
-                "coordinates, got: mask.shape = %s, lon.shape = %s" %
-                (mask.shape, lon.shape))
-        grid.add_item(ESMF.GridItem.MASK, staggerloc=ESMF.StaggerLoc.CENTER,
-                      from_file=False)
+                'mask must have the same shape as the latitude/longitude'
+                'coordinates, got: mask.shape = %s, lon.shape = %s' % (mask.shape, lon.shape)
+            )
+        grid.add_item(ESMF.GridItem.MASK, staggerloc=ESMF.StaggerLoc.CENTER, from_file=False)
         grid.mask[0][:] = grid_mask
 
     return grid
 
 
 def esmf_locstream(lon, lat):
-    '''
+    """
     Create an ESMF.LocStream object, for contrusting ESMF.Field and ESMF.Regrid
 
     Parameters
@@ -149,28 +151,27 @@ def esmf_locstream(lon, lat):
     Returns
     -------
     locstream : ESMF.LocStream object
-    '''
+    """
 
     if len(lon.shape) > 1:
-        raise ValueError("lon can only be 1d")
+        raise ValueError('lon can only be 1d')
     if len(lat.shape) > 1:
-        raise ValueError("lat can only be 1d")
+        raise ValueError('lat can only be 1d')
 
     assert lon.shape == lat.shape
 
     location_count = len(lon)
 
-    locstream = ESMF.LocStream(location_count,
-                               coord_sys=ESMF.CoordSys.SPH_DEG)
+    locstream = ESMF.LocStream(location_count, coord_sys=ESMF.CoordSys.SPH_DEG)
 
-    locstream["ESMF:Lon"] = lon.astype(np.dtype('f8'))
-    locstream["ESMF:Lat"] = lat.astype(np.dtype('f8'))
+    locstream['ESMF:Lon'] = lon.astype(np.dtype('f8'))
+    locstream['ESMF:Lat'] = lat.astype(np.dtype('f8'))
 
     return locstream
 
 
 def add_corner(grid, lon_b, lat_b):
-    '''
+    """
     Add corner information to ESMF.Grid for conservative regridding.
 
     Not needed for other methods like bilinear or nearest neighbour.
@@ -184,7 +185,7 @@ def add_corner(grid, lon_b, lat_b):
         Longitute/Latitude of cell corner
         Recommend Fortran-ordering to match ESMPy internal.
         Shape should be ``(Nlon+1, Nlat+1)``, or ``(Nx+1, Ny+1)``
-    '''
+    """
 
     # codes here are almost the same as esmf_grid(),
     # except for the "staggerloc" keyword
@@ -195,12 +196,12 @@ def add_corner(grid, lon_b, lat_b):
 
     warn_lat_range(lat_b)
 
-    assert lon_b.ndim == 2, "Input grid must be 2D array"
-    assert lon_b.shape == lat_b.shape, "lon_b and lat_b must have same shape"
-    assert np.array_equal(lon_b.shape, grid.max_index+1), (
-           "lon_b should be size (Nx+1, Ny+1)")
-    assert (grid.num_peri_dims == 0) and (grid.periodic_dim is None), (
-           "Cannot add corner for periodic grid")
+    assert lon_b.ndim == 2, 'Input grid must be 2D array'
+    assert lon_b.shape == lat_b.shape, 'lon_b and lat_b must have same shape'
+    assert np.array_equal(lon_b.shape, grid.max_index + 1), 'lon_b should be size (Nx+1, Ny+1)'
+    assert (grid.num_peri_dims == 0) and (
+        grid.periodic_dim is None
+    ), 'Cannot add corner for periodic grid'
 
     grid.add_coords(staggerloc=staggerloc)
 
@@ -211,12 +212,18 @@ def add_corner(grid, lon_b, lat_b):
     lat_b_pointer[...] = lat_b
 
 
-def esmf_regrid_build(sourcegrid, destgrid, method,
-                      filename=None, extra_dims=None,
-                      extrap_method=None, extrap_dist_exponent=None,
-                      extrap_num_src_pnts=None,
-                      ignore_degenerate=None):
-    '''
+def esmf_regrid_build(
+    sourcegrid,
+    destgrid,
+    method,
+    filename=None,
+    extra_dims=None,
+    extrap_method=None,
+    extrap_dist_exponent=None,
+    extrap_num_src_pnts=None,
+    ignore_degenerate=None,
+):
+    """
     Create an ESMF.Regrid object, containing regridding weights.
 
     Parameters
@@ -277,32 +284,34 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     -------
     grid : ESMF.Grid object
 
-    '''
+    """
 
     # use shorter, clearer names for options in ESMF.RegridMethod
-    method_dict = {'bilinear': ESMF.RegridMethod.BILINEAR,
-                   'conservative': ESMF.RegridMethod.CONSERVE,
-                   'conservative_normed': ESMF.RegridMethod.CONSERVE,
-                   'patch': ESMF.RegridMethod.PATCH,
-                   'nearest_s2d': ESMF.RegridMethod.NEAREST_STOD,
-                   'nearest_d2s': ESMF.RegridMethod.NEAREST_DTOS
-                   }
+    method_dict = {
+        'bilinear': ESMF.RegridMethod.BILINEAR,
+        'conservative': ESMF.RegridMethod.CONSERVE,
+        'conservative_normed': ESMF.RegridMethod.CONSERVE,
+        'patch': ESMF.RegridMethod.PATCH,
+        'nearest_s2d': ESMF.RegridMethod.NEAREST_STOD,
+        'nearest_d2s': ESMF.RegridMethod.NEAREST_DTOS,
+    }
     try:
         esmf_regrid_method = method_dict[method]
-    except:
-        raise ValueError('method should be chosen from '
-                         '{}'.format(list(method_dict.keys())))
+    except Exception:
+        raise ValueError('method should be chosen from ' '{}'.format(list(method_dict.keys())))
 
     # use shorter, clearer names for options in ESMF.ExtrapMethod
-    extrap_dict = {'inverse_dist': ESMF.ExtrapMethod.NEAREST_IDAVG,
-                   'nearest_s2d': ESMF.ExtrapMethod.NEAREST_STOD,
-                   None: None
-                   }
+    extrap_dict = {
+        'inverse_dist': ESMF.ExtrapMethod.NEAREST_IDAVG,
+        'nearest_s2d': ESMF.ExtrapMethod.NEAREST_STOD,
+        None: None,
+    }
     try:
         esmf_extrap_method = extrap_dict[extrap_method]
     except KeyError:
-        raise KeyError('`extrap_method` should be chosen from '
-                       '{}'.format(list(extrap_dict.keys())))
+        raise KeyError(
+            '`extrap_method` should be chosen from ' '{}'.format(list(extrap_dict.keys()))
+        )
 
     # until ESMPy updates ESMP_FieldRegridStoreFile, extrapolation is not possible
     # if files are written on disk
@@ -312,11 +321,13 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # conservative regridding needs cell corner information
     if method in ['conservative', 'conservative_normed']:
         if not sourcegrid.has_corners:
-            raise ValueError('source grid has no corner information. '
-                             'cannot use conservative regridding.')
+            raise ValueError(
+                'source grid has no corner information. ' 'cannot use conservative regridding.'
+            )
         if not destgrid.has_corners:
-            raise ValueError('destination grid has no corner information. '
-                             'cannot use conservative regridding.')
+            raise ValueError(
+                'destination grid has no corner information. ' 'cannot use conservative regridding.'
+            )
 
     # ESMF.Regrid requires Field (Grid+data) as input, not just Grid.
     # Extra dimensions are specified when constructing the Field objects,
@@ -335,8 +346,9 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # ESMPy will throw an incomprehensive error if the weight file
     # already exists. Better to catch it here!
     if filename is not None:
-        assert not os.path.exists(filename), (
-            'Weight file already exists! Please remove it or use a new name.')
+        assert not os.path.exists(
+            filename
+        ), 'Weight file already exists! Please remove it or use a new name.'
 
     # re-normalize conservative regridding results
     # https://github.com/JiaweiZhuang/xESMF/issues/17
@@ -348,15 +360,17 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
     # Calculate regridding weights.
     # Must set unmapped_action to IGNORE, otherwise the function will fail,
     # if the destination grid is larger than the source grid.
-    kwargs=dict(filename=filename,
-                regrid_method=esmf_regrid_method,
-                unmapped_action=ESMF.UnmappedAction.IGNORE,
-                ignore_degenerate=ignore_degenerate,
-                norm_type=norm_type,
-                extrap_method=esmf_extrap_method,
-                extrap_dist_exponent=extrap_dist_exponent,
-                extrap_num_src_pnts=extrap_num_src_pnts,
-                factors=filename is None)
+    kwargs = dict(
+        filename=filename,
+        regrid_method=esmf_regrid_method,
+        unmapped_action=ESMF.UnmappedAction.IGNORE,
+        ignore_degenerate=ignore_degenerate,
+        norm_type=norm_type,
+        extrap_method=esmf_extrap_method,
+        extrap_dist_exponent=extrap_dist_exponent,
+        extrap_num_src_pnts=extrap_num_src_pnts,
+        factors=filename is None,
+    )
     if allow_masked_values:
         kwargs.update(dict(src_mask_values=[0], dst_mask_values=[0]))
 
@@ -366,7 +380,7 @@ def esmf_regrid_build(sourcegrid, destgrid, method,
 
 
 def esmf_regrid_apply(regrid, indata):
-    '''
+    """
     Apply existing regridding weights to the data field,
     using ESMPy's built-in functionality.
 
@@ -391,7 +405,7 @@ def esmf_regrid_apply(regrid, indata):
     -------
     outdata : numpy array of shape ``(Nlon_out, Nlat_out, N1, N2, ...)``
 
-    '''
+    """
 
     # Passing C-ordered input data will be terribly slow,
     # since indata is often quite large and re-ordering memory is expensive.
@@ -414,7 +428,7 @@ def esmf_regrid_apply(regrid, indata):
 
 
 def esmf_regrid_finalize(regrid):
-    '''
+    """
     Free the underlying Fortran array to avoid memory leak.
 
     After calling ``destroy()`` on regrid or its fields, we cannot use the
@@ -424,7 +438,7 @@ def esmf_regrid_finalize(regrid):
     ----------
     regrid : ESMF.Regrid object
 
-    '''
+    """
 
     regrid.destroy()
     regrid.srcfield.destroy()

@@ -47,7 +47,7 @@ For new users, I also recommend reading `How to ask for help <https://pangeo-xes
 .. |DOI| image:: https://zenodo.org/badge/101709596.svg
    :target: https://zenodo.org/badge/latestdoi/101709596
    :alt: DOI
-   
+
 .. |Binder| image:: https://mybinder.org/badge_logo.svg
    :target: https://mybinder.org/v2/gh/pangeo-data/xESMF/master?filepath=doc%2Fnotebooks
    :alt: binder

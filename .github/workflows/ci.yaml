@@ -17,14 +17,14 @@ jobs:
       - name: Setup Conda Environment
         uses: goanpeca/setup-miniconda@v1
         with:
-          miniconda-version: "latest"
+          miniconda-version: 'latest'
           python-version: ${{ matrix.python-version }}
           environment-file: ci/environment.yml
           activate-environment: xesmf
           auto-activate-base: false
 
       - name: Install xesmf
-        shell: bash -l {0} 
+        shell: bash -l {0}
         run: |
           conda activate xesmf
           python -m pip install --no-deps -e .

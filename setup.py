@@ -1,15 +1,16 @@
-from setuptools import setup, find_packages
 import os
 
+from setuptools import find_packages, setup
+
 DISTNAME = 'xesmf'
-DESCRIPTION = "Universal Regridder for Geospatial Data"
+DESCRIPTION = 'Universal Regridder for Geospatial Data'
 AUTHOR = 'Jiawei Zhuang'
 AUTHOR_EMAIL = 'jiaweizhuang@g.harvard.edu'
 URL = 'https://github.com/pangeo-data/xESMF'
 LICENSE = 'MIT'
 PYTHON_REQUIRES = '>=3.6'
-USE_SCM_VERSION={'version_scheme': 'post-release', 'local_scheme': 'dirty-tag'}
-SETUP_REQUIRES=['setuptools_scm', 'setuptools>=30.3.0']
+USE_SCM_VERSION = {'version_scheme': 'post-release', 'local_scheme': 'dirty-tag'}
+SETUP_REQUIRES = ['setuptools_scm', 'setuptools>=30.3.0']
 
 # https://github.com/rtfd/readthedocs.org/issues/5512#issuecomment-475024373
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
@@ -37,17 +38,19 @@ def readme():
         return f.read()
 
 
-setup(name=DISTNAME,
-      license=LICENSE,
-      author=AUTHOR,
-      author_email=AUTHOR_EMAIL,
-      classifiers=CLASSIFIERS,
-      description=DESCRIPTION,
-      long_description=readme(),
-      long_description_content_type="text/x-rst",
-      python_requires=PYTHON_REQUIRES,
-      install_requires=INSTALL_REQUIRES,
-      url=URL,
-      packages=find_packages(),
-      use_scm_version=USE_SCM_VERSION,
-      setup_requires=SETUP_REQUIRES)
+setup(
+    name=DISTNAME,
+    license=LICENSE,
+    author=AUTHOR,
+    author_email=AUTHOR_EMAIL,
+    classifiers=CLASSIFIERS,
+    description=DESCRIPTION,
+    long_description=readme(),
+    long_description_content_type='text/x-rst',
+    python_requires=PYTHON_REQUIRES,
+    install_requires=INSTALL_REQUIRES,
+    url=URL,
+    packages=find_packages(),
+    use_scm_version=USE_SCM_VERSION,
+    setup_requires=SETUP_REQUIRES,
+)

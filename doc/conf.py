@@ -38,12 +38,12 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.mathjax',
     'nbsphinx',
-    'IPython.sphinxext.ipython_console_highlighting'
+    'IPython.sphinxext.ipython_console_highlighting',
 ]
 
 extlinks = {
-    "issue": ("https://github.com/pangeo-data/xESMF/issues/%s", "GH"),
-    "pull": ("https://github.com/pangeo-data/xESMF/pull/%s", "PR"),
+    'issue': ('https://github.com/pangeo-data/xESMF/issues/%s', 'GH'),
+    'pull': ('https://github.com/pangeo-data/xESMF/pull/%s', 'PR'),
 }
 
 # IPython.sphinxext.ipython_console_highlighting is required for anaconda.
@@ -123,7 +123,7 @@ html_theme = 'sphinx_rtd_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-#html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -153,15 +153,12 @@ latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
-
     # The font size ('10pt', '11pt' or '12pt').
     #
     # 'pointsize': '10pt',
-
     # Additional stuff for the LaTeX preamble.
     #
     # 'preamble': '',
-
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
@@ -171,8 +168,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'xESMF.tex', 'xESMF Documentation',
-     'Jiawei Zhuang', 'manual'),
+    (master_doc, 'xESMF.tex', 'xESMF Documentation', 'Jiawei Zhuang', 'manual'),
 ]
 
 
@@ -180,10 +176,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'xesmf', 'xESMF Documentation',
-     [author], 1)
-]
+man_pages = [(master_doc, 'xesmf', 'xESMF Documentation', [author], 1)]
 
 
 # -- Options for Texinfo output -------------------------------------------
@@ -192,7 +185,13 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'xESMF', 'xESMF Documentation',
-     author, 'xESMF', 'One line description of project.',
-     'Miscellaneous'),
+    (
+        master_doc,
+        'xESMF',
+        'xESMF Documentation',
+        author,
+        'xESMF',
+        'One line description of project.',
+        'Miscellaneous',
+    ),
 ]

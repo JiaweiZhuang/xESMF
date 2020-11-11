@@ -84,5 +84,3 @@ By `Jiawei Zhuang <https://github.com/JiaweiZhuang>`_
 ------------------
 Initial release.
 By `Jiawei Zhuang <https://github.com/JiaweiZhuang>`_
-
-

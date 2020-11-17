@@ -5,44 +5,75 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       fail-fast: false
       matrix:
         python-version: [3.6, 3.7, 3.8]
 
     steps:
+      - name: Cancel previous runs
+        uses: styfle/cancel-workflow-action@0.6.0
+        with:
+          access_token: ${{ github.token }}
       - name: Checkout source
         uses: actions/checkout@v2
 
-      - name: Setup Conda Environment
-        uses: goanpeca/setup-miniconda@v1
+      - name: Conda setup
+        uses: conda-incubator/setup-miniconda@v2
         with:
-          miniconda-version: 'latest'
+          channels: conda-forge
+          mamba-version: '*'
           python-version: ${{ matrix.python-version }}
-          environment-file: ci/environment.yml
           activate-environment: xesmf
           auto-activate-base: false
 
-      - name: Install xesmf
-        shell: bash -l {0}
+      - name: Set up conda environment
         run: |
-          conda activate xesmf
+          mamba env update -f ci/environment.yml
           python -m pip install --no-deps -e .
 
       - name: Conda list information
-        shell: bash -l {0}
         run: |
           conda env list
           conda list
 
-      - name: Running tests
-        shell: bash -l {0}
+      - name: Run tests
         run: |
-          conda activate xesmf
-          python -m pytest --setup-show --cov=./ --cov-report=xml --verbose
+          python -m pytest --cov=./ --cov-report=xml --verbose
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
+
+  upstream-dev:
+    name: upstream-dev
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - name: Cancel previous runs
+        uses: styfle/cancel-workflow-action@0.6.0
+        with:
+          access_token: ${{ github.token }}
+      - uses: actions/checkout@v2
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          channels: conda-forge
+          mamba-version: '*'
+          activate-environment: xesmf
+          auto-update-conda: false
+          python-version: 3.8
+      - name: Set up conda environment
+        run: |
+          mamba env update -f ci/environment-upstream-dev.yml
+          python -m pip install -e .
+          conda list
+      - name: Run tests
+        run: |
+          python -m pytest --cov=./ --cov-report=xml --verbose

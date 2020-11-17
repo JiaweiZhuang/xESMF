@@ -1,6 +1,15 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+  schedule:
+    - cron: '0 0 * * *' # Daily “At 00:00”
+  workflow_dispatch: # allows you to trigger manually
 
 jobs:
   build:
@@ -73,6 +82,10 @@ jobs:
         run: |
           mamba env update -f ci/environment-upstream-dev.yml
           python -m pip install -e .
+
+      - name: Conda list information
+        run: |
+          conda env list
           conda list
       - name: Run tests
         run: |

@@ -1,13 +1,18 @@
 import os
-import numpy as np
-from shapely.geometry import Polygon, MultiPolygon
-import xarray as xr
-import xesmf as xe
-from xesmf.frontend import as_2d_mesh
 import warnings
 
-from numpy.testing import assert_equal, assert_almost_equal, assert_allclose
+import dask
+import numpy as np
 import pytest
+import xarray as xr
+from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
+from shapely.geometry import MultiPolygon, Polygon
+
+import xesmf as xe
+from xesmf.frontend import as_2d_mesh
+
+dask_schedulers = ['threaded_scheduler', 'processes_scheduler', 'distributed_scheduler']
+
 
 # same test data as test_backend.py, but here we can use xarray DataSet
 ds_in = xe.util.grid_global(20, 12)
@@ -39,18 +44,38 @@ ds_savg = xr.Dataset(
         'lat': (('lat',), [0.5, 1.5]),
         'lon': (('lon',), [0.5, 1.5]),
         'lat_b': (('lat_b',), [0, 1, 2]),
-        'lon_b': (('lon_b',), [0, 1, 2])
+        'lon_b': (('lon_b',), [0, 1, 2]),
     },
-    data_vars={'abc': (('lon', 'lat'), [[1, 2], [3, 4]])}
+    data_vars={'abc': (('lon', 'lat'), [[1, 2], [3, 4]])},
 )
 polys = [
     Polygon([[0.5, 0.5], [0.5, 1.5], [1.5, 0.5]]),  # Simple triangle polygon
-    MultiPolygon([Polygon([[0.25, 1.25], [0.25, 1.75], [0.75, 1.75], [0.75, 1.25]]),
-                  Polygon([[1.25, 1.25], [1.25, 1.75], [1.75, 1.75], [1.75, 1.25]])]),  # Multipolygon on 3 and 4
-    Polygon([[0, 0], [0, 1], [2, 1], [2, 0]], holes=[[[0.5, 0.25], [0.5, 0.75], [1., 0.75], [1., 0.25]]]),  # Simple polygon covering 1 and 2 with hole spanning on both
+    MultiPolygon(
+        [
+            Polygon([[0.25, 1.25], [0.25, 1.75], [0.75, 1.75], [0.75, 1.25]]),
+            Polygon([[1.25, 1.25], [1.25, 1.75], [1.75, 1.75], [1.75, 1.25]]),
+        ]
+    ),  # Multipolygon on 3 and 4
+    Polygon(
+        [[0, 0], [0, 1], [2, 1], [2, 0]],
+        holes=[[[0.5, 0.25], [0.5, 0.75], [1.0, 0.75], [1.0, 0.25]]],
+    ),  # Simple polygon covering 1 and 2 with hole spanning on both
     Polygon([[1, 1], [1, 3], [3, 3], [3, 1]]),  # Polygon partially outside, covering a part of 4
     Polygon([[3, 3], [3, 4], [4, 4], [4, 3]]),  # Polygon totally outside
-    Polygon([[0, 0], [0.5, 0.5], [0, 1], [0.5, 1.5], [0, 2], [2, 2], [1.5, 1.5], [2, 1], [1.5, 0.5], [2, 0]])  # Long multifaceted polygon
+    Polygon(
+        [
+            [0, 0],
+            [0.5, 0.5],
+            [0, 1],
+            [0.5, 1.5],
+            [0, 2],
+            [2, 2],
+            [1.5, 1.5],
+            [2, 1],
+            [1.5, 0.5],
+            [2, 0],
+        ]
+    ),  # Long multifaceted polygon
 ]
 exps_polys = [1.75, 3.5, 1.5716, 4, 0, 2.5]
 
@@ -75,26 +100,29 @@ def test_as_2d_mesh():
 methods_list = ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']
 
 
-@pytest.mark.parametrize("locstream_in,locstream_out,method", [
-                         (False, False, 'conservative'),
-                         (False, False, 'bilinear'),
-                         (False, True, 'bilinear'),
-                         (False, False, 'nearest_s2d'),
-                         (False, True, 'nearest_s2d'),
-                         (True, False, 'nearest_s2d'),
-                         (True, True, 'nearest_s2d'),
-                         (False, False, 'nearest_d2s'),
-                         (False, True, 'nearest_d2s'),
-                         (True, False, 'nearest_d2s'),
-                         (True, True, 'nearest_d2s')
-                         ])
+@pytest.mark.parametrize(
+    'locstream_in,locstream_out,method',
+    [
+        (False, False, 'conservative'),
+        (False, False, 'bilinear'),
+        (False, True, 'bilinear'),
+        (False, False, 'nearest_s2d'),
+        (False, True, 'nearest_s2d'),
+        (True, False, 'nearest_s2d'),
+        (True, True, 'nearest_s2d'),
+        (False, False, 'nearest_d2s'),
+        (False, True, 'nearest_d2s'),
+        (True, False, 'nearest_d2s'),
+        (True, True, 'nearest_d2s'),
+    ],
+)
 def test_build_regridder(method, locstream_in, locstream_out):
     din = ds_locs if locstream_in else ds_in
     dout = ds_locs if locstream_out else ds_out
 
-    regridder = xe.Regridder(din, dout, method,
-                             locstream_in=locstream_in,
-                             locstream_out=locstream_out)
+    regridder = xe.Regridder(
+        din, dout, method, locstream_in=locstream_in, locstream_out=locstream_out
+    )
 
     # check screen output
     assert repr(regridder) == str(regridder)
@@ -110,13 +138,11 @@ def test_existing_weights():
 
     # make sure we can reuse weights
     assert os.path.exists(fn)
-    regridder_reuse = xe.Regridder(ds_in, ds_out, method,
-                                   weights=fn)
+    regridder_reuse = xe.Regridder(ds_in, ds_out, method, weights=fn)
     assert regridder_reuse.A.shape == regridder.A.shape
 
     # this should also work with reuse_weights=True
-    regridder_reuse = xe.Regridder(ds_in, ds_out, method,
-                                   reuse_weights=True, weights=fn)
+    regridder_reuse = xe.Regridder(ds_in, ds_out, method, reuse_weights=True, weights=fn)
     assert regridder_reuse.A.shape == regridder.A.shape
 
     # or can also overwrite it
@@ -124,21 +150,18 @@ def test_existing_weights():
 
     # check legacy args still work
     regridder = xe.Regridder(ds_in, ds_out, method, filename='wgts.nc')
-    regridder_reuse = xe.Regridder(ds_in, ds_out, method,
-                                   reuse_weights=True,
-                                   filename='wgts.nc')
+    regridder_reuse = xe.Regridder(ds_in, ds_out, method, reuse_weights=True, filename='wgts.nc')
     assert regridder_reuse.A.shape == regridder.A.shape
 
     # check fails on non-existent file
     with pytest.raises(OSError):
-        regridder_reuse = xe.Regridder(ds_in, ds_out, method,
-                                       reuse_weights=True,
-                                       filename='fakewgts.nc')
+        regridder_reuse = xe.Regridder(
+            ds_in, ds_out, method, reuse_weights=True, filename='fakewgts.nc'
+        )
 
     # check fails if no weights are provided
     with pytest.raises(ValueError):
-        regridder_reuse = xe.Regridder(ds_in, ds_out, method,
-                                       reuse_weights=True)
+        regridder_reuse = xe.Regridder(ds_in, ds_out, method, reuse_weights=True)
 
 
 def test_to_netcdf(tmp_path):
@@ -155,7 +178,7 @@ def test_to_netcdf(tmp_path):
 
     # Let the ESMPy backend write the weights to disk
     efn = tmp_path / 'weights.nc'
-    regrid = esmf_regrid_build(grid_in, grid_out, method=method, filename=str(efn))
+    esmf_regrid_build(grid_in, grid_out, method=method, filename=str(efn))
 
     x = xr.open_dataset(xfn)
     e = xr.open_dataset(efn)
@@ -172,9 +195,7 @@ def test_build_regridder_from_dict():
     lat_in = ds_in['lat'].values
     lon_out = ds_out['lon'].values
     lat_out = ds_out['lat'].values
-    regridder = xe.Regridder({'lon': lon_in, 'lat': lat_in},
-                             {'lon': lon_out, 'lat': lat_out},
-                             'bilinear')
+    _ = xe.Regridder({'lon': lon_in, 'lat': lat_in}, {'lon': lon_out, 'lat': lat_out}, 'bilinear')
 
 
 def test_regrid_periodic_wrong():
@@ -184,7 +205,7 @@ def test_regrid_periodic_wrong():
     dr_out = regridder(ds_in['data'])  # xarray DataArray
 
     # compare with analytical solution
-    rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
+    rel_err = (ds_out['data_ref'] - dr_out) / ds_out['data_ref']
     assert np.max(np.abs(rel_err)) == 1.0  # some data will be missing
 
 
@@ -194,7 +215,7 @@ def test_regrid_periodic_correct():
     dr_out = regridder(ds_in['data'])
 
     # compare with analytical solution
-    rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
+    rel_err = (ds_out['data_ref'] - dr_out) / ds_out['data_ref']
     assert np.max(np.abs(rel_err)) < 0.065
 
 
@@ -215,7 +236,7 @@ def test_regrid_with_1d_grid():
     dr_out = regridder(ds_in['data'])
 
     # compare with analytical solution
-    rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
+    rel_err = (ds_out['data_ref'] - dr_out) / ds_out['data_ref']
     assert np.max(np.abs(rel_err)) < 0.065
 
     # metadata should be 1D
@@ -225,6 +246,7 @@ def test_regrid_with_1d_grid():
 
 # TODO: consolidate (regrid method, input data types) combination
 # using pytest fixtures and parameterization
+
 
 def test_regrid_dataarray():
     # xarray.DataArray containing in-memory numpy array
@@ -238,7 +260,7 @@ def test_regrid_dataarray():
     assert_equal(outdata, dr_out.values)
 
     # compare with analytical solution
-    rel_err = (ds_out['data_ref'] - dr_out)/ds_out['data_ref']
+    rel_err = (ds_out['data_ref'] - dr_out) / ds_out['data_ref']
     assert np.max(np.abs(rel_err)) < 0.05
 
     # check metadata
@@ -249,9 +271,11 @@ def test_regrid_dataarray():
     dr_out_4D = regridder(ds_in['data4D'])
 
     # data over broadcasting dimensions should agree
-    assert_almost_equal(ds_in['data4D'].values.mean(axis=(2, 3)),
-                        dr_out_4D.values.mean(axis=(2, 3)),
-                        decimal=10)
+    assert_almost_equal(
+        ds_in['data4D'].values.mean(axis=(2, 3)),
+        dr_out_4D.values.mean(axis=(2, 3)),
+        decimal=10,
+    )
 
     # check metadata
     xr.testing.assert_identical(dr_out_4D['time'], ds_in['time'])
@@ -292,13 +316,16 @@ def test_regrid_dataarray_from_locstream():
         regridder = xe.Regridder(ds_locs, ds_in, 'conservative', locstream_in=True)
 
 
-def test_regrid_dask():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dask(request, scheduler):
     # chunked dask array (no xarray metadata)
-
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_in, ds_out, 'conservative')
 
     indata = ds_in_chunked['data4D'].data
     outdata = regridder(indata)
+
+    assert dask.is_dask_collection(outdata)
 
     # lazy dask arrays have incorrect shape attribute due to last chunk
     assert outdata.compute().shape == indata.shape[:-2] + horiz_shape_out
@@ -309,38 +336,44 @@ def test_regrid_dask():
     assert np.max(np.abs(rel_err)) < 0.05
 
 
-def test_regrid_dask_to_locstream():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dask_to_locstream(request, scheduler):
     # chunked dask array (no xarray metadata)
 
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
 
     indata = ds_in_chunked['data4D'].data
     outdata = regridder(indata)
+    assert dask.is_dask_collection(outdata)
 
 
-def test_regrid_dask_from_locstream():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dask_from_locstream(request, scheduler):
     # chunked dask array (no xarray metadata)
 
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
 
-    outdata = regridder(ds_locs['lat'].data)
+    outdata = regridder(ds_locs.chunk()['lat'].data)
+    assert dask.is_dask_collection(outdata)
 
 
-def test_regrid_dataarray_dask():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dataarray_dask(request, scheduler):
     # xarray.DataArray containing chunked dask array
-
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_in, ds_out, 'conservative')
 
     dr_in = ds_in_chunked['data4D']
     dr_out = regridder(dr_in)
+    assert dask.is_dask_collection(dr_out)
 
     assert dr_out.data.shape == dr_in.data.shape[:-2] + horiz_shape_out
     assert dr_out.data.chunksize == dr_in.data.chunksize[:-2] + horiz_shape_out
 
     # data over broadcasting dimensions should agree
-    assert_almost_equal(dr_in.values.mean(axis=(2, 3)),
-                        dr_out.values.mean(axis=(2, 3)),
-                        decimal=10)
+    assert_almost_equal(dr_in.values.mean(axis=(2, 3)), dr_out.values.mean(axis=(2, 3)), decimal=10)
 
     # check metadata
     xr.testing.assert_identical(dr_out['time'], dr_in['time'])
@@ -349,21 +382,26 @@ def test_regrid_dataarray_dask():
     assert_equal(dr_out['lon'].values, ds_out['lon'].values)
 
 
-def test_regrid_dataarray_dask_to_locstream():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dataarray_dask_to_locstream(request, scheduler):
     # xarray.DataArray containing chunked dask array
-
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
 
     dr_in = ds_in_chunked['data4D']
     dr_out = regridder(dr_in)
+    assert dask.is_dask_collection(dr_out)
 
 
-def test_regrid_dataarray_dask_from_locstream():
+@pytest.mark.parametrize('scheduler', dask_schedulers)
+def test_regrid_dataarray_dask_from_locstream(request, scheduler):
     # xarray.DataArray containing chunked dask array
 
+    scheduler = request.getfixturevalue(scheduler)
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
 
-    outdata = regridder(ds_locs['lat'])
+    outdata = regridder(ds_locs.chunk()['lat'])
+    assert dask.is_dask_collection(outdata)
 
 
 def test_regrid_dataset():
@@ -379,13 +417,15 @@ def test_regrid_dataset():
     assert set(ds_result.data_vars.keys()) == set(ds_in.data_vars.keys())
 
     # compare with analytical solution
-    rel_err = (ds_out['data_ref'] - ds_result['data'])/ds_out['data_ref']
+    rel_err = (ds_out['data_ref'] - ds_result['data']) / ds_out['data_ref']
     assert np.max(np.abs(rel_err)) < 0.05
 
     # data over broadcasting dimensions should agree
-    assert_almost_equal(ds_in['data4D'].values.mean(axis=(2, 3)),
-                        ds_result['data4D'].values.mean(axis=(2, 3)),
-                        decimal=10)
+    assert_almost_equal(
+        ds_in['data4D'].values.mean(axis=(2, 3)),
+        ds_result['data4D'].values.mean(axis=(2, 3)),
+        decimal=10,
+    )
 
     # check metadata
     xr.testing.assert_identical(ds_result['time'], ds_in['time'])
@@ -398,17 +438,20 @@ def test_regrid_dataset_to_locstream():
     # xarray.Dataset containing in-memory numpy array
 
     regridder = xe.Regridder(ds_in, ds_locs, 'bilinear', locstream_out=True)
-    ds_result = regridder(ds_in)
+    regridder(ds_in)
 
 
 def test_build_regridder_with_masks():
-    ds_in['mask'] = xr.DataArray(
-        np.random.randint(2, size=ds_in['data'].shape),
-        dims=('y', 'x'))
+    ds_in['mask'] = xr.DataArray(np.random.randint(2, size=ds_in['data'].shape), dims=('y', 'x'))
     print(ds_in)
     # 'patch' is too slow to test
-    for method in ['bilinear', 'conservative', 'conservative_normed',
-                   'nearest_s2d', 'nearest_d2s']:
+    for method in [
+        'bilinear',
+        'conservative',
+        'conservative_normed',
+        'nearest_s2d',
+        'nearest_d2s',
+    ]:
         regridder = xe.Regridder(ds_in, ds_out, method)
 
         # check screen output
@@ -421,16 +464,20 @@ def test_regrid_dataset_from_locstream():
     # xarray.Dataset containing in-memory numpy array
 
     regridder = xe.Regridder(ds_locs, ds_in, 'nearest_s2d', locstream_in=True)
-    outdata = regridder(ds_locs)
+    regridder(ds_locs)
 
 
 def test_ds_to_ESMFlocstream():
     import ESMF
+
     from xesmf.frontend import ds_to_ESMFlocstream
 
     locstream, shape = ds_to_ESMFlocstream(ds_locs)
     assert isinstance(locstream, ESMF.LocStream)
-    assert shape == (1,4,)
+    assert shape == (
+        1,
+        4,
+    )
     with pytest.raises(ValueError):
         locstream, shape = ds_to_ESMFlocstream(ds_in)
     ds_bogus = ds_in.copy()
@@ -439,17 +486,18 @@ def test_ds_to_ESMFlocstream():
         locstream, shape = ds_to_ESMFlocstream(ds_bogus)
 
 
-@pytest.mark.parametrize("poly,exp", list(zip(polys, exps_polys)))
+@pytest.mark.parametrize('poly,exp', list(zip(polys, exps_polys)))
 def test_spatial_averager(poly, exp):
-    savg = xe.SpatialAverager(ds_savg, [poly], geom_dim_name="my_geom")
+    savg = xe.SpatialAverager(ds_savg, [poly], geom_dim_name='my_geom')
     out = savg(ds_savg.abc)
     assert_allclose(out, exp, rtol=1e-3)
 
-    assert "my_geom" in out.dims
+    assert 'my_geom' in out.dims
 
 
 def test_polys_to_ESMFmesh():
     import ESMF
+
     from xesmf.frontend import polys_to_ESMFmesh
 
     # No overlap but multi + holes

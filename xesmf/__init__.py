@@ -1,4 +1,10 @@
-__version__ = '0.4.0'
-from . import util
-from . import data
-from . frontend import Regridder, SpatialAverager
+# flake8: noqa
+from pkg_resources import DistributionNotFound, get_distribution
+
+from . import data, util
+from .frontend import Regridder, SpatialAverager
+
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:  # pragma: no cover
+    __version__ = '0.0.0'  # pragma: no cover

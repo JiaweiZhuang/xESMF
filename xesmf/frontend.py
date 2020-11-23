@@ -1,24 +1,24 @@
-'''
+"""
 Frontend for xESMF, exposed to users.
-'''
+"""
+
+import warnings
 
 import numpy as np
 import scipy.sparse as sps
 import xarray as xr
-import warnings
 
-from . backend import (Grid, LocStream, Mesh, add_corner,
-                       esmf_regrid_build, esmf_regrid_finalize)
-
-from . smm import read_weights, apply_weights, add_nans_to_weights, _combine_weight_multipoly
-
-from . util import split_polygons_and_holes
+from .backend import Grid, LocStream, Mesh, add_corner, esmf_regrid_build, esmf_regrid_finalize
+from .smm import _combine_weight_multipoly, add_nans_to_weights, apply_weights, read_weights
+from .util import split_polygons_and_holes
 
 try:
     import dask.array as da
+
     dask_array_type = (da.Array,)  # for isinstance checks
 except ImportError:
     dask_array_type = ()
+
 
 def as_2d_mesh(lon, lat):
 
@@ -33,7 +33,7 @@ def as_2d_mesh(lon, lat):
 
 
 def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
-    '''
+    """
     Convert xarray DataSet or dictionary to ESMF.Grid object.
 
     Parameters
@@ -55,7 +55,7 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     -------
     grid : ESMF.Grid object
 
-    '''
+    """
 
     # use np.asarray(dr) instead of dr.values, so it also works for dictionary
     lon = np.asarray(ds['lon'])
@@ -83,7 +83,7 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
 
 
 def ds_to_ESMFlocstream(ds):
-    '''
+    """
     Convert xarray DataSet or dictionary to ESMF.LocStream object.
 
     Parameters
@@ -95,15 +95,15 @@ def ds_to_ESMFlocstream(ds):
     -------
     locstream : ESMF.LocStream object
 
-    '''
+    """
 
     lon = np.asarray(ds['lon'])
     lat = np.asarray(ds['lat'])
 
     if len(lon.shape) > 1:
-        raise ValueError("lon can only be 1d")
+        raise ValueError('lon can only be 1d')
     if len(lat.shape) > 1:
-        raise ValueError("lat can only be 1d")
+        raise ValueError('lat can only be 1d')
 
     assert lon.shape == lat.shape
 
@@ -132,16 +132,27 @@ def polys_to_ESMFmesh(polys):
     """
     ext, holes, _, _ = split_polygons_and_holes(polys)
     if len(holes) > 0:
-        warnings.warn('Some passed polygons have holes, those are not represented in the returned Mesh.')
+        warnings.warn(
+            'Some passed polygons have holes, those are not represented in the returned Mesh.'
+        )
     return Mesh.from_polygons(ext), (1, len(ext))
 
 
 class BaseRegridder(object):
-    def __init__(self, grid_in, grid_out, method,
-                 filename=None, reuse_weights=False,
-                 extrap_method=None, extrap_dist_exponent=None,
-                 extrap_num_src_pnts=None, add_nans=False,
-                 weights=None, ignore_degenerate=None):
+    def __init__(
+        self,
+        grid_in,
+        grid_out,
+        method,
+        filename=None,
+        reuse_weights=False,
+        extrap_method=None,
+        extrap_dist_exponent=None,
+        extrap_num_src_pnts=None,
+        add_nans=False,
+        weights=None,
+        ignore_degenerate=None,
+    ):
         """
         Base xESMF regridding class supporting ESMF objects: `Grid`, `Mesh` and `LocStream`.
 
@@ -226,7 +237,7 @@ class BaseRegridder(object):
 
         # some logic about reusing weights with either filename or weights args
         if reuse_weights and (filename is None) and (weights is None):
-            raise ValueError("To reuse weights, you need to provide either filename or weights.")
+            raise ValueError('To reuse weights, you need to provide either filename or weights.')
 
         if not reuse_weights and weights is None:
             weights = self._compute_weights()  # Dictionary of weights
@@ -252,8 +263,8 @@ class BaseRegridder(object):
     @property
     def A(self):
         message = (
-            "regridder.A is deprecated and will be removed in future versions. "
-            "Use regridder.weights instead."
+            'regridder.A is deprecated and will be removed in future versions. '
+            'Use regridder.weights instead.'
         )
 
         warnings.warn(message, DeprecationWarning)
@@ -266,8 +277,10 @@ class BaseRegridder(object):
         # e.g. bilinear_400x600_300x400.nc
         filename = '{0}_{1}x{2}_{3}x{4}'.format(
             self.method,
-            self.shape_in[0], self.shape_in[1],
-            self.shape_out[0], self.shape_out[1],
+            self.shape_in[0],
+            self.shape_in[1],
+            self.shape_out[0],
+            self.shape_out[1],
         )
 
         if self.periodic:
@@ -278,11 +291,15 @@ class BaseRegridder(object):
         return filename
 
     def _compute_weights(self):
-        regrid = esmf_regrid_build(self.grid_in, self.grid_out, self.method,
-                                   extrap_method=self.extrap_method,
-                                   extrap_dist_exponent=self.extrap_dist_exponent,
-                                   extrap_num_src_pnts=self.extrap_num_src_pnts,
-                                   ignore_degenerate=self.ignore_degenerate)
+        regrid = esmf_regrid_build(
+            self.grid_in,
+            self.grid_out,
+            self.method,
+            extrap_method=self.extrap_method,
+            extrap_dist_exponent=self.extrap_dist_exponent,
+            extrap_num_src_pnts=self.extrap_num_src_pnts,
+            ignore_degenerate=self.ignore_degenerate,
+        )
 
         w = regrid.get_weights_dict(deep_copy=True)
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
@@ -334,8 +351,8 @@ class BaseRegridder(object):
             return self.regrid_dataset(indata, keep_attrs=keep_attrs)
         else:
             raise TypeError(
-                "input must be numpy array, dask array, "
-                "xarray DataArray or Dataset!")
+                'input must be numpy array, dask array, ' 'xarray DataArray or Dataset!'
+            )
 
     @staticmethod
     def _regrid_array(indata, *, weights, shape_in, shape_out, sequence_in):
@@ -345,8 +362,12 @@ class BaseRegridder(object):
 
     @property
     def _regrid_kwargs(self):
-        return {'weights': self.weights, 'sequence_in': self.sequence_in,
-                'shape_in': self.shape_in, 'shape_out': self.shape_out}
+        return {
+            'weights': self.weights,
+            'sequence_in': self.sequence_in,
+            'shape_in': self.shape_in,
+            'shape_out': self.shape_out,
+        }
 
     def regrid_numpy(self, indata):
         """See __call__()."""
@@ -365,7 +386,7 @@ class BaseRegridder(object):
             indata,
             dtype=float,
             chunks=output_chunk_shape,
-            **self._regrid_kwargs
+            **self._regrid_kwargs,
         )
 
         return outdata
@@ -376,16 +397,18 @@ class BaseRegridder(object):
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(dr_in)
 
         dr_out = xr.apply_ufunc(
-            self._regrid_array, dr_in,
+            self._regrid_array,
+            dr_in,
             kwargs=self._regrid_kwargs,
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
             output_dtypes=[float],
-            output_sizes={temp_horiz_dims[0]: self.shape_out[0],
-                          temp_horiz_dims[1]: self.shape_out[1]
-                          },
-            keep_attrs=keep_attrs
+            output_sizes={
+                temp_horiz_dims[0]: self.shape_out[0],
+                temp_horiz_dims[1]: self.shape_out[1],
+            },
+            keep_attrs=keep_attrs,
         )
 
         return self._format_xroutput(dr_out, temp_horiz_dims)
@@ -402,22 +425,24 @@ class BaseRegridder(object):
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(dr_in)
 
         # help user debugging invalid horizontal dimensions
-        print('using dimensions {} from data variable {} '
-              'as the horizontal dimensions for this dataset.'
-              .format(input_horiz_dims, name)
-              )
+        print(
+            'using dimensions {} from data variable {} '
+            'as the horizontal dimensions for this dataset.'.format(input_horiz_dims, name)
+        )
 
         ds_out = xr.apply_ufunc(
-            self._regrid_array, ds_in,
+            self._regrid_array,
+            ds_in,
             kwargs=self._regrid_kwargs,
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
             output_dtypes=[float],
-            output_sizes={temp_horiz_dims[0]: self.shape_out[0],
-                          temp_horiz_dims[1]: self.shape_out[1]
-                          },
-            keep_attrs=keep_attrs
+            output_sizes={
+                temp_horiz_dims[0]: self.shape_out[0],
+                temp_horiz_dims[1]: self.shape_out[1],
+            },
+            keep_attrs=keep_attrs,
         )
 
         return self._format_xroutput(ds_out, temp_horiz_dims)
@@ -443,38 +468,47 @@ class BaseRegridder(object):
         return out
 
     def __repr__(self):
-        info = ('xESMF Regridder \n'
-                'Regridding algorithm:       {} \n'
-                'Weight filename:            {} \n'
-                'Reuse pre-computed weights? {} \n'
-                'Input grid shape:           {} \n'
-                'Output grid shape:          {} \n'
-                'Periodic in longitude?      {}'
-                .format(self.method,
-                        self.filename,
-                        self.reuse_weights,
-                        self.shape_in,
-                        self.shape_out,
-                        self.periodic)
-                )
+        info = (
+            'xESMF Regridder \n'
+            'Regridding algorithm:       {} \n'
+            'Weight filename:            {} \n'
+            'Reuse pre-computed weights? {} \n'
+            'Input grid shape:           {} \n'
+            'Output grid shape:          {} \n'
+            'Periodic in longitude?      {}'.format(
+                self.method,
+                self.filename,
+                self.reuse_weights,
+                self.shape_in,
+                self.shape_out,
+                self.periodic,
+            )
+        )
 
         return info
 
     def to_netcdf(self, filename=None):
-        '''Save weights to disk as a netCDF file.'''
+        """Save weights to disk as a netCDF file."""
         if filename is None:
             filename = self.filename
         w = self.weights
-        dim = "n_s"
-        ds = xr.Dataset({"S": (dim, w.data), "col": (dim, w.col + 1), "row": (dim, w.row + 1)})
+        dim = 'n_s'
+        ds = xr.Dataset({'S': (dim, w.data), 'col': (dim, w.col + 1), 'row': (dim, w.row + 1)})
         ds.to_netcdf(filename)
         return filename
 
 
 class Regridder(BaseRegridder):
-    def __init__(self, ds_in, ds_out, method,
-                 locstream_in=False, locstream_out=False,
-                 periodic=False, **kwargs):
+    def __init__(
+        self,
+        ds_in,
+        ds_out,
+        method,
+        locstream_in=False,
+        locstream_out=False,
+        periodic=False,
+        **kwargs,
+    ):
         """
         Make xESMF regridder
 
@@ -554,9 +588,13 @@ class Regridder(BaseRegridder):
         methods_avail_ls_out = ['bilinear', 'patch'] + methods_avail_ls_in
 
         if locstream_in and method not in methods_avail_ls_in:
-            raise ValueError(f'locstream input is only available for method in {methods_avail_ls_in}')
+            raise ValueError(
+                f'locstream input is only available for method in {methods_avail_ls_in}'
+            )
         if locstream_out and method not in methods_avail_ls_out:
-            raise ValueError(f'locstream output is only available for method in {methods_avail_ls_out}')
+            raise ValueError(
+                f'locstream output is only available for method in {methods_avail_ls_out}'
+            )
 
         # record basic switches
         if method in ['conservative', 'conservative_normed']:
@@ -569,16 +607,11 @@ class Regridder(BaseRegridder):
         if locstream_in:
             grid_in, shape_in = ds_to_ESMFlocstream(ds_in)
         else:
-            grid_in, shape_in = ds_to_ESMFgrid(ds_in,
-                                               need_bounds=need_bounds,
-                                               periodic=periodic
-                                               )
+            grid_in, shape_in = ds_to_ESMFgrid(ds_in, need_bounds=need_bounds, periodic=periodic)
         if locstream_out:
             grid_out, shape_out = ds_to_ESMFlocstream(ds_out)
         else:
-            grid_out, shape_out = ds_to_ESMFgrid(ds_out,
-                                                 need_bounds=need_bounds
-                                                 )
+            grid_out, shape_out = ds_to_ESMFgrid(ds_out, need_bounds=need_bounds)
 
         # Create the BaseRegridder
         super().__init__(grid_in, grid_out, method, **kwargs)
@@ -590,16 +623,16 @@ class Regridder(BaseRegridder):
         if self._lon_out.ndim == 2:
             try:
                 self.lon_dim = self.lat_dim = ds_out['lon'].dims
-            except:
+            except Exception:
                 self.lon_dim = self.lat_dim = ('y', 'x')
 
             self.out_horiz_dims = self.lon_dim
 
         elif self._lon_out.ndim == 1:
             try:
-                self.lon_dim, = ds_out['lon'].dims
-                self.lat_dim, = ds_out['lat'].dims
-            except:
+                (self.lon_dim,) = ds_out['lon'].dims
+                (self.lat_dim,) = ds_out['lat'].dims
+            except Exception:
                 self.lon_dim = 'lon'
                 self.lat_dim = 'lat'
 
@@ -609,8 +642,7 @@ class Regridder(BaseRegridder):
         if not self.sequence_out and new_dims is not None:
             # rename dimension name to match output grid
             out = out.rename(
-                {new_dims[0]: self.out_horiz_dims[0],
-                 new_dims[1]: self.out_horiz_dims[1]}
+                {new_dims[0]: self.out_horiz_dims[0], new_dims[1]: self.out_horiz_dims[1]}
             )
 
         # append output horizontal coordinate values
@@ -631,11 +663,18 @@ class Regridder(BaseRegridder):
 
 
 class SpatialAverager(BaseRegridder):
-    def __init__(self, ds_in, polys, ignore_holes=False,
-                 periodic=False,
-                 filename=None, reuse_weights=False,
-                 weights=None, ignore_degenerate=False,
-                 geom_dim_name="geom"):
+    def __init__(
+        self,
+        ds_in,
+        polys,
+        ignore_holes=False,
+        periodic=False,
+        filename=None,
+        reuse_weights=False,
+        weights=None,
+        ignore_degenerate=False,
+        geom_dim_name='geom',
+    ):
         """Compute the exact average of a gridded array over a geometry.
 
         This uses the ESMF `conservative` regridding method to compute and apply weights
@@ -720,16 +759,25 @@ class SpatialAverager(BaseRegridder):
         # Latitude and longitude coordinates are the polygon centroid.
         poly_centers = [poly.centroid.xy for poly in polys]
         ds_out = xr.Dataset(
-            data_vars={'lon': (('poly',), [c[0][0] for c in poly_centers]), 'lat': (('poly',), [c[1][0] for c in poly_centers])}
+            data_vars={
+                'lon': (('poly',), [c[0][0] for c in poly_centers]),
+                'lat': (('poly',), [c[1][0] for c in poly_centers]),
+            }
         )
         locstream_out, shape_out = ds_to_ESMFlocstream(ds_out)
         self._lon_out = ds_out.lon
         self._lat_out = ds_out.lat
 
         # BaseRegridder with custom-computed weights and dummy out grid
-        super().__init__(grid_in, locstream_out, 'conservative', weights=weights,
-                         filename=filename, reuse_weights=reuse_weights,
-                         ignore_degenerate=ignore_degenerate)
+        super().__init__(
+            grid_in,
+            locstream_out,
+            'conservative',
+            weights=weights,
+            filename=filename,
+            reuse_weights=reuse_weights,
+            ignore_degenerate=ignore_degenerate,
+        )
 
     def _compute_weights(self):
         """Return weight sparse matrix."""
@@ -742,11 +790,14 @@ class SpatialAverager(BaseRegridder):
 
         # Get weights for single polygons and holes
         # Stack everything together
-        reg_ext = BaseRegridder(mesh_ext, self.grid_in, 'conservative', ignore_degenerate=self.ignore_degenerate)
+        reg_ext = BaseRegridder(
+            mesh_ext, self.grid_in, 'conservative', ignore_degenerate=self.ignore_degenerate
+        )
         if len(holes) > 0 and not self.ignore_holes:
             mesh_holes, shape_holes = polys_to_ESMFmesh(holes)
-            reg_holes = BaseRegridder(mesh_holes, self.grid_in, 'conservative',
-                                      ignore_degenerate=self.ignore_degenerate)
+            reg_holes = BaseRegridder(
+                mesh_holes, self.grid_in, 'conservative', ignore_degenerate=self.ignore_degenerate
+            )
             w_all = sps.hstack((reg_ext.weights.tocsc(), -reg_holes.weights.tocsc()))
         else:
             w_all = reg_ext.weights.tocsc()
@@ -765,16 +816,15 @@ class SpatialAverager(BaseRegridder):
         return filename
 
     def __repr__(self):
-        info = ('xESMF SpatialAverager \n'
-                'Weight filename:            {} \n'
-                'Reuse pre-computed weights? {} \n'
-                'Input grid shape:           {} \n'
-                'Output list length:         {} \n'
-                .format(self.filename,
-                        self.reuse_weights,
-                        self.shape_in,
-                        self.n_out)
-                )
+        info = (
+            'xESMF SpatialAverager \n'
+            'Weight filename:            {} \n'
+            'Reuse pre-computed weights? {} \n'
+            'Input grid shape:           {} \n'
+            'Output list length:         {} \n'.format(
+                self.filename, self.reuse_weights, self.shape_in, self.n_out
+            )
+        )
 
         return info
 

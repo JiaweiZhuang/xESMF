@@ -17,7 +17,7 @@ there are solutions to solve large regridding problems, provided you have access
 Performance Computing machine. Your ESMF installation (from conda or equivalent) comes with
 command line tools (`ESMF_RegridWeightGen and ESMF_Regrid <http://www.earthsystemmodeling.org/esmf_releases/public/ESMF_8_0_0/ESMF_refdoc/node3.html>`_) that can be executed in parallel with
 MPI. This allows very large regridding to be performed in minutes on hundred of compute cores.
-Using these tools, we are able to regrid data at 500 meters resolution (13300x13300 pts) from 
+Using these tools, we are able to regrid data at 500 meters resolution (13300x13300 pts) from
 a South Polar Stereographic projection to a 15' regular longitude/latitude grid (6720x86400 pts).
 The original:
 
@@ -28,7 +28,7 @@ and after regridding:
 |regular|
 
 Although these tools are very performant, they lack critical documentation which makes them
-hard to understand and operate. We're going to try to bridge those gaps with some real-life 
+hard to understand and operate. We're going to try to bridge those gaps with some real-life
 examples.
 The roadblocks that you are most likely to find on your way are related to netcdf attributes
 required by the ESMF tools. Error messages are not very informative and one may need to read the
@@ -64,7 +64,7 @@ Creating weights on HPC and using them in xESMF
 
 With your source and destination grids ready, you can now generate weights on your HPC system that
 you can later use in xESMF by providing the **filename** and **reuse_weights=True** when creating
-a regridder. The invocation to the weights generation on a MPI parallel system using 252 cores 
+a regridder. The invocation to the weights generation on a MPI parallel system using 252 cores
 will look like:
 
 .. code-block:: bash
@@ -76,13 +76,12 @@ You can then import your weights generated on your HPC system in xESMF with:
 
 .. code-block:: python
 
-  import xarray as xr
-  import xesmf as xe
-  ds_in = xr.open_dataset('source.nc')
-  ds_out = xr.open_dataset('destination.nc')
-  regridder = xe.Regridder(ds_in, ds_out, 'bilinear',
-                           filename='weights.nc',
-                           reuse_weights=True)
+    import xarray as xr
+    import xesmf as xe
+
+    ds_in = xr.open_dataset("source.nc")
+    ds_out = xr.open_dataset("destination.nc")
+    regridder = xe.Regridder(ds_in, ds_out, "bilinear", filename="weights.nc", reuse_weights=True)
 
 There is a lot of options you can provide to **ESMF_RegridWeightGen** and you can have a list using:
 
@@ -105,7 +104,7 @@ the HPC using **ESMF_Regrid**. Here again, there is a **second trick** that you 
 
 .. compound::
 
-  all the variables you want to regrid need to have a netcdf attribute named **coordinates** 
+  all the variables you want to regrid need to have a netcdf attribute named **coordinates**
   that gives the list of its geographical coordinates, e.g.::
 
     variables:
@@ -125,7 +124,7 @@ the HPC using **ESMF_Regrid**. Here again, there is a **second trick** that you 
   Also specifying a _FillValue explicitly instead of a NaN is also a good idea ;)
 
 **ESMF_Regrid** will overwrite the destination.nc file and add the regridded variables so you
-may want to make a copy in case (say output.nc). We can now invoke the regridding for the 
+may want to make a copy in case (say output.nc). We can now invoke the regridding for the
 variable *elevation* on the HPC using:
 
 .. code-block:: bash

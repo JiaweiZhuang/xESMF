@@ -10,4 +10,4 @@ dependencies:
   - matplotlib
   - cartopy
   - pip:
-    - xesmf==0.2.2
+      - xesmf==0.2.2

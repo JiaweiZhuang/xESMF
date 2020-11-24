@@ -2,6 +2,7 @@ name: xesmf
 channels:
   - conda-forge
 dependencies:
+  - cf_xarray
   - codecov
   - dask
   - esmpy

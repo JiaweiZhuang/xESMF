@@ -9,5 +9,6 @@ dependencies:
   - scipy
   - matplotlib
   - cartopy
+  - cf_xarray
   - pip:
       - xesmf==0.2.2

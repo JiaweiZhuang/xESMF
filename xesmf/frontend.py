@@ -4,6 +4,7 @@ Frontend for xESMF, exposed to users.
 
 import warnings
 
+import cf_xarray as cfxr
 import numpy as np
 import scipy.sparse as sps
 import xarray as xr
@@ -32,6 +33,46 @@ def as_2d_mesh(lon, lat):
     return lon, lat
 
 
+def _get_lon_lat(ds):
+    """Return lon and lat extracted from ds."""
+    try:
+        lon = ds.cf['longitude']
+        lat = ds.cf['latitude']
+    except (KeyError, AttributeError):
+        # KeyError if cfxr doesn't detect the coords
+        # AttributeError if ds is a dict
+        lon = ds['lon']
+        lat = ds['lat']
+
+    return lon, lat
+
+
+def _get_lon_lat_bounds(ds):
+    """Return bounds of lon and lat extracted from ds."""
+    if 'lat_b' in ds and 'lon_b' in ds:
+        # Old way.
+        return ds['lon_b'], ds['lat_b']
+    # else : cf-xarray way
+    try:
+        lon_bnds = ds.cf.get_bounds('longitude')
+        lat_bnds = ds.cf.get_bounds('latitude')
+    except KeyError:  # bounds are not already present
+        if ds.cf['longitude'].ndim > 1:
+            # We cannot infer 2D bounds, raise KeyError as custom "lon_b" is missing.
+            raise KeyError('lon_b')
+        lon_name = ds.cf['longitude'].name
+        lat_name = ds.cf['latitude'].name
+        ds2 = ds.cf.add_bounds([lon_name, lat_name])
+        lon_bnds = ds2.cf.get_bounds('longitude')
+        lat_bnds = ds2.cf.get_bounds('latitude')
+
+    # Convert from CF bounds to xESMF bounds.
+    # order=None is because we don't want to assume the dimension order for 2D bounds.
+    lon_b = cfxr.bounds_to_vertices(lon_bnds, 'bounds', order=None)
+    lat_b = cfxr.bounds_to_vertices(lat_bnds, 'bounds', order=None)
+    return lon_b, lat_b
+
+
 def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     """
     Convert xarray DataSet or dictionary to ESMF.Grid object.
@@ -58,9 +99,9 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     """
 
     # use np.asarray(dr) instead of dr.values, so it also works for dictionary
-    lon = np.asarray(ds['lon'])
-    lat = np.asarray(ds['lat'])
-    lon, lat = as_2d_mesh(lon, lat)
+
+    lon, lat = _get_lon_lat(ds)
+    lon, lat = as_2d_mesh(np.asarray(lon), np.asarray(lat))
 
     if 'mask' in ds:
         mask = np.asarray(ds['mask'])
@@ -74,9 +115,8 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
         grid = Grid.from_xarray(lon.T, lat.T, periodic=periodic, mask=None)
 
     if need_bounds:
-        lon_b = np.asarray(ds['lon_b'])
-        lat_b = np.asarray(ds['lat_b'])
-        lon_b, lat_b = as_2d_mesh(lon_b, lat_b)
+        lon_b, lat_b = _get_lon_lat_bounds(ds)
+        lon_b, lat_b = as_2d_mesh(np.asarray(lon_b), np.asarray(lat_b))
         add_corner(grid, lon_b.T, lat_b.T)
 
     return grid, lon.shape
@@ -97,8 +137,8 @@ def ds_to_ESMFlocstream(ds):
 
     """
 
-    lon = np.asarray(ds['lon'])
-    lat = np.asarray(ds['lat'])
+    lon, lat = _get_lon_lat(ds)
+    lon, lat = np.asarray(lon), np.asarray(lat)
 
     if len(lon.shape) > 1:
         raise ValueError('lon can only be 1d')
@@ -515,15 +555,21 @@ class Regridder(BaseRegridder):
         Parameters
         ----------
         ds_in, ds_out : xarray DataSet, or dictionary
-            Contain input and output grid coordinates. Look for variables
-            ``lon``, ``lat``, optionally ``lon_b``, ``lat_b`` for
-            conservative methods, and ``mask``. Note that for `mask`,
-            the ESMF convention is used, where masked values are identified
-            by 0, and non-masked values by 1.
+            Contain input and output grid coordinates.
+            All variables that the cf-xarray accessor understand are accepted.
+            Otherwise, look for ``lon``, ``lat``,
+            optionally ``lon_b``, ``lat_b`` for conservative methods,
+            and ``mask``. Note that for `mask`, the ESMF convention is used,
+            where masked values are identified by 0, and non-masked values by 1.
+
+            For conservative methods, if bounds are not present, they will be
+            computed using `cf-xarray` (currently only valid for 1D coordinates).
 
             Shape can be 1D (n_lon,) and (n_lat,) for rectilinear grids,
             or 2D (n_y, n_x) for general curvilinear grids.
             Shape of bounds should be (n+1,) or (n_y+1, n_x+1).
+            CF-bounds (shape (n, 2) or (n, m, 4)) are also accepted if they are
+            accessible through the cf-xarray accessor.
 
             If either dataset includes a 2d mask variable, that will also be
             used to inform the regridding.
@@ -617,12 +663,12 @@ class Regridder(BaseRegridder):
         super().__init__(grid_in, grid_out, method, **kwargs)
 
         # record output grid and metadata
-        self._lon_out = np.asarray(ds_out['lon'])
-        self._lat_out = np.asarray(ds_out['lat'])
+        lon_out, lat_out = _get_lon_lat(ds_out)
+        self._lon_out, self._lat_out = np.asarray(lon_out), np.asarray(lat_out)
 
         if self._lon_out.ndim == 2:
             try:
-                self.lon_dim = self.lat_dim = ds_out['lon'].dims
+                self.lon_dim = self.lat_dim = lon_out.dims
             except Exception:
                 self.lon_dim = self.lat_dim = ('y', 'x')
 
@@ -630,8 +676,8 @@ class Regridder(BaseRegridder):
 
         elif self._lon_out.ndim == 1:
             try:
-                (self.lon_dim,) = ds_out['lon'].dims
-                (self.lat_dim,) = ds_out['lat'].dims
+                (self.lon_dim,) = lon_out.dims
+                (self.lat_dim,) = lat_out.dims
             except Exception:
                 self.lon_dim = 'lon'
                 self.lat_dim = 'lat'
@@ -757,16 +803,22 @@ class SpatialAverager(BaseRegridder):
 
         # Create an output locstream so that the regridder knows the output shape and coords.
         # Latitude and longitude coordinates are the polygon centroid.
+        lon_out, lat_out = _get_lon_lat(ds_in)
+        if hasattr(lon_out, 'name'):
+            self._lon_out_name = lon_out.name
+            self._lat_out_name = lat_out.name
+        else:
+            self._lon_out_name = 'lon'
+            self._lat_out_name = 'lat'
+
         poly_centers = [poly.centroid.xy for poly in polys]
-        ds_out = xr.Dataset(
-            data_vars={
-                'lon': (('poly',), [c[0][0] for c in poly_centers]),
-                'lat': (('poly',), [c[1][0] for c in poly_centers]),
-            }
-        )
+        self._lon_out = np.asarray([c[0][0] for c in poly_centers])
+        self._lat_out = np.asarray([c[1][0] for c in poly_centers])
+
+        # We put names 'lon' and 'lat' so ds_to_ESMFlocstream finds them easily.
+        # _lon_out_name and _lat_out_name are used on the ouput anyway.
+        ds_out = {'lon': self._lon_out, 'lat': self._lat_out}
         locstream_out, shape_out = ds_to_ESMFlocstream(ds_out)
-        self._lon_out = ds_out.lon
-        self._lat_out = ds_out.lat
 
         # BaseRegridder with custom-computed weights and dummy out grid
         super().__init__(
@@ -836,7 +888,7 @@ class SpatialAverager(BaseRegridder):
 
         # append output horizontal coordinate values
         # extra coordinates are automatically tracked by apply_ufunc
-        out.coords['lon'] = xr.DataArray(self._lon_out, dims=(self.geom_dim_name,))
-        out.coords['lat'] = xr.DataArray(self._lat_out, dims=(self.geom_dim_name,))
+        out.coords[self._lon_out_name] = xr.DataArray(self._lon_out, dims=(self.geom_dim_name,))
+        out.coords[self._lat_out_name] = xr.DataArray(self._lat_out, dims=(self.geom_dim_name,))
         out.attrs['regrid_method'] = self.method
         return out

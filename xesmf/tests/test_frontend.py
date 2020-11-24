@@ -1,6 +1,7 @@
 import os
 import warnings
 
+import cf_xarray
 import dask
 import numpy as np
 import pytest
@@ -244,17 +245,35 @@ def test_regrid_with_1d_grid():
     assert_equal(dr_out['lat'].values, ds_out_1d['lat'].values)
 
 
+def test_regrid_with_1d_grid_infer_bounds():
+    ds_in_1d = ds_2d_to_1d(ds_in).rename(x='lon', y='lat')
+    ds_out_1d = ds_2d_to_1d(ds_out).rename(x='lon', y='lat')
+
+    regridder = xe.Regridder(ds_in_1d, ds_out_1d, 'conservative', periodic=True)
+
+    dr_out = regridder(ds_in['data'])
+
+    # compare with provided-bounds solution
+    dr_exp = xe.Regridder(ds_in, ds_out, 'conservative', periodic=True)(ds_in['data'])
+
+    assert_allclose(dr_out, dr_exp)
+
+
 # TODO: consolidate (regrid method, input data types) combination
 # using pytest fixtures and parameterization
 
-
-def test_regrid_dataarray():
+@pytest.mark.parametrize("use_cfxr", [True, False])
+def test_regrid_dataarray(use_cfxr):
     # xarray.DataArray containing in-memory numpy array
+    if use_cfxr:
+        ds_in2 = ds_in.rename(lat='Latitude', lon='Longitude')
+    else:
+        ds_in2 = ds_in
 
-    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
+    regridder = xe.Regridder(ds_in2, ds_out, 'conservative')
 
-    outdata = regridder(ds_in['data'].values)  # pure numpy array
-    dr_out = regridder(ds_in['data'])  # xarray DataArray
+    outdata = regridder(ds_in2['data'].values)  # pure numpy array
+    dr_out = regridder(ds_in2['data'])  # xarray DataArray
 
     # DataArray and numpy array should lead to the same result
     assert_equal(outdata, dr_out.values)
@@ -268,18 +287,18 @@ def test_regrid_dataarray():
     assert_equal(dr_out['lon'].values, ds_out['lon'].values)
 
     # test broadcasting
-    dr_out_4D = regridder(ds_in['data4D'])
+    dr_out_4D = regridder(ds_in2['data4D'])
 
     # data over broadcasting dimensions should agree
     assert_almost_equal(
-        ds_in['data4D'].values.mean(axis=(2, 3)),
+        ds_in2['data4D'].values.mean(axis=(2, 3)),
         dr_out_4D.values.mean(axis=(2, 3)),
         decimal=10,
     )
 
     # check metadata
-    xr.testing.assert_identical(dr_out_4D['time'], ds_in['time'])
-    xr.testing.assert_identical(dr_out_4D['lev'], ds_in['lev'])
+    xr.testing.assert_identical(dr_out_4D['time'], ds_in2['time'])
+    xr.testing.assert_identical(dr_out_4D['lev'], ds_in2['lev'])
 
 
 def test_regrid_dataarray_to_locstream():

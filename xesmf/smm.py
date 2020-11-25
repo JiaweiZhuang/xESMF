@@ -152,3 +152,30 @@ def add_nans_to_weights(weights):
     # update regridder weights (in COO)
     weights = sps.coo_matrix(M)
     return weights
+
+
+def _combine_weight_multipoly(weights, indexes):
+    """Reduce a weight sparse matrix (csc format) by combining (adding) columns.
+
+    This is used to sum individual weight matrices from multi-part geometries.
+
+    Parameters
+    ----------
+    weights : Sparse matrix in Compressed Sparse Column format
+    indexes : array of integers
+      Columns with the same "index" will be summed into a single column at this
+      index in the output matrix.
+
+    Returns
+    -------
+    sparse matrix (CSC)
+      Sum of weights from individual geometries.
+    """
+    columns = []
+    for i in range(indexes.max() + 1):
+        js = np.where(indexes == i)[0]
+        wi = weights[..., js[0]]
+        for j in js[1:]:
+            wi = wi + weights[..., j]
+        columns.append(wi)
+    return sps.hstack(columns)

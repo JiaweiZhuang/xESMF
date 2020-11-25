@@ -50,6 +50,7 @@ Contents
    notebooks/Using_LocStream
    notebooks/Masking
    large_problems_on_HPC
+   notebooks/Spatial_Averaging
 
 .. toctree::
    :maxdepth: 1

@@ -11,4 +11,5 @@ dependencies:
   - pytest
   - pytest-cov
   - scipy
+  - shapely
   - xarray

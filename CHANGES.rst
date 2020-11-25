@@ -1,6 +1,33 @@
 What's new
 ==========
 
+0.5.0 (11-11-2020)
+------------------
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+* Deprecate `esmf_grid` in favor of `Grid.from_xarray`
+* Deprecate `esmf_locstream` in favor of `LocStream.from_xarray`
+* Installation requires numpy>=1.16
+
+New features
+~~~~~~~~~~~~
+* Create `ESMF.Mesh` objects from `shapely.polygons` (:pull:`24`). By `Pascal Bourgault <https://github.com/aulemahal>`_
+* New class `SpatialAverager` offers user-friendly mechanism to average a 2-D field over a polygon. Includes support to handle interior holes and multi-part geometries. (:pull:`24`) By `Pascal Bourgault <https://github.com/aulemahal>`_
+
+Bug fixes
+~~~~~~~~~
+* Fix serialization bug when using dask's distributed scheduler (:pull:`39`).
+  By `Pascal Bourgault <https://github.com/aulemahal>`_.
+
+Internal changes
+~~~~~~~~~~~~~~~~
+* Subclass `ESMF.Mesh` and create `from_polygon` method
+* Subclass `ESMF.Grid` and `ESMF.LocStream` and create `from_xarray` methods.
+* New `BaseRegridder` class, with support for `Grid`, `LocStream` and `Mesh` objects. Not all regridding methods are supported for `Mesh` objects.
+* Refactor `Regridder` to subclass `BaseRegridder`.
+
+
 0.4.0 (01-10-2020)
 ------------------
 The git repo is now hosted by pangeo-data (https://github.com/pangeo-data/xESMF)
@@ -23,12 +50,6 @@ New features
   When using a mask and the `conservative` regridding method, use a new method called
   `conservative_normed` to properly handle normalization (:pull:`1`).
   By `Raphael Dussin <https://github.com/raphaeldussin>`_
-
-Bug fixes
-~~~~~~~~~
-* Fix serialization bug when using dask's distributed scheduler (:pull:`39`).
-  By `Pascal Bourgault <https://github.com/aulemahal>`_.
-
 
 
 0.3.0 (06-03-2020)

@@ -20,6 +20,7 @@ import warnings
 
 import ESMF
 import numpy as np
+import numpy.lib.recfunctions as nprec
 
 
 def warn_f_contiguous(a):
@@ -52,122 +53,134 @@ def warn_lat_range(lat):
         warnings.warn('Latitude is outside of [-90, 90]')
 
 
-def esmf_grid(lon, lat, periodic=False, mask=None):
-    """
-    Create an ESMF.Grid object, for constructing ESMF.Field and ESMF.Regrid.
+class Grid(ESMF.Grid):
+    @classmethod
+    def from_xarray(cls, lon, lat, periodic=False, mask=None):
+        """
+        Create an ESMF.Grid object, for constructing ESMF.Field and ESMF.Regrid.
 
-    Parameters
-    ----------
-    lon, lat : 2D numpy array
-         Longitute/Latitude of cell centers.
+        Parameters
+        ----------
+        lon, lat : 2D numpy array
+             Longitute/Latitude of cell centers.
 
-         Recommend Fortran-ordering to match ESMPy internal.
+             Recommend Fortran-ordering to match ESMPy internal.
 
-         Shape should be ``(Nlon, Nlat)`` for rectilinear grid,
-         or ``(Nx, Ny)`` for general quadrilateral grid.
+             Shape should be ``(Nlon, Nlat)`` for rectilinear grid,
+             or ``(Nx, Ny)`` for general quadrilateral grid.
 
-    periodic : bool, optional
-        Periodic in longitude? Default to False.
-        Only useful for source grid.
+        periodic : bool, optional
+            Periodic in longitude? Default to False.
+            Only useful for source grid.
 
-    mask : 2D numpy array, optional
-        Grid mask. According to the ESMF convention, masked cells
-        are set to 0 and unmasked cells to 1.
+        mask : 2D numpy array, optional
+            Grid mask. According to the ESMF convention, masked cells
+            are set to 0 and unmasked cells to 1.
 
-        Shape should be ``(Nlon, Nlat)`` for rectilinear grid,
-        or ``(Nx, Ny)`` for general quadrilateral grid.
+            Shape should be ``(Nlon, Nlat)`` for rectilinear grid,
+            or ``(Nx, Ny)`` for general quadrilateral grid.
 
-    Returns
-    -------
-    grid : ESMF.Grid object
-    """
+        Returns
+        -------
+        grid : ESMF.Grid object
+        """
 
-    # ESMPy expects Fortran-ordered array.
-    # Passing C-ordered array will slow down performance.
-    for a in [lon, lat]:
-        warn_f_contiguous(a)
+        # ESMPy expects Fortran-ordered array.
+        # Passing C-ordered array will slow down performance.
+        for a in [lon, lat]:
+            warn_f_contiguous(a)
 
-    warn_lat_range(lat)
+        warn_lat_range(lat)
 
-    # ESMF.Grid can actually take 3D array (lon, lat, radius),
-    # but regridding only works for 2D array
-    assert lon.ndim == 2, 'Input grid must be 2D array'
-    assert lon.shape == lat.shape, 'lon and lat must have same shape'
+        # ESMF.Grid can actually take 3D array (lon, lat, radius),
+        # but regridding only works for 2D array
+        assert lon.ndim == 2, 'Input grid must be 2D array'
+        assert lon.shape == lat.shape, 'lon and lat must have same shape'
 
-    staggerloc = ESMF.StaggerLoc.CENTER  # actually just integer 0
+        staggerloc = ESMF.StaggerLoc.CENTER  # actually just integer 0
 
-    if periodic:
-        num_peri_dims = 1
-    else:
-        num_peri_dims = None
+        if periodic:
+            num_peri_dims = 1
+        else:
+            num_peri_dims = None
 
-    # ESMPy documentation claims that if staggerloc and coord_sys are None,
-    # they will be set to default values (CENTER and SPH_DEG).
-    # However, they actually need to be set explicitly,
-    # otherwise grid._coord_sys and grid._staggerloc will still be None.
-    grid = ESMF.Grid(
-        np.array(lon.shape),
-        staggerloc=staggerloc,
-        coord_sys=ESMF.CoordSys.SPH_DEG,
-        num_peri_dims=num_peri_dims,
-    )
+        # ESMPy documentation claims that if staggerloc and coord_sys are None,
+        # they will be set to default values (CENTER and SPH_DEG).
+        # However, they actually need to be set explicitly,
+        # otherwise grid._coord_sys and grid._staggerloc will still be None.
+        grid = cls(
+            np.array(lon.shape),
+            staggerloc=staggerloc,
+            coord_sys=ESMF.CoordSys.SPH_DEG,
+            num_peri_dims=num_peri_dims,
+        )
 
-    # The grid object points to the underlying Fortran arrays in ESMF.
-    # To modify lat/lon coordinates, need to get pointers to them
-    lon_pointer = grid.get_coords(coord_dim=0, staggerloc=staggerloc)
-    lat_pointer = grid.get_coords(coord_dim=1, staggerloc=staggerloc)
+        # The grid object points to the underlying Fortran arrays in ESMF.
+        # To modify lat/lon coordinates, need to get pointers to them
+        lon_pointer = grid.get_coords(coord_dim=0, staggerloc=staggerloc)
+        lat_pointer = grid.get_coords(coord_dim=1, staggerloc=staggerloc)
 
-    # Use [...] to avoid overwritting the object. Only change array values.
-    lon_pointer[...] = lon
-    lat_pointer[...] = lat
+        # Use [...] to avoid overwritting the object. Only change array values.
+        lon_pointer[...] = lon
+        lat_pointer[...] = lat
 
-    # Follows SCRIP convention where 1 is unmasked and 0 is masked.
-    # See https://github.com/NCPP/ocgis/blob/61d88c60e9070215f28c1317221c2e074f8fb145/src/ocgis/regrid/base.py#L391-L404
-    if mask is not None:
-        # remove fractional values
-        mask = np.where(mask == 0, 0, 1)
-        # convert array type to integer (ESMF compat)
-        grid_mask = mask.astype(np.int32)
-        if not (grid_mask.shape == lon.shape):
-            raise ValueError(
-                'mask must have the same shape as the latitude/longitude'
-                'coordinates, got: mask.shape = %s, lon.shape = %s' % (mask.shape, lon.shape)
-            )
-        grid.add_item(ESMF.GridItem.MASK, staggerloc=ESMF.StaggerLoc.CENTER, from_file=False)
-        grid.mask[0][:] = grid_mask
+        # Follows SCRIP convention where 1 is unmasked and 0 is masked.
+        # See https://github.com/NCPP/ocgis/blob/61d88c60e9070215f28c1317221c2e074f8fb145/src/ocgis/regrid/base.py#L391-L404
+        if mask is not None:
+            # remove fractional values
+            mask = np.where(mask == 0, 0, 1)
+            # convert array type to integer (ESMF compat)
+            grid_mask = mask.astype(np.int32)
+            if not (grid_mask.shape == lon.shape):
+                raise ValueError(
+                    'mask must have the same shape as the latitude/longitude'
+                    'coordinates, got: mask.shape = %s, lon.shape = %s' % (mask.shape, lon.shape)
+                )
+            grid.add_item(ESMF.GridItem.MASK, staggerloc=ESMF.StaggerLoc.CENTER, from_file=False)
+            grid.mask[0][:] = grid_mask
 
-    return grid
+        return grid
+
+    def get_shape(self, loc=ESMF.StaggerLoc.CENTER):
+        """Return shape of grid for specified StaggerLoc"""
+        return tuple(self.size[loc])
 
 
-def esmf_locstream(lon, lat):
-    """
-    Create an ESMF.LocStream object, for contrusting ESMF.Field and ESMF.Regrid
+class LocStream(ESMF.LocStream):
+    @classmethod
+    def from_xarray(cls, lon, lat):
+        """
+        Create an ESMF.LocStream object, for contrusting ESMF.Field and ESMF.Regrid
 
-    Parameters
-    ----------
-    lon, lat : 1D numpy array
-         Longitute/Latitude of cell centers.
+        Parameters
+        ----------
+        lon, lat : 1D numpy array
+             Longitute/Latitude of cell centers.
 
-    Returns
-    -------
-    locstream : ESMF.LocStream object
-    """
+        Returns
+        -------
+        locstream : ESMF.LocStream object
+        """
 
-    if len(lon.shape) > 1:
-        raise ValueError('lon can only be 1d')
-    if len(lat.shape) > 1:
-        raise ValueError('lat can only be 1d')
+        if len(lon.shape) > 1:
+            raise ValueError('lon can only be 1d')
+        if len(lat.shape) > 1:
+            raise ValueError('lat can only be 1d')
 
-    assert lon.shape == lat.shape
+        assert lon.shape == lat.shape
 
-    location_count = len(lon)
+        location_count = len(lon)
 
-    locstream = ESMF.LocStream(location_count, coord_sys=ESMF.CoordSys.SPH_DEG)
+        locstream = cls(location_count, coord_sys=ESMF.CoordSys.SPH_DEG)
 
-    locstream['ESMF:Lon'] = lon.astype(np.dtype('f8'))
-    locstream['ESMF:Lat'] = lat.astype(np.dtype('f8'))
+        locstream['ESMF:Lon'] = lon.astype(np.dtype('f8'))
+        locstream['ESMF:Lat'] = lat.astype(np.dtype('f8'))
 
-    return locstream
+        return locstream
+
+    def get_shape(self):
+        """Return LocStream shape."""
+        return (self.size, 1)
 
 
 def add_corner(grid, lon_b, lat_b):
@@ -179,7 +192,7 @@ def add_corner(grid, lon_b, lat_b):
     Parameters
     ----------
     grid : ESMF.Grid object
-        Generated by ``esmf_grid()``. Will be modified in-place.
+        Generated by ``Grid.from_xarray()``. Will be modified in-place.
 
     lon_b, lat_b : 2D numpy array
         Longitute/Latitude of cell corner
@@ -187,7 +200,7 @@ def add_corner(grid, lon_b, lat_b):
         Shape should be ``(Nlon+1, Nlat+1)``, or ``(Nx+1, Ny+1)``
     """
 
-    # codes here are almost the same as esmf_grid(),
+    # codes here are almost the same as Grid.from_xarray(),
     # except for the "staggerloc" keyword
     staggerloc = ESMF.StaggerLoc.CORNER  # actually just integer 3
 
@@ -212,6 +225,90 @@ def add_corner(grid, lon_b, lat_b):
     lat_b_pointer[...] = lat_b
 
 
+class Mesh(ESMF.Mesh):
+    @classmethod
+    def from_polygons(cls, polys, element_coords='centroid'):
+        """
+        Create an ESMF.Mesh object from a list of polygons.
+
+        All exterior ring points are added to the mesh as nodes and each polygon
+        is added as an element, with the polygon centroid as the element's coordinates.
+
+        Parameters
+        ----------
+        polys : sequence of shapely Polygon
+           Holes are not represented by the Mesh.
+        element_coords : array or "centroid", optional
+            If "centroid", the polygon centroids will be used (default)
+            If an array of shape (len(polys), 2) : the element coordinates of the mesh.
+            If None, the Mesh's elements will not have coordinates.
+
+        Returns
+        -------
+        mesh : ESMF.Mesh
+            A mesh where each polygon is represented as an Element.
+        """
+        node_num = sum(e.exterior.coords.array_interface()['shape'][0] - 1 for e in polys)
+        elem_num = len(polys)
+        # Pre alloc arrays. Special stucture for coords makes the code faster.
+        crd_dt = np.dtype([('x', np.float32), ('y', np.float32)])
+        node_coords = np.empty(node_num, dtype=crd_dt)
+        node_coords[:] = (np.nan, np.nan)  # Fill with impossible values
+        element_types = np.empty(elem_num, dtype=np.uint32)
+        element_conn = np.empty(node_num, dtype=np.uint32)
+        # Flag for centroid calculation
+        calc_centroid = isinstance(element_coords, str) and element_coords == 'centroid'
+        if calc_centroid:
+            element_coords = np.empty(elem_num, dtype=crd_dt)
+        inode = 0
+        iconn = 0
+        for ipoly, poly in enumerate(polys):
+            ring = poly.exterior
+            if calc_centroid:
+                element_coords[ipoly] = poly.centroid.coords[0]
+            element_types[ipoly] = len(ring.coords) - 1
+            for coord in ring.coords[:-1] if ring.is_ccw else ring.coords[:0:-1]:
+                crd = np.asarray(coord, dtype=crd_dt)  # Cast so we can compare
+                node_index = np.where(node_coords == crd)[0]
+                if node_index.size == 0:  # New node
+                    node_coords[inode] = crd
+                    element_conn[iconn] = inode
+                    inode += 1
+                else:  # Node already exists
+                    element_conn[iconn] = node_index[0]
+                iconn += 1
+        node_num = inode  # With duplicate nodes, inode < node_num
+
+        mesh = cls(2, 2, coord_sys=ESMF.CoordSys.SPH_DEG)
+        mesh.add_nodes(
+            node_num,
+            np.arange(node_num) + 1,
+            nprec.structured_to_unstructured(node_coords[:node_num]).ravel(),
+            np.zeros(node_num),
+        )
+        if calc_centroid:
+            element_coords = nprec.structured_to_unstructured(element_coords)
+        if element_coords is not None:
+            element_coords = element_coords.ravel()
+        try:
+            mesh.add_elements(
+                elem_num,
+                np.arange(elem_num) + 1,
+                element_types,
+                element_conn,
+                element_coords=element_coords,
+            )
+        except ValueError as err:
+            raise ValueError(
+                'ESMF failed to create the Mesh, this usually happen when some polygons are invalid (test with `poly.is_valid`)'
+            ) from err
+        return mesh
+
+    def get_shape(self, loc=ESMF.MeshLoc.ELEMENT):
+        """Return the shape of the Mesh at specified MeshLoc location."""
+        return (self.size[loc], 1)
+
+
 def esmf_regrid_build(
     sourcegrid,
     destgrid,
@@ -228,10 +325,10 @@ def esmf_regrid_build(
 
     Parameters
     ----------
-    sourcegrid, destgrid : ESMF.Grid object
+    sourcegrid, destgrid : ESMF.Grid or ESMF.Mesh object
         Source and destination grids.
 
-        Should create them by ``esmf_grid()``
+        Should create them by ``Grid.from_xarray()``
         (with optionally ``add_corner()``),
         instead of ESMPy's original API.
 
@@ -320,11 +417,12 @@ def esmf_regrid_build(
 
     # conservative regridding needs cell corner information
     if method in ['conservative', 'conservative_normed']:
-        if not sourcegrid.has_corners:
+
+        if not isinstance(sourcegrid, ESMF.Mesh) and not sourcegrid.has_corners:
             raise ValueError(
                 'source grid has no corner information. ' 'cannot use conservative regridding.'
             )
-        if not destgrid.has_corners:
+        if not isinstance(destgrid, ESMF.Mesh) and not destgrid.has_corners:
             raise ValueError(
                 'destination grid has no corner information. ' 'cannot use conservative regridding.'
             )
@@ -332,8 +430,14 @@ def esmf_regrid_build(
     # ESMF.Regrid requires Field (Grid+data) as input, not just Grid.
     # Extra dimensions are specified when constructing the Field objects,
     # not when constructing the Regrid object later on.
-    sourcefield = ESMF.Field(sourcegrid, ndbounds=extra_dims)
-    destfield = ESMF.Field(destgrid, ndbounds=extra_dims)
+    if isinstance(sourcegrid, ESMF.Mesh):
+        sourcefield = ESMF.Field(sourcegrid, meshloc=ESMF.MeshLoc.ELEMENT, ndbounds=extra_dims)
+    else:
+        sourcefield = ESMF.Field(sourcegrid, ndbounds=extra_dims)
+    if isinstance(destgrid, ESMF.Mesh):
+        destfield = ESMF.Field(destgrid, meshloc=ESMF.MeshLoc.ELEMENT, ndbounds=extra_dims)
+    else:
+        destfield = ESMF.Field(destgrid, ndbounds=extra_dims)
 
     # ESMF bug? when using locstream objects, options src_mask_values
     # and dst_mask_values produce runtime errors
@@ -443,12 +547,30 @@ def esmf_regrid_finalize(regrid):
     regrid.destroy()
     regrid.srcfield.destroy()
     regrid.dstfield.destroy()
-    regrid.srcfield.grid.destroy()
-    regrid.dstfield.grid.destroy()
+    # regrid.srcfield.grid.destroy()
+    # regrid.dstfield.grid.destroy()
 
     # double check
     assert regrid.finalized
     assert regrid.srcfield.finalized
     assert regrid.dstfield.finalized
-    assert regrid.srcfield.grid.finalized
-    assert regrid.dstfield.grid.finalized
+    # assert regrid.srcfield.grid.finalized
+    # assert regrid.dstfield.grid.finalized
+
+
+# Deprecated as of version 0.5.0
+
+
+def esmf_locstream(lon, lat):
+    warnings.warn(
+        '`esmf_locstream` is being deprecated in favor of `LocStream.from_xarray`',
+        DeprecationWarning,
+    )
+    return LocStream.from_xarray(lon, lat)
+
+
+def esmf_grid(lon, lat, periodic=False, mask=None):
+    warnings.warn(
+        '`esmf_grid` is being deprecated in favor of `Grid.from_xarray`', DeprecationWarning
+    )
+    return Grid.from_xarray(lon, lat)

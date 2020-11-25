@@ -2,7 +2,7 @@
 from pkg_resources import DistributionNotFound, get_distribution
 
 from . import data, util
-from .frontend import Regridder
+from .frontend import Regridder, SpatialAverager
 
 try:
     __version__ = get_distribution(__name__).version

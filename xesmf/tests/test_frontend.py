@@ -1,10 +1,12 @@
 import os
+import warnings
 
 import dask
 import numpy as np
 import pytest
 import xarray as xr
-from numpy.testing import assert_almost_equal, assert_equal
+from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
+from shapely.geometry import MultiPolygon, Polygon
 
 import xesmf as xe
 from xesmf.frontend import as_2d_mesh
@@ -34,6 +36,48 @@ ds_in_chunked = ds_in.chunk({'time': 3, 'lev': 2})
 ds_locs = xr.Dataset()
 ds_locs['lat'] = xr.DataArray(data=[-20, -10, 0, 10], dims=('locations',))
 ds_locs['lon'] = xr.DataArray(data=[0, 5, 10, 15], dims=('locations',))
+
+
+# For polygon handling and spatial average
+ds_savg = xr.Dataset(
+    coords={
+        'lat': (('lat',), [0.5, 1.5]),
+        'lon': (('lon',), [0.5, 1.5]),
+        'lat_b': (('lat_b',), [0, 1, 2]),
+        'lon_b': (('lon_b',), [0, 1, 2]),
+    },
+    data_vars={'abc': (('lon', 'lat'), [[1, 2], [3, 4]])},
+)
+polys = [
+    Polygon([[0.5, 0.5], [0.5, 1.5], [1.5, 0.5]]),  # Simple triangle polygon
+    MultiPolygon(
+        [
+            Polygon([[0.25, 1.25], [0.25, 1.75], [0.75, 1.75], [0.75, 1.25]]),
+            Polygon([[1.25, 1.25], [1.25, 1.75], [1.75, 1.75], [1.75, 1.25]]),
+        ]
+    ),  # Multipolygon on 3 and 4
+    Polygon(
+        [[0, 0], [0, 1], [2, 1], [2, 0]],
+        holes=[[[0.5, 0.25], [0.5, 0.75], [1.0, 0.75], [1.0, 0.25]]],
+    ),  # Simple polygon covering 1 and 2 with hole spanning on both
+    Polygon([[1, 1], [1, 3], [3, 3], [3, 1]]),  # Polygon partially outside, covering a part of 4
+    Polygon([[3, 3], [3, 4], [4, 4], [4, 3]]),  # Polygon totally outside
+    Polygon(
+        [
+            [0, 0],
+            [0.5, 0.5],
+            [0, 1],
+            [0.5, 1.5],
+            [0, 2],
+            [2, 2],
+            [1.5, 1.5],
+            [2, 1],
+            [1.5, 0.5],
+            [2, 0],
+        ]
+    ),  # Long multifaceted polygon
+]
+exps_polys = [1.75, 3.5, 1.5716, 4, 0, 2.5]
 
 
 def test_as_2d_mesh():
@@ -121,7 +165,7 @@ def test_existing_weights():
 
 
 def test_to_netcdf(tmp_path):
-    from xesmf.backend import esmf_grid, esmf_regrid_build
+    from xesmf.backend import Grid, esmf_regrid_build
 
     # Let the frontend write the weights to disk
     xfn = tmp_path / 'ESMF_weights.nc'
@@ -129,8 +173,8 @@ def test_to_netcdf(tmp_path):
     regridder = xe.Regridder(ds_in, ds_out, method)
     regridder.to_netcdf(filename=xfn)
 
-    grid_in = esmf_grid(ds_in['lon'].values.T, ds_in['lat'].values.T)
-    grid_out = esmf_grid(ds_out['lon'].values.T, ds_out['lat'].values.T)
+    grid_in = Grid.from_xarray(ds_in['lon'].values.T, ds_in['lat'].values.T)
+    grid_out = Grid.from_xarray(ds_out['lon'].values.T, ds_out['lat'].values.T)
 
     # Let the ESMPy backend write the weights to disk
     efn = tmp_path / 'weights.nc'
@@ -440,3 +484,27 @@ def test_ds_to_ESMFlocstream():
     ds_bogus['lon'] = ds_locs['lon']
     with pytest.raises(ValueError):
         locstream, shape = ds_to_ESMFlocstream(ds_bogus)
+
+
+@pytest.mark.parametrize('poly,exp', list(zip(polys, exps_polys)))
+def test_spatial_averager(poly, exp):
+    savg = xe.SpatialAverager(ds_savg, [poly], geom_dim_name='my_geom')
+    out = savg(ds_savg.abc)
+    assert_allclose(out, exp, rtol=1e-3)
+
+    assert 'my_geom' in out.dims
+
+
+def test_polys_to_ESMFmesh():
+    import ESMF
+
+    from xesmf.frontend import polys_to_ESMFmesh
+
+    # No overlap but multi + holes
+    with warnings.catch_warnings(record=True) as rec:
+        mesh, shape = polys_to_ESMFmesh([polys[1], polys[2], polys[4]])
+
+    assert isinstance(mesh, ESMF.Mesh)
+    assert shape == (1, 4)
+    assert len(rec) == 1
+    assert 'Some passed polygons have holes' in rec[0].message.args[0]

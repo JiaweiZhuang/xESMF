@@ -189,7 +189,6 @@ class BaseRegridder(object):
         extrap_method=None,
         extrap_dist_exponent=None,
         extrap_num_src_pnts=None,
-        add_nans=False,
         weights=None,
         ignore_degenerate=None,
     ):

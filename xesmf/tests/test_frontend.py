@@ -1,7 +1,7 @@
 import os
 import warnings
 
-import cf_xarray
+import cf_xarray  # noqa
 import dask
 import numpy as np
 import pytest
@@ -262,7 +262,8 @@ def test_regrid_with_1d_grid_infer_bounds():
 # TODO: consolidate (regrid method, input data types) combination
 # using pytest fixtures and parameterization
 
-@pytest.mark.parametrize("use_cfxr", [True, False])
+
+@pytest.mark.parametrize('use_cfxr', [True, False])
 def test_regrid_dataarray(use_cfxr):
     # xarray.DataArray containing in-memory numpy array
     if use_cfxr:

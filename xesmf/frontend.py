@@ -189,7 +189,6 @@ class BaseRegridder(object):
         extrap_method=None,
         extrap_dist_exponent=None,
         extrap_num_src_pnts=None,
-        add_nans=False,
         weights=None,
         ignore_degenerate=None,
     ):
@@ -563,7 +562,7 @@ class Regridder(BaseRegridder):
             where masked values are identified by 0, and non-masked values by 1.
 
             For conservative methods, if bounds are not present, they will be
-            computed using `cf-xarray` (currently only valid for 1D coordinates).
+            computed using `cf-xarray` (only 1D coordinates are currently supported).
 
             Shape can be 1D (n_lon,) and (n_lat,) for rectilinear grids,
             or 2D (n_y, n_x) for general curvilinear grids.
@@ -816,7 +815,7 @@ class SpatialAverager(BaseRegridder):
         self._lat_out = np.asarray([c[1][0] for c in poly_centers])
 
         # We put names 'lon' and 'lat' so ds_to_ESMFlocstream finds them easily.
-        # _lon_out_name and _lat_out_name are used on the ouput anyway.
+        # _lon_out_name and _lat_out_name are used on the output anyway.
         ds_out = {'lon': self._lon_out, 'lat': self._lat_out}
         locstream_out, shape_out = ds_to_ESMFlocstream(ds_out)
 

@@ -39,7 +39,6 @@ Contents
    notebooks/Curvilinear_grid
    notebooks/Pure_numpy
    notebooks/Dataset
-   notebooks/Spatial_Averaging
 
 .. toctree::
    :maxdepth: 1
@@ -51,6 +50,7 @@ Contents
    notebooks/Using_LocStream
    notebooks/Masking
    large_problems_on_HPC
+   notebooks/Spatial_Averaging
 
 .. toctree::
    :maxdepth: 1

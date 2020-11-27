@@ -23,7 +23,7 @@ else:
         'numpy >=1.16',
         'scipy',
         'shapely',
-        'cf-xarray',
+        'cf-xarray>=0.3.1',
     ]
 
 CLASSIFIERS = [

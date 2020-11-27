@@ -17,7 +17,14 @@ on_rtd = os.environ.get('READTHEDOCS') == 'True'
 if on_rtd:
     INSTALL_REQUIRES = []
 else:
-    INSTALL_REQUIRES = ['esmpy>=8.0.0', 'xarray <= 0.16.0', 'numpy >=1.16', 'scipy', 'shapely']
+    INSTALL_REQUIRES = [
+        'esmpy>=8.0.0',
+        'xarray <= 0.16.0',
+        'numpy >=1.16',
+        'scipy',
+        'shapely',
+        'cf-xarray>=0.3.1',
+    ]
 
 CLASSIFIERS = [
     'Development Status :: 4 - Beta',

@@ -8,12 +8,13 @@ Breaking changes
 ~~~~~~~~~~~~~~~~
 * Deprecate `esmf_grid` in favor of `Grid.from_xarray`
 * Deprecate `esmf_locstream` in favor of `LocStream.from_xarray`
-* Installation requires numpy>=1.16
+* Installation requires numpy>=1.16 and cf-xarray>=0.3.1
 
 New features
 ~~~~~~~~~~~~
 * Create `ESMF.Mesh` objects from `shapely.polygons` (:pull:`24`). By `Pascal Bourgault <https://github.com/aulemahal>`_
 * New class `SpatialAverager` offers user-friendly mechanism to average a 2-D field over a polygon. Includes support to handle interior holes and multi-part geometries. (:pull:`24`) By `Pascal Bourgault <https://github.com/aulemahal>`_
+* Automatic detection of coordinates and computation of vertices based on cf-xarray. (:pull:`49`) By `Pascal Bourgault <https://github.com/aulemahal>`_
 
 Bug fixes
 ~~~~~~~~~

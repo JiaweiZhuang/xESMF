@@ -62,8 +62,8 @@ def grid_2d(lon0_b, lon1_b, d_lon, lat0_b, lat1_b, d_lat):
 
     ds = xr.Dataset(
         coords={
-            'lon': (['y', 'x'], lon),
-            'lat': (['y', 'x'], lat),
+            'lon': (['y', 'x'], lon, {'standard_name': 'longitude'}),
+            'lat': (['y', 'x'], lat, {'standard_name': 'latitude'}),
             'lon_b': (['y_b', 'x_b'], lon_b),
             'lat_b': (['y_b', 'x_b'], lat_b),
         }

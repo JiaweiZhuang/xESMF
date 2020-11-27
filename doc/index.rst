@@ -70,32 +70,22 @@ Contents
 How to ask for help
 -------------------
 
-The `GitHub issue tracker <https://github.com/JiaweiZhuang/xESMF/issues>`_ is the primary place for bug reports. If you hit any issues, I recommend the following steps:
+The `GitHub issue tracker <https://github.com/pangeo-data/xESMF/issues>`_ is the primary place for bug reports. If you hit any issues, I recommend the following steps:
 
-- First, `search for existing issues <https://help.github.com/en/articles/searching-issues-and-pull-requests>`_. Other people are likely to hit the same problem and probably have already found the solution.
+- First, `search for existing issues <https://help.github.com/en/articles/searching-issues-and-pull-requests>`_. Other people are likely to hit the same problem and probably have already found the solution. You might also want to search issues in the original repository `<https://github.com/JiaweiZhuang/xESMF/issues>`_.
 
 - For a new bug, please `craft a minimal bug report <https://matthewrocklin.com/blog/work/2018/02/28/minimal-bug-reports>`_ with reproducible code. Use synthetic data or `upload <https://help.github.com/en/articles/file-attachments-on-issues-and-pull-requests>`_ a small sample of input data (~1 MB) so I can quickly reproducible your error.
 
-- For platform-dependent problems (such as kernel dying and installation error), please also show how to reproduce your system environment, otherwise I have no way to diagnose the issue. The best approach is probably finding an `official Docker image <https://docs.docker.com/docker-hub/official_images/>`_ that is closest to your OS (such as `Ubuntu <https://hub.docker.com/_/ubuntu/>`_ or `CentOS <https://hub.docker.com/_/centos/>`_), and build your Python environment starting with such image, to see whether the error still exists. Alternatively you can select from public cloud images, such as `Amazon Machine Images <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html>`_ or `Google Cloud Images <https://cloud.google.com/compute/docs/images>`_. If the error only happens on your institution's HPC cluster, please contact the system administrator for help.
+- For platform-dependent problems (such as kernel dying and installation error), please also show how to reproduce your system environment, otherwise we have no way to diagnose the issue. The best approach is probably finding an `official Docker image <https://docs.docker.com/docker-hub/official_images/>`_ that is closest to your OS (such as `Ubuntu <https://hub.docker.com/_/ubuntu/>`_ or `CentOS <https://hub.docker.com/_/centos/>`_), and build your Python environment starting with such image, to see whether the error still exists. Alternatively you can select from public cloud images, such as `Amazon Machine Images <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html>`_ or `Google Cloud Images <https://cloud.google.com/compute/docs/images>`_. If the error only happens on your institution's HPC cluster, please contact the system administrator for help.
 
-For general "how-to" questions that are not bugs, you can also post on `StackOverflow <https://stackoverflow.com/>`_ (ref: `xarray questions <https://stackoverflow.com/questions/tagged/python-xarray>`_) and send me the link. For small questions also feel free to @ me `on Twitter <https://twitter.com/Jiawei_Zhuang_>`_.
-
-
-**The "Don'ts"**:
-
-- Do not describe your problem in a private email, as this would require me to reply similar emails many times. `Keep all discussions in public places <https://matthewrocklin.com/blog/2019/02/28/slack-github>`_ like GitHub or StackOverflow.
-- Do not only show the error/problem without providing the steps to reproduce it.
-- Do not take screenshots of your code, as they are not copy-pastable.
+For general "how-to" questions that are not bugs, you can also post on `StackOverflow <https://stackoverflow.com/>`_ (ref: `xarray questions <https://stackoverflow.com/questions/tagged/python-xarray>`_).
 
 
 How to support xESMF
 --------------------
+Your support in any form will be appreciated. The easy ways (takes several seconds):
 
-xESMF is so far my personal unfunded project; most development happens during my (very limited) free time at graduate school. Your support in any form will be appreciated.
-
-The easy ways (takes several seconds):
-
-- `Give a star <https://help.github.com/en/articles/saving-repositories-with-stars>`_ to its `GitHub repository <https://github.com/JiaweiZhuang/xESMF>`_.
+- `Give a star <https://help.github.com/en/articles/saving-repositories-with-stars>`_ to its `GitHub repository <https://github.com/pangeo-data/xESMF>`_.
 - Share it via social media like Twitter; introduce it to your friends/advisors/students.
 
 More advanced ways:

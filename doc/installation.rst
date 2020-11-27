@@ -6,14 +6,14 @@ Installation
 Try on Binder without local installation
 ----------------------------------------
 
-The `Binder project <https://mybinder.readthedocs.io>`_ provides pre-configured environment in the cloud. You just need a web browser to access it. Please follow the Binder link on `xESMF's GitHub page <https://github.com/JiaweiZhuang/xESMF>`_.
+The `Binder project <https://mybinder.readthedocs.io>`_ provides pre-configured environment in the cloud. You just need a web browser to access it. Please follow the Binder link on `xESMF's GitHub page <https://github.com/pangeo-data/xESMF>`_.
 
 Install on local machine with Conda
 -----------------------------------
 
-xESMF requires Python>=3.5. The major dependencies are xarray and ESMPy. The best way to install them is using Conda_.
+xESMF requires Python>=3.6. The major dependencies are xarray and ESMPy. The best way to install them is using Conda_.
 
-First, `install miniconda <https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html>`_. Then, I recommend creating a new, clean environment:
+First, `install miniconda <https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html>`_. Then, we recommend creating a new, clean environment:
 
 .. code-block:: bash
 
@@ -30,7 +30,7 @@ Getting xESMF is as simple as:
 
     One some platforms you might get :code:`ImportError: Regrid(filename) requires PIO and does not work if ESMF has not been built with MPI support`. (see `this comment <https://github.com/JiaweiZhuang/xESMF/issues/47#issuecomment-582421822>`_). A quick workaround is to constrain ESMPy version :code:`conda install -c conda-forge xesmf esmpy=8.0.0`.
 
-I also highly recommend those extra packages for full functionality:
+We also highly recommend those extra packages for full functionality:
 
 .. code-block:: bash
 
@@ -82,11 +82,11 @@ Install development version from GitHub repo
 
 To get the latest version that is not uploaded to PyPI_ yet::
 
-    $ pip install --upgrade git+https://github.com/JiaweiZhuang/xESMF.git
+    $ pip install --upgrade git+https://github.com/pangeo-data/xESMF.git
 
 Developers can track source code change::
 
-    $ git clone https://github.com/JiaweiZhuang/xESMF.git
+    $ git clone https://github.com/pangeo-data/xESMF.git
     $ cd xESMF
     $ pip install -e .
 

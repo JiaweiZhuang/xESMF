@@ -3,7 +3,7 @@
 Other geospatial regridding tools
 =================================
 
-Here is a brief overview of other regridding tools that the author is aware of
+Here is a brief overview of other regridding tools that the authors are aware of
 (for geospatial data on the sphere, excluding traditional image resizing functions).
 They are all great tools and have helped the author a lot in both scientific research
 and xESMF development. Check them out if xESMF cannot suit your needs.
@@ -31,10 +31,9 @@ the daunting compiling process on your own.
 
 However, ESMPy is a complicated Python API that controls a huge Fortran beast
 hidden underneath. It is not as intuitive as native Python packages, and even
-a simple regridding task requires more than 10 lines of arcane code. That's why
-I made xESMF. If you want to involve in xESMF development you need to know ESMPy.
-Check out this nice
-`tutorial <https://github.com/nawendt/esmpy-tutorial>`_
+a simple regridding task requires more than 10 lines of arcane code. The
+purpose of xESMF is to provide a friendlier interface to the xarray community.
+Check out this nice `tutorial <https://github.com/nawendt/esmpy-tutorial>`_
 before going to the
 `official doc <http://www.earthsystemmodeling.org/esmf_releases/last_built/esmpy_doc/html/index.html>`_.
 

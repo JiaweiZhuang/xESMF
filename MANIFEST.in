@@ -10,3 +10,4 @@ prune *.egg-info
 
 exclude *.yml
 exclude .gitignore
+exclude xesmf/_version.py

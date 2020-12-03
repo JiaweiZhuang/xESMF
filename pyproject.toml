@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=41.2", "setuptools_scm", "wheel", "setuptools_scm_git_archive"]
+build-backend = "setuptools.build_meta"
+
 [tool.black]
 line-length = 100
 target-version = ['py38']

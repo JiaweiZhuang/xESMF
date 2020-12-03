@@ -9,8 +9,11 @@ AUTHOR_EMAIL = 'jiaweizhuang@g.harvard.edu'
 URL = 'https://github.com/pangeo-data/xESMF'
 LICENSE = 'MIT'
 PYTHON_REQUIRES = '>=3.6'
-USE_SCM_VERSION = {'version_scheme': 'post-release', 'local_scheme': 'dirty-tag'}
-SETUP_REQUIRES = ['setuptools_scm', 'setuptools>=30.3.0']
+USE_SCM_VERSION = {
+    'write_to': 'xesmf/_version.py',
+    'write_to_template': '__version__ = "{version}"',
+    'tag_regex': r'^(?P<prefix>v)?(?P<version>[^\+]+)(?P<suffix>.*)?$',
+}
 
 # https://github.com/rtfd/readthedocs.org/issues/5512#issuecomment-475024373
 on_rtd = os.environ.get('READTHEDOCS') == 'True'
@@ -19,8 +22,8 @@ if on_rtd:
 else:
     INSTALL_REQUIRES = [
         'esmpy>=8.0.0',
-        'xarray <= 0.16.0',
-        'numpy >=1.16',
+        'xarray!=0.16.1',
+        'numpy>=1.16',
         'scipy',
         'shapely',
         'cf-xarray>=0.3.1',
@@ -59,5 +62,4 @@ setup(
     url=URL,
     packages=find_packages(),
     use_scm_version=USE_SCM_VERSION,
-    setup_requires=SETUP_REQUIRES,
 )

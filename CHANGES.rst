@@ -1,6 +1,14 @@
 What's new
 ==========
 
+0.5.1
+-----
+
+Documentation
+~~~~~~~~~~~~~
+* Update installation instructions to mention that PyPi only holds xesmf up to version 0.3.0.
+
+
 0.5.0 (11-11-2020)
 ------------------
 

@@ -40,12 +40,17 @@ We also highly recommend those extra packages for full functionality:
     # optional dependencies for executing all notebook examples
     $ conda install -c conda-forge matplotlib cartopy jupyterlab
 
+
+
 Alternatively, you can first install dependencies, and then use ``pip`` to install xESMF:
 
 .. code-block:: bash
 
     $ conda install -c conda-forge esmpy xarray scipy dask netCDF4
-    $ pip install xesmf
+    $ pip install git+https://github.com/pangeo-data/xesmf.git
+
+This will install the latest version from the github repo. To install a specific release, append the version tag to the url (e.g. `@v0.5.0`). Note that `pip install xesmf` can only be used to install versions up to 0.3.0.
+
 
 Testing your installation
 -------------------------

@@ -268,10 +268,12 @@ def test_regrid_dataarray(use_cfxr):
     # xarray.DataArray containing in-memory numpy array
     if use_cfxr:
         ds_in2 = ds_in.rename(lat='Latitude', lon='Longitude')
+        ds_out2 = ds_out.rename(lat='Latitude', lon='Longitude')
     else:
         ds_in2 = ds_in
+        ds_out2 = ds_out
 
-    regridder = xe.Regridder(ds_in2, ds_out, 'conservative')
+    regridder = xe.Regridder(ds_in2, ds_out2, 'conservative')
 
     outdata = regridder(ds_in2['data'].values)  # pure numpy array
     dr_out = regridder(ds_in2['data'])  # xarray DataArray
@@ -280,12 +282,14 @@ def test_regrid_dataarray(use_cfxr):
     assert_equal(outdata, dr_out.values)
 
     # compare with analytical solution
-    rel_err = (ds_out['data_ref'] - dr_out) / ds_out['data_ref']
+    rel_err = (ds_out2['data_ref'] - dr_out) / ds_out2['data_ref']
     assert np.max(np.abs(rel_err)) < 0.05
 
     # check metadata
-    assert_equal(dr_out['lat'].values, ds_out['lat'].values)
-    assert_equal(dr_out['lon'].values, ds_out['lon'].values)
+    lat_name = 'Latitude' if use_cfxr else 'lat'
+    lon_name = 'Longitude' if use_cfxr else 'lon'
+    xr.testing.assert_identical(dr_out[lat_name], ds_out2[lat_name])
+    xr.testing.assert_identical(dr_out[lon_name], ds_out2[lon_name])
 
     # test broadcasting
     dr_out_4D = regridder(ds_in2['data4D'])

@@ -8,6 +8,7 @@ import cf_xarray as cfxr
 import numpy as np
 import scipy.sparse as sps
 import xarray as xr
+from xarray import DataArray
 
 from .backend import Grid, LocStream, Mesh, add_corner, esmf_regrid_build, esmf_regrid_finalize
 from .smm import _combine_weight_multipoly, add_nans_to_weights, apply_weights, read_weights
@@ -664,6 +665,12 @@ class Regridder(BaseRegridder):
         # record output grid and metadata
         lon_out, lat_out = _get_lon_lat(ds_out)
         self._lon_out, self._lat_out = np.asarray(lon_out), np.asarray(lat_out)
+        self._coord_names = dict(
+            lon=lon_out.name if isinstance(lon_out, DataArray) else 'lon',
+            lat=lat_out.name if isinstance(lat_out, DataArray) else 'lat',
+        )
+        self._lon_out_attrs = lon_out.attrs if isinstance(lon_out, DataArray) else {}
+        self._lat_out_attrs = lat_out.attrs if isinstance(lat_out, DataArray) else {}
 
         if self._lon_out.ndim == 2:
             try:
@@ -692,17 +699,22 @@ class Regridder(BaseRegridder):
 
         # append output horizontal coordinate values
         # extra coordinates are automatically tracked by apply_ufunc
+        lon_args = dict(data=self._lon_out, attrs=self._lon_out_attrs)
+        lat_args = dict(data=self._lat_out, attrs=self._lat_out_attrs)
         if self.sequence_out:
-            out.coords['lon'] = xr.DataArray(self._lon_out, dims=('locations',))
-            out.coords['lat'] = xr.DataArray(self._lat_out, dims=('locations',))
+            out.coords['lon'] = xr.DataArray(**lon_args, dims=('locations',))
+            out.coords['lat'] = xr.DataArray(**lat_args, dims=('locations',))
         else:
-            out.coords['lon'] = xr.DataArray(self._lon_out, dims=self.lon_dim)
-            out.coords['lat'] = xr.DataArray(self._lat_out, dims=self.lat_dim)
+            out.coords['lon'] = xr.DataArray(**lon_args, dims=self.lon_dim)
+            out.coords['lat'] = xr.DataArray(**lat_args, dims=self.lat_dim)
 
         out.attrs['regrid_method'] = self.method
 
         if self.sequence_out:
             out = out.squeeze(dim='dummy')
+
+        # Use ds_out coordinates
+        out = out.rename(self._coord_names)
 
         return out
 

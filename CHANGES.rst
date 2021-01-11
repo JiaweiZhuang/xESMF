@@ -1,12 +1,20 @@
 What's new
 ==========
 
-0.5.1
------
+0.5.1 (01-11-2011)
+------------------
 
 Documentation
 ~~~~~~~~~~~~~
 * Update installation instructions to mention that PyPi only holds xesmf up to version 0.3.0.
+
+New features
+~~~~~~~~~~~~
+* Regridded xarray.Dataset now preserves the name and attributes of target coordinates (:pull:`60`)
+
+Bug fixes
+~~~~~~~~~
+* Fix doc build for API/Regridder (:pull:`61`)
 
 
 0.5.0 (11-11-2020)

@@ -9,5 +9,8 @@ prune binder
 prune *.egg-info
 
 exclude *.yml
+exclude *.yaml
+exclude .*.toml
+exclude .*.txt
 exclude .gitignore
 exclude xesmf/_version.py

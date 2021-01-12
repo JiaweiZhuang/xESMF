@@ -1,6 +1,7 @@
 import cf_xarray  # noqa
 import numpy as np
 import xarray as xr
+
 import xesmf
 
 
@@ -12,6 +13,7 @@ def test_MOM6_to_1x1():
         f'{dataurl}/ocean_monthly_z.200301-200712.nc4',
         chunks={'time': 1, 'z_l': 1},
         drop_variables=['average_DT', 'average_T1', 'average_T2'],
+        decode_times=False,
         engine='pydap',
     )
 

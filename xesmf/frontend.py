@@ -36,14 +36,17 @@ def as_2d_mesh(lon, lat):
 
 def _get_lon_lat(ds):
     """Return lon and lat extracted from ds."""
+    if 'lat' in ds and 'lon' in ds:
+        # Old way.
+        return ds['lon'], ds['lat']
+    # else : cf-xarray way
     try:
         lon = ds.cf['longitude']
         lat = ds.cf['latitude']
-    except (KeyError, AttributeError):
+    except (KeyError, AttributeError, ValueError):
         # KeyError if cfxr doesn't detect the coords
         # AttributeError if ds is a dict
-        lon = ds['lon']
-        lat = ds['lat']
+        raise ValueError('dataset must include lon/lat or be CF-compliant')
 
     return lon, lat
 

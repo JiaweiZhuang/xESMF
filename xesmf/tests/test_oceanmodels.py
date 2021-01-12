@@ -1,13 +1,6 @@
-import os
-import warnings
-
 import cf_xarray  # noqa
-import dask
 import numpy as np
-import pydap
-import pytest
 import xarray as xr
-
 import xesmf
 
 

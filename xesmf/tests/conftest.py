@@ -28,18 +28,18 @@ def distributed_scheduler():
 
 
 def pytest_addoption(parser):
-    parser.addoption("--runtestcases", action="store_true", default=False, help="run test cases")
+    parser.addoption("--runtestcases", action='store_true', default=False, help='run test cases')
 
 
 def pytest_configure(config):
-    config.addinivalue_line("markers", "testcases: mark test cases")
+    config.addinivalue_line('markers', 'testcases: mark test cases')
 
 
 def pytest_collection_modifyitems(config, items):
-    if config.getoption("--runtestcases"):
+    if config.getoption('--runtestcases'):
         # --runtestcases given in cli: do not skip test cases
         return
-    skip_testcases = pytest.mark.skip(reason="need --runtestcases option to run")
+    skip_testcases = pytest.mark.skip(reason='need --runtestcases option to run')
     for item in items:
-        if "testcases" in item.keywords:
+        if 'testcases' in item.keywords:
             item.add_marker(skip_testcases)

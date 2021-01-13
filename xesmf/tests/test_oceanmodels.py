@@ -1,10 +1,12 @@
 import cf_xarray  # noqa
 import numpy as np
+import pytest
 import xarray as xr
 
 import xesmf
 
 
+@pytest.mark.testcases
 def test_MOM6_to_1x1():
     """ check regridding of MOM6 to regular lon/lat """
 

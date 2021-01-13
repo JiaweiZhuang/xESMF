@@ -535,15 +535,15 @@ def test_polys_to_ESMFmesh():
 
 
 @pytest.mark.parametrize(
-    "method, adaptative_masking, nmissing", [
-        ("bilinear", False, 36944),
-        ("bilinear", True, 30491),
-        ("conservative", False, 36949),
-        ("conservative", True, 36958)
+    "method, adaptative_masking, nvalid", [
+        ("bilinear", False, 380),
+        ("bilinear", True, 395),
+        ("conservative", False, 385),
+        ("conservative", True, 394)
         ])
-def test_adaptative_masking(method, adaptative_masking, nmissing):
+def test_adaptative_masking(method, adaptative_masking, nvalid):
     dai = ds_in["data4D"].copy()
     dai[0, 0, 4:6, 4:6] = np.nan
     rg = xe.Regridder(ds_in, ds_out, method)
     dao = rg(dai, adaptative_masking=adaptative_masking)
-    assert int(dao.notnull().sum()) == nmissing
+    assert int(dao[0, 0, 1:-1, 1:-1].notnull().sum()) == nvalid

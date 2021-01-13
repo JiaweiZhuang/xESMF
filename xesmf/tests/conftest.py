@@ -28,7 +28,7 @@ def distributed_scheduler():
 
 
 def pytest_addoption(parser):
-    parser.addoption("--runtestcases", action='store_true', default=False, help='run test cases')
+    parser.addoption('--runtestcases', action='store_true', default=False, help='run test cases')
 
 
 def pytest_configure(config):

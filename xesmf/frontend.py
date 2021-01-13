@@ -345,7 +345,7 @@ class BaseRegridder(object):
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
         return w
 
-    def __call__(self, indata, keep_attrs=False):
+    def __call__(self, indata, keep_attrs=False, adaptative_masking=False):
         """
         Apply regridding to input data.
 
@@ -367,6 +367,13 @@ class BaseRegridder(object):
             Keep attributes for xarray DataArrays or Datasets.
             Defaults to False.
 
+        adaptative_masking: bool, optional
+            Set it to True to properly handle transient missing values,
+            i.e. when the number of missing values varies along dimensions
+            other than the horizontal ones.
+
+            .. note:: It will be set to True in futures versions.
+
         Returns
         -------
         outdata : Data type is the same as input data type.
@@ -382,23 +389,62 @@ class BaseRegridder(object):
 
         """
         if isinstance(indata, np.ndarray):
-            return self.regrid_numpy(indata)
+            return self.regrid_numpy(indata, adaptative_masking)
         elif isinstance(indata, dask_array_type):
-            return self.regrid_dask(indata)
+            return self.regrid_dask(indata, adaptative_masking)
         elif isinstance(indata, xr.DataArray):
-            return self.regrid_dataarray(indata, keep_attrs=keep_attrs)
+            return self.regrid_dataarray(
+                indata, adaptative_masking, keep_attrs=keep_attrs)
         elif isinstance(indata, xr.Dataset):
-            return self.regrid_dataset(indata, keep_attrs=keep_attrs)
+            return self.regrid_dataset(
+                indata, adaptative_masking, keep_attrs=keep_attrs)
         else:
             raise TypeError(
-                'input must be numpy array, dask array, ' 'xarray DataArray or Dataset!'
+                'input must be numpy array, dask array, '
+                'xarray DataArray or Dataset!'
             )
 
     @staticmethod
-    def _regrid_array(indata, *, weights, shape_in, shape_out, sequence_in):
+    def _regrid_array(
+            indata, adaptative_masking, *, weights, shape_in, shape_out,
+            sequence_in):
+
         if sequence_in:
             indata = np.expand_dims(indata, axis=-2)
-        return apply_weights(weights, indata, shape_in, shape_out)
+
+        # Is there any non-permament missing values?
+        ndim = np.ndim(indata)
+        if ndim > 2:
+            inmask = np.isnan(indata)
+            has_non_perm_mask = (
+                np.apply_over_axes(
+                    np.sum, inmask, [-2, -1]).ravel().ptp() != 0)
+            if not has_non_perm_mask:
+                adaptative_masking = False
+            elif not adaptative_masking:
+                warnings.warn(
+                    "Your data has transient missing values. "
+                    "You should set adaptative_masking to True, "
+                    "which will be the default in futures versions.")
+            if adaptative_masking:
+                inmask = np.isnan(indata)
+                indata = indata.copy()
+                indata[inmask] = 0  # does it work with dask?
+        else:
+            adaptative_masking = False
+
+        # Apply weights
+        outdata = apply_weights(weights, indata, shape_in, shape_out)
+
+        # Scale the data
+        if adaptative_masking:
+            outvalid = apply_weights(
+                weights, (~inmask).astype('d'), shape_in, shape_out)
+            bad = outvalid == 0
+            outvalid[bad] = 1
+            outdata = xr.where(bad, np.nan, outdata / outvalid)
+
+        return outdata
 
     @property
     def _regrid_kwargs(self):
@@ -409,12 +455,14 @@ class BaseRegridder(object):
             'shape_out': self.shape_out,
         }
 
-    def regrid_numpy(self, indata):
+    def regrid_numpy(self, indata, adaptative_masking):
         """See __call__()."""
-        outdata = self._regrid_array(indata, **self._regrid_kwargs)
+        outdata = self._regrid_array(
+            indata, adaptative_masking=adaptative_masking,
+            **self._regrid_kwargs)
         return outdata
 
-    def regrid_dask(self, indata):
+    def regrid_dask(self, indata, adaptative_masking):
         """See __call__()."""
 
         extra_chunk_shape = indata.chunksize[0:-2]
@@ -426,20 +474,22 @@ class BaseRegridder(object):
             indata,
             dtype=float,
             chunks=output_chunk_shape,
+            adaptative_masking=adaptative_masking,
             **self._regrid_kwargs,
         )
 
         return outdata
 
-    def regrid_dataarray(self, dr_in, keep_attrs=False):
+    def regrid_dataarray(self, dr_in, adaptative_masking, keep_attrs=False):
         """See __call__()."""
 
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(dr_in)
-
+        kwargs = self._regrid_kwargs
+        kwargs.update(adaptative_masking=adaptative_masking)
         dr_out = xr.apply_ufunc(
             self._regrid_array,
             dr_in,
-            kwargs=self._regrid_kwargs,
+            kwargs=kwargs,
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
@@ -453,7 +503,7 @@ class BaseRegridder(object):
 
         return self._format_xroutput(dr_out, temp_horiz_dims)
 
-    def regrid_dataset(self, ds_in, keep_attrs=False):
+    def regrid_dataset(self, ds_in, adaptative_masking, keep_attrs=False):
         """See __call__()."""
 
         # most logic is the same as regrid_dataarray()
@@ -470,10 +520,12 @@ class BaseRegridder(object):
             'as the horizontal dimensions for this dataset.'.format(input_horiz_dims, name)
         )
 
+        kwargs = self._regrid_kwargs
+        kwargs.update(adaptative_masking=adaptative_masking)
         ds_out = xr.apply_ufunc(
             self._regrid_array,
             ds_in,
-            kwargs=self._regrid_kwargs,
+            kwargs=kwargs,
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',

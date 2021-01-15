@@ -43,11 +43,11 @@ ds_locs['lon'] = xr.DataArray(data=[0, 5, 10, 15], dims=('locations',))
 ds_savg = xr.Dataset(
     coords={
         'lat': (('lat',), [0.5, 1.5]),
-        'lon': (('lon',), [0.5, 1.5]),
+        'lon': (('lon',), [0.5, 1.5, 2.5]),
         'lat_b': (('lat_b',), [0, 1, 2]),
-        'lon_b': (('lon_b',), [0, 1, 2]),
+        'lon_b': (('lon_b',), [0, 1, 2, 3]),
     },
-    data_vars={'abc': (('lon', 'lat'), [[1, 2], [3, 4]])},
+    data_vars={'abc': (('lon', 'lat'), [[1, 2], [3, 4], [2, 4]])},
 )
 polys = [
     Polygon([[0.5, 0.5], [0.5, 1.5], [1.5, 0.5]]),  # Simple triangle polygon
@@ -78,7 +78,7 @@ polys = [
         ]
     ),  # Long multifaceted polygon
 ]
-exps_polys = [1.75, 3.5, 1.5716, 4, 0, 2.5]
+exps_polys = [1.75, 3, 2.1429, 4, 0, 2.5]
 
 
 def test_as_2d_mesh():
@@ -305,6 +305,15 @@ def test_regrid_dataarray(use_cfxr):
     xr.testing.assert_identical(dr_out_4D['time'], ds_in2['time'])
     xr.testing.assert_identical(dr_out_4D['lev'], ds_in2['lev'])
 
+    # test transposed
+    dr_out_4D_t = regridder(ds_in2['data4D'].transpose(..., 'time', 'lev'))
+    xr.testing.assert_identical(dr_out_4D, dr_out_4D_t)
+
+    # test renamed dim
+    if not use_cfxr:
+        dr_out_rn = regridder(ds_in2.rename(y='why')['data'])
+        xr.testing.assert_identical(dr_out, dr_out_rn)
+
 
 def test_regrid_dataarray_to_locstream():
     # xarray.DataArray containing in-memory numpy array
@@ -496,18 +505,19 @@ def test_ds_to_ESMFlocstream():
 
     from xesmf.frontend import ds_to_ESMFlocstream
 
-    locstream, shape = ds_to_ESMFlocstream(ds_locs)
+    locstream, shape, names = ds_to_ESMFlocstream(ds_locs)
     assert isinstance(locstream, ESMF.LocStream)
     assert shape == (
         1,
         4,
     )
+    assert names == ('locations',)
     with pytest.raises(ValueError):
-        locstream, shape = ds_to_ESMFlocstream(ds_in)
+        locstream, shape, names = ds_to_ESMFlocstream(ds_in)
     ds_bogus = ds_in.copy()
     ds_bogus['lon'] = ds_locs['lon']
     with pytest.raises(ValueError):
-        locstream, shape = ds_to_ESMFlocstream(ds_bogus)
+        locstream, shape, names = ds_to_ESMFlocstream(ds_bogus)
 
 
 @pytest.mark.parametrize('poly,exp', list(zip(polys, exps_polys)))

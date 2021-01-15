@@ -8,7 +8,7 @@ import cf_xarray as cfxr
 import numpy as np
 import scipy.sparse as sps
 import xarray as xr
-from xarray import Dataset, DataArray
+from xarray import DataArray, Dataset
 
 from .backend import Grid, LocStream, Mesh, add_corner, esmf_regrid_build, esmf_regrid_finalize
 from .smm import _combine_weight_multipoly, add_nans_to_weights, apply_weights, read_weights
@@ -286,7 +286,7 @@ class BaseRegridder(object):
         self.sequence_out = isinstance(self.grid_out, (LocStream, Mesh))
 
         if input_dims is not None and len(input_dims) != int(not self.sequence_in) + 1:
-            raise ValueError(f"Wrong number of dimension names in `input_dims` ({len(input_dims)}.")
+            raise ValueError(f'Wrong number of dimension names in `input_dims` ({len(input_dims)}.')
         self.in_horiz_dims = input_dims
 
         # record grid shape information
@@ -515,11 +515,13 @@ class BaseRegridder(object):
             else:
                 input_horiz_dims = dr_in.dims[-2:]
 
-             # help user debugging invalid horizontal dimensions
+            # help user debugging invalid horizontal dimensions
             warnings.warn(
-                (f'Using dimensions {input_horiz_dims} from data variable {name} '
-                  'as the horizontal dimensions for the regridding.'),
-                UserWarning
+                (
+                    f'Using dimensions {input_horiz_dims} from data variable {name} '
+                    'as the horizontal dimensions for the regridding.'
+                ),
+                UserWarning,
             )
 
         if self.sequence_out:
@@ -681,7 +683,9 @@ class Regridder(BaseRegridder):
         if locstream_in:
             grid_in, shape_in, input_dims = ds_to_ESMFlocstream(ds_in)
         else:
-            grid_in, shape_in, input_dims = ds_to_ESMFgrid(ds_in, need_bounds=need_bounds, periodic=periodic)
+            grid_in, shape_in, input_dims = ds_to_ESMFgrid(
+                ds_in, need_bounds=need_bounds, periodic=periodic
+            )
         if locstream_out:
             grid_out, shape_out, _ = ds_to_ESMFlocstream(ds_out)
         else:

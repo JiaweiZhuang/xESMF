@@ -9,6 +9,7 @@ dependencies:
   - numpy
   - pip
   - pre-commit
+  - pydap
   - pytest
   - pytest-cov
   - scipy

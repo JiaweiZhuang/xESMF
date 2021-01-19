@@ -322,9 +322,11 @@ def test_regrid_dataarray_to_locstream():
 
     outdata = regridder(ds_in['data'].values)  # pure numpy array
     dr_out = regridder(ds_in['data'])  # xarray DataArray
+    dr_out_rn = regridder(ds_in.rename(y='why')['data'])
 
     # DataArray and numpy array should lead to the same result
     assert_equal(outdata.squeeze(), dr_out.values)
+    assert_equal(outdata.squeeze(), dr_out_rn.values)
 
     with pytest.raises(ValueError):
         regridder = xe.Regridder(ds_in, ds_locs, 'conservative', locstream_out=True)

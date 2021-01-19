@@ -322,11 +322,11 @@ def test_regrid_dataarray_to_locstream():
 
     outdata = regridder(ds_in['data'].values)  # pure numpy array
     dr_out = regridder(ds_in['data'])  # xarray DataArray
-    dr_out_rn = regridder(ds_in.rename(y='why')['data'])
+    dr_out_t = regridder(ds_in['data'].transpose())  # Transpose to test name matching
 
     # DataArray and numpy array should lead to the same result
     assert_equal(outdata.squeeze(), dr_out.values)
-    assert_equal(outdata.squeeze(), dr_out_rn.values)
+    assert_equal(outdata.squeeze(), dr_out_t.values)
 
     with pytest.raises(ValueError):
         regridder = xe.Regridder(ds_in, ds_locs, 'conservative', locstream_out=True)
@@ -339,9 +339,12 @@ def test_regrid_dataarray_from_locstream():
 
     outdata = regridder(ds_locs['lat'].values)  # pure numpy array
     dr_out = regridder(ds_locs['lat'])  # xarray DataArray
+    # New dim and transpose to test name-matching
+    dr_out_2D = regridder(ds_locs['lat'].expand_dims(other=[1]).transpose('locations', 'other'))
 
     # DataArray and numpy array should lead to the same result
     assert_equal(outdata, dr_out.values)
+    assert_equal(outdata, dr_out_2D.sel(other=1).values)
 
     with pytest.raises(ValueError):
         regridder = xe.Regridder(ds_locs, ds_in, 'bilinear', locstream_in=True)

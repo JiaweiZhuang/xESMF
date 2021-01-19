@@ -8,7 +8,7 @@ import cf_xarray as cfxr
 import numpy as np
 import scipy.sparse as sps
 import xarray as xr
-from xarray import DataArray
+from xarray import DataArray, Dataset
 
 from .backend import Grid, LocStream, Mesh, add_corner, esmf_regrid_build, esmf_regrid_finalize
 from .smm import _combine_weight_multipoly, add_nans_to_weights, apply_weights, read_weights
@@ -105,6 +105,13 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
     # use np.asarray(dr) instead of dr.values, so it also works for dictionary
 
     lon, lat = _get_lon_lat(ds)
+    if hasattr(lon, 'dims'):
+        if lon.ndim == 1:
+            dim_names = lat.dims + lon.dims
+        else:
+            dim_names = lon.dims
+    else:
+        dim_names = None
     lon, lat = as_2d_mesh(np.asarray(lon), np.asarray(lat))
 
     if 'mask' in ds:
@@ -123,7 +130,7 @@ def ds_to_ESMFgrid(ds, need_bounds=False, periodic=None, append=None):
         lon_b, lat_b = as_2d_mesh(np.asarray(lon_b), np.asarray(lat_b))
         add_corner(grid, lon_b.T, lat_b.T)
 
-    return grid, lon.shape
+    return grid, lon.shape, dim_names
 
 
 def ds_to_ESMFlocstream(ds):
@@ -142,6 +149,10 @@ def ds_to_ESMFlocstream(ds):
     """
 
     lon, lat = _get_lon_lat(ds)
+    if hasattr(lon, 'dims'):
+        dim_names = lon.dims
+    else:
+        dim_names = None
     lon, lat = np.asarray(lon), np.asarray(lat)
 
     if len(lon.shape) > 1:
@@ -153,7 +164,7 @@ def ds_to_ESMFlocstream(ds):
 
     locstream = LocStream.from_xarray(lon, lat)
 
-    return locstream, (1,) + lon.shape
+    return locstream, (1,) + lon.shape, dim_names
 
 
 def polys_to_ESMFmesh(polys):
@@ -195,6 +206,7 @@ class BaseRegridder(object):
         extrap_num_src_pnts=None,
         weights=None,
         ignore_degenerate=None,
+        input_dims=None,
     ):
         """
         Base xESMF regridding class supporting ESMF objects: `Grid`, `Mesh` and `LocStream`.
@@ -254,6 +266,11 @@ class BaseRegridder(object):
             If False (default), raise error if grids contain degenerated cells
             (i.e. triangles or lines, instead of quadrilaterals)
 
+        input_dims : tuple of str, optional
+            A tuple of dimension names to look for when regridding DataArrays or Datasets.
+            If not given or if those are not found on the regridded object, regridding
+            uses the two last dimensions of the object (or the last one for input LocStreams and Meshes).
+
         Returns
         -------
         baseregridder : xESMF BaseRegridder object
@@ -270,6 +287,10 @@ class BaseRegridder(object):
         self.periodic = getattr(self.grid_in, 'periodic_dim', None) is not None
         self.sequence_in = isinstance(self.grid_in, (LocStream, Mesh))
         self.sequence_out = isinstance(self.grid_out, (LocStream, Mesh))
+
+        if input_dims is not None and len(input_dims) != int(not self.sequence_in) + 1:
+            raise ValueError(f'Wrong number of dimension names in `input_dims` ({len(input_dims)}.')
+        self.in_horiz_dims = input_dims
 
         # record grid shape information
         # We need to invert Grid shapes to respect xESMF's convention (y, x).
@@ -355,7 +376,8 @@ class BaseRegridder(object):
         Parameters
         ----------
         indata : numpy array, dask array, xarray DataArray or Dataset.
-            The rightmost two dimensions must be the same as ``ds_in``.
+            If not an xarray object or if `input_dìms` was not given in the init,
+            the rightmost two dimensions must be the same as ``ds_in``.
             Can have arbitrary additional dimensions.
 
             Examples of valid shapes
@@ -363,8 +385,8 @@ class BaseRegridder(object):
             - (n_lat, n_lon), if ``ds_in`` has shape (n_lat, n_lon)
             - (n_time, n_lev, n_y, n_x), if ``ds_in`` has shape (Ny, n_x)
 
-            Transpose your input data if the horizontal dimensions are not
-            the rightmost two dimensions.
+            Either give `input_dims` or transpose your input data
+            if the horizontal dimensions are not the rightmost two dimensions
 
         keep_attrs : bool, optional
             Keep attributes for xarray DataArrays or Datasets.
@@ -459,19 +481,8 @@ class BaseRegridder(object):
     def regrid_dataset(self, ds_in, keep_attrs=False):
         """See __call__()."""
 
-        # most logic is the same as regrid_dataarray()
-        # the major caution is that some data variables might not contain
-        # the correct horizontal dimension names.
-
         # get the first data variable to infer input_core_dims
-        name, dr_in = next(iter(ds_in.items()))
-        input_horiz_dims, temp_horiz_dims = self._parse_xrinput(dr_in)
-
-        # help user debugging invalid horizontal dimensions
-        print(
-            'using dimensions {} from data variable {} '
-            'as the horizontal dimensions for this dataset.'.format(input_horiz_dims, name)
-        )
+        input_horiz_dims, temp_horiz_dims = self._parse_xrinput(ds_in)
 
         ds_out = xr.apply_ufunc(
             self._regrid_array,
@@ -491,11 +502,30 @@ class BaseRegridder(object):
         return self._format_xroutput(ds_out, temp_horiz_dims)
 
     def _parse_xrinput(self, dr_in):
+        # dr could be a DataArray or a Dataset
         # Get input horiz dim names and set output horiz dim names
-        if self.sequence_in:
-            input_horiz_dims = dr_in.dims[-1:]
+        if self.in_horiz_dims is not None and all(dim in dr_in.dims for dim in self.in_horiz_dims):
+            input_horiz_dims = self.in_horiz_dims
         else:
-            input_horiz_dims = dr_in.dims[-2:]
+            if isinstance(dr_in, Dataset):
+                name, dr_in = next(iter(dr_in.items()))
+            else:
+                # For warning purposes
+                name = dr_in.name
+
+            if self.sequence_in:
+                input_horiz_dims = dr_in.dims[-1:]
+            else:
+                input_horiz_dims = dr_in.dims[-2:]
+
+            # help user debugging invalid horizontal dimensions
+            warnings.warn(
+                (
+                    f'Using dimensions {input_horiz_dims} from data variable {name} '
+                    'as the horizontal dimensions for the regridding.'
+                ),
+                UserWarning,
+            )
 
         if self.sequence_out:
             temp_horiz_dims = ['dummy', 'locations']
@@ -654,16 +684,18 @@ class Regridder(BaseRegridder):
 
         # construct ESMF grid, with some shape checking
         if locstream_in:
-            grid_in, shape_in = ds_to_ESMFlocstream(ds_in)
+            grid_in, shape_in, input_dims = ds_to_ESMFlocstream(ds_in)
         else:
-            grid_in, shape_in = ds_to_ESMFgrid(ds_in, need_bounds=need_bounds, periodic=periodic)
+            grid_in, shape_in, input_dims = ds_to_ESMFgrid(
+                ds_in, need_bounds=need_bounds, periodic=periodic
+            )
         if locstream_out:
-            grid_out, shape_out = ds_to_ESMFlocstream(ds_out)
+            grid_out, shape_out, _ = ds_to_ESMFlocstream(ds_out)
         else:
-            grid_out, shape_out = ds_to_ESMFgrid(ds_out, need_bounds=need_bounds)
+            grid_out, shape_out, _ = ds_to_ESMFgrid(ds_out, need_bounds=need_bounds)
 
         # Create the BaseRegridder
-        super().__init__(grid_in, grid_out, method, **kwargs)
+        super().__init__(grid_in, grid_out, method, input_dims=input_dims, **kwargs)
 
         # record output grid and metadata
         lon_out, lat_out = _get_lon_lat(ds_out)
@@ -809,11 +841,9 @@ class SpatialAverager(BaseRegridder):
         """
         self.ignore_holes = ignore_holes
         self.polys = polys
-        self.ignore_degenerate = ignore_degenerate
         self.geom_dim_name = geom_dim_name
 
-        grid_in, shape_in = ds_to_ESMFgrid(ds_in, need_bounds=True, periodic=periodic)
-        self.grid_in = grid_in
+        grid_in, shape_in, input_dims = ds_to_ESMFgrid(ds_in, need_bounds=True, periodic=periodic)
 
         # Create an output locstream so that the regridder knows the output shape and coords.
         # Latitude and longitude coordinates are the polygon centroid.
@@ -832,13 +862,14 @@ class SpatialAverager(BaseRegridder):
         # We put names 'lon' and 'lat' so ds_to_ESMFlocstream finds them easily.
         # _lon_out_name and _lat_out_name are used on the output anyway.
         ds_out = {'lon': self._lon_out, 'lat': self._lat_out}
-        locstream_out, shape_out = ds_to_ESMFlocstream(ds_out)
+        locstream_out, shape_out, _ = ds_to_ESMFlocstream(ds_out)
 
         # BaseRegridder with custom-computed weights and dummy out grid
         super().__init__(
             grid_in,
             locstream_out,
             'conservative',
+            input_dims=input_dims,
             weights=weights,
             filename=filename,
             reuse_weights=reuse_weights,

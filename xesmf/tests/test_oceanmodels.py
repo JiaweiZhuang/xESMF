@@ -7,12 +7,12 @@ import xesmf
 
 mom6like = xr.Dataset(
     data_vars=dict(
-        tos=(["time", "yh", "xh"], np.random.rand(2, 180, 360)),
+        tos=(['time', 'yh', 'xh'], np.random.rand(2, 180, 360)),
     ),
     coords=dict(
         xq=xr.DataArray(
             np.arange(-300, 60 + 1),
-            dims=["xq"],
+            dims=['xq'],
             attrs={
                 'long_name': 'q point nominal longitude',
                 'units': 'degrees_east',
@@ -21,7 +21,7 @@ mom6like = xr.Dataset(
         ),
         yq=xr.DataArray(
             np.arange(-90, 90 + 1),
-            dims=["yq"],
+            dims=['yq'],
             attrs={
                 'long_name': 'q point nominal latitude',
                 'units': 'degrees_north',
@@ -30,7 +30,7 @@ mom6like = xr.Dataset(
         ),
         xh=xr.DataArray(
             0.5 + np.arange(-300, 60),
-            dims=["xh"],
+            dims=['xh'],
             attrs={
                 'long_name': 'h point nominal longitude',
                 'units': 'degrees_east',
@@ -39,7 +39,7 @@ mom6like = xr.Dataset(
         ),
         yh=xr.DataArray(
             0.5 + np.arange(-90, 90),
-            dims=["yh"],
+            dims=['yh'],
             attrs={
                 'long_name': 'h point nominal latitude',
                 'units': 'degrees_north',
@@ -51,11 +51,11 @@ mom6like = xr.Dataset(
                 cftime.DatetimeNoLeap(2007, 1, 16, 12, 0, 0, 0),
                 cftime.DatetimeNoLeap(2007, 2, 15, 0, 0, 0, 0),
             ],
-            dims=["time"],
+            dims=['time'],
         ),
         reference_time=cftime.DatetimeNoLeap(1901, 1, 1, 0, 0, 0, 0),
     ),
-    attrs=dict(description="Synthetic MOM6 data"),
+    attrs=dict(description='Synthetic MOM6 data'),
 )
 
 
@@ -69,9 +69,7 @@ def test_mom6like_to_5x5():
     # multiple definition for lon/lat results in failure to determine
     # which coordinate set to use.
     with pytest.raises(ValueError):
-        regrid_to_5x5 = xesmf.Regridder(
-            mom6like, grid_5x5, 'bilinear', periodic=True
-        )
+        regrid_to_5x5 = xesmf.Regridder(mom6like, grid_5x5, 'bilinear', periodic=True)
 
     regrid_to_5x5 = xesmf.Regridder(
         mom6like.rename({'xh': 'lon', 'yh': 'lat'}), grid_5x5, 'bilinear', periodic=True

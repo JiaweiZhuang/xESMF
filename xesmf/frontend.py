@@ -36,7 +36,7 @@ def as_2d_mesh(lon, lat):
 
 def _get_lon_lat(ds):
     """Return lon and lat extracted from ds."""
-    if 'lat' in ds and 'lon' in ds:
+    if 'lat' in ds.coords and 'lon' in ds.coords:
         # Old way.
         return ds['lon'], ds['lat']
     # else : cf-xarray way

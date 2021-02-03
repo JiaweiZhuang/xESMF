@@ -58,6 +58,7 @@ Contents
 
    changes
    notebooks/Backend
+   releases
 
 .. toctree::
    :maxdepth: 1

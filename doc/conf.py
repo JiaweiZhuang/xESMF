@@ -58,7 +58,7 @@ autodoc_member_order = 'bysource'
 
 # To avoid installing xESMF and all its dependencies when building doc
 # https://stackoverflow.com/a/15912502/8729698
-autodoc_mock_imports = ['numpy', 'xarray', 'scipy', 'ESMF']
+autodoc_mock_imports = ['numpy', 'xarray', 'scipy', 'ESMF', 'dask']
 
 # avoid automatic execution for notebooks
 nbsphinx_execute = 'never'

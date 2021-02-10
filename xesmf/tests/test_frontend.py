@@ -547,3 +547,12 @@ def test_polys_to_ESMFmesh():
     assert shape == (1, 4)
     assert len(rec) == 1
     assert 'Some passed polygons have holes' in rec[0].message.args[0]
+
+
+def test_non_cf_latlon():
+    ds_in_noncf = ds_in.copy()
+    ds_in_noncf.lon.attrs = {}
+    ds_in_noncf.lat.attrs = {}
+    # Test non-CF lat/lon extraction for both DataArray and Dataset
+    xe.Regridder(ds_in_noncf['data'], ds_out, 'bilinear')
+    xe.Regridder(ds_in_noncf, ds_out, 'bilinear')

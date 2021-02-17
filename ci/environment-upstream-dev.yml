@@ -2,12 +2,14 @@ name: xesmf
 channels:
   - conda-forge
 dependencies:
+  - cftime
   - codecov
   - dask
   - esmpy
   - numpy
   - pip
   - pre-commit
+  - pydap
   - pytest
   - pytest-cov
   - scipy

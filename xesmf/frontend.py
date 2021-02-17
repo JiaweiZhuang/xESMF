@@ -345,7 +345,9 @@ class BaseRegridder(object):
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
         return w
 
-    def __call__(self, indata, keep_attrs=False, adaptative_masking=False):
+    def __call__(
+            self, indata, keep_attrs=False, adaptative_masking=False,
+            mask_threshold=1e-6):
         """
         Apply regridding to input data.
 
@@ -374,6 +376,15 @@ class BaseRegridder(object):
 
             .. note:: It will be set to True in futures versions.
 
+        mask_threshold: float, optional
+            When adaptative masking is active, the mask is converted to float
+            with 1. for valid values and 0. for nans. The destination grid
+            point is masked if the interpolated mask is above mask_threshold.
+            A value close to zero means that the destination point is
+            masked if all sources points are masked.
+            mask_threshold must be have a vlue within the [0., 1.]
+            interval.
+
         Returns
         -------
         outdata : Data type is the same as input data type.
@@ -389,15 +400,27 @@ class BaseRegridder(object):
 
         """
         if isinstance(indata, np.ndarray):
-            return self.regrid_numpy(indata, adaptative_masking)
+            return self.regrid_numpy(
+                indata,
+                adaptative_masking=adaptative_masking,
+                mask_threshold=mask_threshold)
         elif isinstance(indata, dask_array_type):
-            return self.regrid_dask(indata, adaptative_masking)
+            return self.regrid_dask(
+                indata,
+                adaptative_masking=adaptative_masking,
+                mask_threshold=mask_threshold)
         elif isinstance(indata, xr.DataArray):
             return self.regrid_dataarray(
-                indata, adaptative_masking, keep_attrs=keep_attrs)
+                indata,
+                keep_attrs=keep_attrs,
+                adaptative_masking=adaptative_masking,
+                mask_threshold=mask_threshold)
         elif isinstance(indata, xr.Dataset):
             return self.regrid_dataset(
-                indata, adaptative_masking, keep_attrs=keep_attrs)
+                indata,
+                keep_attrs=keep_attrs,
+                adaptative_masking=adaptative_masking,
+                mask_threshold=mask_threshold)
         else:
             raise TypeError(
                 'input must be numpy array, dask array, '
@@ -406,8 +429,10 @@ class BaseRegridder(object):
 
     @staticmethod
     def _regrid_array(
-            indata, adaptative_masking, *, weights, shape_in, shape_out,
-            sequence_in):
+            indata, *,
+            weights, shape_in, shape_out,
+            sequence_in,
+            adaptative_masking, mask_threshold):
 
         if sequence_in:
             indata = np.expand_dims(indata, axis=-2)
@@ -425,7 +450,7 @@ class BaseRegridder(object):
                 warnings.warn(
                     "Your data has transient missing values. "
                     "You should set adaptative_masking to True, "
-                    "which will be the default in futures versions.")
+                    "which will be the default in future versions.")
             if adaptative_masking:
                 inmask = np.isnan(indata)
                 indata = indata.copy()
@@ -440,7 +465,7 @@ class BaseRegridder(object):
         if adaptative_masking:
             outvalid = apply_weights(
                 weights, (~inmask).astype('d'), shape_in, shape_out)
-            bad = np.isclose(outvalid, 0)
+            bad = np.isclose(outvalid, 0, atol=1e-6)
             outvalid[bad] = 1
             outdata = xr.where(bad, np.nan, outdata / outvalid)
 
@@ -455,14 +480,18 @@ class BaseRegridder(object):
             'shape_out': self.shape_out,
         }
 
-    def regrid_numpy(self, indata, adaptative_masking):
+    def regrid_numpy(
+            self, indata, adaptative_masking=False, mask_threshold=1e-6):
         """See __call__()."""
         outdata = self._regrid_array(
-            indata, adaptative_masking=adaptative_masking,
+            indata,
+            adaptative_masking=adaptative_masking,
+            mask_threshold=mask_threshold,
             **self._regrid_kwargs)
         return outdata
 
-    def regrid_dask(self, indata, adaptative_masking):
+    def regrid_dask(
+            self, indata, adaptative_masking=False, mask_threshold=1e-6):
         """See __call__()."""
 
         extra_chunk_shape = indata.chunksize[0:-2]
@@ -475,17 +504,22 @@ class BaseRegridder(object):
             dtype=float,
             chunks=output_chunk_shape,
             adaptative_masking=adaptative_masking,
+            mask_threshold=mask_threshold,
             **self._regrid_kwargs,
         )
 
         return outdata
 
-    def regrid_dataarray(self, dr_in, adaptative_masking, keep_attrs=False):
+    def regrid_dataarray(
+            self, dr_in, keep_attrs=False, adaptative_masking=False,
+            mask_threshold=1e-6):
         """See __call__()."""
 
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(dr_in)
         kwargs = self._regrid_kwargs
-        kwargs.update(adaptative_masking=adaptative_masking)
+        kwargs.update(
+            adaptative_masking=adaptative_masking,
+            mask_threshold=mask_threshold)
         dr_out = xr.apply_ufunc(
             self._regrid_array,
             dr_in,
@@ -503,7 +537,8 @@ class BaseRegridder(object):
 
         return self._format_xroutput(dr_out, temp_horiz_dims)
 
-    def regrid_dataset(self, ds_in, adaptative_masking, keep_attrs=False):
+    def regrid_dataset(self, ds_in, keep_attrs=False,
+                       adaptative_masking=False, mask_threshold=1e-6):
         """See __call__()."""
 
         # most logic is the same as regrid_dataarray()
@@ -521,7 +556,9 @@ class BaseRegridder(object):
         )
 
         kwargs = self._regrid_kwargs
-        kwargs.update(adaptative_masking=adaptative_masking)
+        kwargs.update(
+            adaptative_masking=adaptative_masking,
+            mask_threshold=mask_threshold)
         ds_out = xr.apply_ufunc(
             self._regrid_array,
             ds_in,

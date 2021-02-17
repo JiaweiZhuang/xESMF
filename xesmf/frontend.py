@@ -465,7 +465,7 @@ class BaseRegridder(object):
         if adaptative_masking:
             outvalid = apply_weights(
                 weights, (~inmask).astype('d'), shape_in, shape_out)
-            bad = np.isclose(outvalid, 0, atol=1e-6)
+            bad = np.isclose(outvalid, 0, atol=mask_threshold)
             outvalid[bad] = 1
             outdata = xr.where(bad, np.nan, outdata / outvalid)
 

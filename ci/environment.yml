@@ -3,12 +3,14 @@ channels:
   - conda-forge
 dependencies:
   - cf_xarray>=0.3.1
+  - cftime
   - codecov
   - dask
   - esmpy
   - numpy
   - pip
   - pre-commit
+  - pydap
   - pytest
   - pytest-cov
   - scipy

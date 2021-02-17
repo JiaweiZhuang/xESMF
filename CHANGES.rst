@@ -1,7 +1,16 @@
 What's new
 ==========
 
-0.5.1 (01-11-2011)
+0.5.2 (01-20-2021)
+------------------
+
+Bug fixes
+~~~~~~~~~
+
+* Restore original behavior for lon/lat discovery, uses cf-xarray if lon/lat not found in dataset (:pull:`64`)
+* Solve issue of dimension order in dataset (#53) with (:pull:`66`)
+
+0.5.1 (01-11-2021)
 ------------------
 
 Documentation

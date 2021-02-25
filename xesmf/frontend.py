@@ -66,14 +66,14 @@ def _get_lon_lat_bounds(ds):
             raise KeyError('lon_b')
         lon_name = ds.cf['longitude'].name
         lat_name = ds.cf['latitude'].name
-        ds2 = ds.cf.add_bounds([lon_name, lat_name])
-        lon_bnds = ds2.cf.get_bounds('longitude')
-        lat_bnds = ds2.cf.get_bounds('latitude')
+        ds = ds.cf.add_bounds([lon_name, lat_name])
+        lon_bnds = ds.cf.get_bounds('longitude')
+        lat_bnds = ds.cf.get_bounds('latitude')
 
     # Convert from CF bounds to xESMF bounds.
     # order=None is because we don't want to assume the dimension order for 2D bounds.
-    lon_b = cfxr.bounds_to_vertices(lon_bnds, 'bounds', order=None)
-    lat_b = cfxr.bounds_to_vertices(lat_bnds, 'bounds', order=None)
+    lon_b = cfxr.bounds_to_vertices(lon_bnds, ds.cf.get_bounds_dim_name('longitude'), order=None)
+    lat_b = cfxr.bounds_to_vertices(lat_bnds, ds.cf.get_bounds_dim_name('latitude'), order=None)
     return lon_b, lat_b
 
 

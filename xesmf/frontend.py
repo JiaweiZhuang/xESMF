@@ -66,14 +66,14 @@ def _get_lon_lat_bounds(ds):
             raise KeyError('lon_b')
         lon_name = ds.cf['longitude'].name
         lat_name = ds.cf['latitude'].name
-        ds2 = ds.cf.add_bounds([lon_name, lat_name])
-        lon_bnds = ds2.cf.get_bounds('longitude')
-        lat_bnds = ds2.cf.get_bounds('latitude')
+        ds = ds.cf.add_bounds([lon_name, lat_name])
+        lon_bnds = ds.cf.get_bounds('longitude')
+        lat_bnds = ds.cf.get_bounds('latitude')
 
     # Convert from CF bounds to xESMF bounds.
     # order=None is because we don't want to assume the dimension order for 2D bounds.
-    lon_b = cfxr.bounds_to_vertices(lon_bnds, 'bounds', order=None)
-    lat_b = cfxr.bounds_to_vertices(lat_bnds, 'bounds', order=None)
+    lon_b = cfxr.bounds_to_vertices(lon_bnds, ds.cf.get_bounds_dim_name('longitude'), order=None)
+    lat_b = cfxr.bounds_to_vertices(lat_bnds, ds.cf.get_bounds_dim_name('latitude'), order=None)
     return lon_b, lat_b
 
 
@@ -388,6 +388,8 @@ class BaseRegridder(object):
             Either give `input_dims` or transpose your input data
             if the horizontal dimensions are not the rightmost two dimensions
 
+            Variables without the regridded dimensions are silently skipped when passing a Dataset.
+
         keep_attrs : bool, optional
             Keep attributes for xarray DataArrays or Datasets.
             Defaults to False.
@@ -483,6 +485,13 @@ class BaseRegridder(object):
 
         # get the first data variable to infer input_core_dims
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(ds_in)
+
+        non_regriddable = [
+            name
+            for name, data in ds_in.data_vars.items()
+            if not set(input_horiz_dims).issubset(data.dims)
+        ]
+        ds_in = ds_in.drop_vars(non_regriddable)
 
         ds_out = xr.apply_ufunc(
             self._regrid_array,

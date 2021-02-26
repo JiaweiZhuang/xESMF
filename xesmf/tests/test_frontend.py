@@ -488,6 +488,10 @@ def test_regrid_dataset():
     assert_equal(ds_result['lat'].values, ds_out['lat'].values)
     assert_equal(ds_result['lon'].values, ds_out['lon'].values)
 
+    # Allow (but skip) other non spatial variables
+    ds_result2 = regridder(ds_in.assign(nonspatial=ds_in.x * ds_in.time))
+    xr.testing.assert_identical(ds_result2, ds_result)
+
 
 def test_regrid_dataset_to_locstream():
     # xarray.Dataset containing in-memory numpy array

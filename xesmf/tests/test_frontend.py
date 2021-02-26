@@ -1,7 +1,7 @@
 import os
 import warnings
 
-import cf_xarray  # noqa
+import cf_xarray as cfxr
 import dask
 import numpy as np
 import pytest
@@ -17,6 +17,8 @@ dask_schedulers = ['threaded_scheduler', 'processes_scheduler', 'distributed_sch
 
 # same test data as test_backend.py, but here we can use xarray DataSet
 ds_in = xe.util.grid_global(20, 12)
+ds_in.lat.attrs['standard_name'] = 'latitude'
+ds_in.lon.attrs['standard_name'] = 'longitude'
 ds_out = xe.util.grid_global(15, 9)
 
 horiz_shape_in = ds_in['lon'].shape
@@ -256,6 +258,21 @@ def test_regrid_with_1d_grid_infer_bounds():
     # compare with provided-bounds solution
     dr_exp = xe.Regridder(ds_in, ds_out, 'conservative', periodic=True)(ds_in['data'])
 
+    assert_allclose(dr_out, dr_exp)
+
+
+def test_regrid_cfbounds():
+    # Test regridding when bounds are given in cf format with a custom "bounds" name.
+    ds = ds_in.copy().drop_vars(['lat_b', 'lon_b'])
+    ds['lon_bounds'] = cfxr.vertices_to_bounds(ds_in.lon_b, ('bnds', 'y', 'x'))
+    ds['lat_bounds'] = cfxr.vertices_to_bounds(ds_in.lat_b, ('bnds', 'y', 'x'))
+    ds.lat.attrs['bounds'] = 'lat_bounds'
+    ds.lon.attrs['bounds'] = 'lon_bounds'
+
+    regridder = xe.Regridder(ds, ds_out, 'conservative', periodic=True)
+    dr_out = regridder(ds['data'])
+    # compare with provided-bounds solution
+    dr_exp = xe.Regridder(ds_in, ds_out, 'conservative', periodic=True)(ds_in['data'])
     assert_allclose(dr_out, dr_exp)
 
 

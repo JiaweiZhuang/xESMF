@@ -388,6 +388,8 @@ class BaseRegridder(object):
             Either give `input_dims` or transpose your input data
             if the horizontal dimensions are not the rightmost two dimensions
 
+            Variables without the regridded dimensions are silently skipped when passing a Dataset.
+
         keep_attrs : bool, optional
             Keep attributes for xarray DataArrays or Datasets.
             Defaults to False.
@@ -483,6 +485,13 @@ class BaseRegridder(object):
 
         # get the first data variable to infer input_core_dims
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(ds_in)
+
+        non_regriddable = [
+            name
+            for name, data in ds_in.data_vars.items()
+            if not set(input_horiz_dims).issubset(data.dims)
+        ]
+        ds_in = ds_in.drop_vars(non_regriddable)
 
         ds_out = xr.apply_ufunc(
             self._regrid_array,

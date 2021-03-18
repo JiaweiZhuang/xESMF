@@ -756,6 +756,8 @@ class Regridder(BaseRegridder):
 
         if self.sequence_out:
             out = out.squeeze(dim='dummy')
+            if self.lon_dim == self.lat_dim:
+                out = out.rename(locations=self.lon_dim)
 
         # Use ds_out coordinates
         out = out.rename(self._coord_names)

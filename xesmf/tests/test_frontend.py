@@ -577,3 +577,23 @@ def test_non_cf_latlon():
     # Test non-CF lat/lon extraction for both DataArray and Dataset
     xe.Regridder(ds_in_noncf['data'], ds_out, 'bilinear')
     xe.Regridder(ds_in_noncf, ds_out, 'bilinear')
+
+
+@pytest.mark.parametrize(
+    'var_renamer,dim_out',
+    [
+        ({}, 'locations'),
+        ({'lon': {'locations': 'foo'}, 'lat': {'locations': 'foo'}}, 'foo'),
+        ({'lon': {'locations': 'foo'}, 'lat': {'locations': 'bar'}}, 'locations'),
+    ],
+)
+def test_locstream_dim_name(var_renamer, dim_out):
+
+    ds_locs_renamed = ds_locs.copy()
+    for var, renamer in var_renamer.items():
+        ds_locs_renamed[var] = ds_locs_renamed[var].rename(renamer)
+
+    regridder = xe.Regridder(ds_in, ds_locs_renamed, 'bilinear', locstream_out=True)
+    expected = {'lev', 'time', 'x_b', 'y_b', dim_out}
+    actual = set(regridder(ds_in).dims)
+    assert expected == actual

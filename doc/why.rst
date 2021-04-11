@@ -1,5 +1,5 @@
-Why inventing a new regridding package
-======================================
+Why invent a new regridding package
+===================================
 
 For scientific correctness
 --------------------------

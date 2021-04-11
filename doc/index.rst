@@ -70,7 +70,7 @@ The `GitHub issue tracker <https://github.com/JiaweiZhuang/xESMF/issues>`_ is th
 
 - First, `search for existing issues <https://help.github.com/en/articles/searching-issues-and-pull-requests>`_. Other people are likely to hit the same problem and probably have already found the solution.
 
-- For a new bug, please `craft a minimal bug report <https://matthewrocklin.com/blog/work/2018/02/28/minimal-bug-reports>`_ with reproducible code. Use synthetic data or `upload <https://help.github.com/en/articles/file-attachments-on-issues-and-pull-requests>`_ a small sample of input data (~1 MB) so I can quickly reproducible your error.
+- For a new bug, please `craft a minimal bug report <https://matthewrocklin.com/blog/work/2018/02/28/minimal-bug-reports>`_ with reproducible code. Use synthetic data or `upload <https://help.github.com/en/articles/file-attachments-on-issues-and-pull-requests>`_ a small sample of input data (~1 MB) so I can quickly reproduce your error.
 
 - For platform-dependent problems (such as kernel dying and installation error), please also show how to reproduce your system environment, otherwise I have no way to diagnose the issue. The best approach is probably finding an `official Docker image <https://docs.docker.com/docker-hub/official_images/>`_ that is closest to your OS (such as `Ubuntu <https://hub.docker.com/_/ubuntu/>`_ or `CentOS <https://hub.docker.com/_/centos/>`_), and build your Python environment starting with such image, to see whether the error still exists. Alternatively you can select from public cloud images, such as `Amazon Machine Images <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AMIs.html>`_ or `Google Cloud Images <https://cloud.google.com/compute/docs/images>`_. If the error only happens on your institution's HPC cluster, please contact the system administrator for help.
 
@@ -79,7 +79,7 @@ For general "how-to" questions that are not bugs, you can also post on `StackOve
 
 **The "Don'ts"**:
 
-- Do not describe your problem in a private email, as this would require me to reply similar emails many times. `Keep all discussions in public places <https://matthewrocklin.com/blog/2019/02/28/slack-github>`_ like GitHub or StackOverflow.
+- Do not describe your problem in a private email, as this would require me to reply to similar emails many times. `Keep all discussions in public places <https://matthewrocklin.com/blog/2019/02/28/slack-github>`_ like GitHub or StackOverflow.
 - Do not only show the error/problem without providing the steps to reproduce it.
 - Do not take screenshots of your code, as they are not copy-pastable.
 

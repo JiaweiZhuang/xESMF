@@ -1,7 +1,7 @@
 import os
 import warnings
 
-import cf_xarray  # noqa
+import cf_xarray as cfxr
 import dask
 import numpy as np
 import pytest
@@ -17,6 +17,8 @@ dask_schedulers = ['threaded_scheduler', 'processes_scheduler', 'distributed_sch
 
 # same test data as test_backend.py, but here we can use xarray DataSet
 ds_in = xe.util.grid_global(20, 12)
+ds_in.lat.attrs['standard_name'] = 'latitude'
+ds_in.lon.attrs['standard_name'] = 'longitude'
 ds_out = xe.util.grid_global(15, 9)
 
 horiz_shape_in = ds_in['lon'].shape
@@ -259,6 +261,21 @@ def test_regrid_with_1d_grid_infer_bounds():
     assert_allclose(dr_out, dr_exp)
 
 
+def test_regrid_cfbounds():
+    # Test regridding when bounds are given in cf format with a custom "bounds" name.
+    ds = ds_in.copy().drop_vars(['lat_b', 'lon_b'])
+    ds['lon_bounds'] = cfxr.vertices_to_bounds(ds_in.lon_b, ('bnds', 'y', 'x'))
+    ds['lat_bounds'] = cfxr.vertices_to_bounds(ds_in.lat_b, ('bnds', 'y', 'x'))
+    ds.lat.attrs['bounds'] = 'lat_bounds'
+    ds.lon.attrs['bounds'] = 'lon_bounds'
+
+    regridder = xe.Regridder(ds, ds_out, 'conservative', periodic=True)
+    dr_out = regridder(ds['data'])
+    # compare with provided-bounds solution
+    dr_exp = xe.Regridder(ds_in, ds_out, 'conservative', periodic=True)(ds_in['data'])
+    assert_allclose(dr_out, dr_exp)
+
+
 # TODO: consolidate (regrid method, input data types) combination
 # using pytest fixtures and parameterization
 
@@ -471,6 +488,10 @@ def test_regrid_dataset():
     assert_equal(ds_result['lat'].values, ds_out['lat'].values)
     assert_equal(ds_result['lon'].values, ds_out['lon'].values)
 
+    # Allow (but skip) other non spatial variables
+    ds_result2 = regridder(ds_in.assign(nonspatial=ds_in.x * ds_in.time))
+    xr.testing.assert_identical(ds_result2, ds_result)
+
 
 def test_regrid_dataset_to_locstream():
     # xarray.Dataset containing in-memory numpy array
@@ -480,8 +501,8 @@ def test_regrid_dataset_to_locstream():
 
 
 def test_build_regridder_with_masks():
-    ds_in['mask'] = xr.DataArray(np.random.randint(2, size=ds_in['data'].shape), dims=('y', 'x'))
-    print(ds_in)
+    dsi = ds_in.copy()
+    dsi['mask'] = xr.DataArray(np.random.randint(2, size=ds_in['data'].shape), dims=('y', 'x'))
     # 'patch' is too slow to test
     for method in [
         'bilinear',
@@ -490,7 +511,7 @@ def test_build_regridder_with_masks():
         'nearest_s2d',
         'nearest_d2s',
     ]:
-        regridder = xe.Regridder(ds_in, ds_out, method)
+        regridder = xe.Regridder(dsi, ds_out, method)
 
         # check screen output
         assert repr(regridder) == str(regridder)
@@ -553,8 +574,14 @@ def test_polys_to_ESMFmesh():
     "method, adaptative_masking, nvalid", [
         ("bilinear", False, 380),
         ("bilinear", True, 395),
+        ("bilinear", 1, 380),
+        ("bilinear", 0.5, 388),
+        ("bilinear", 0, 395),
         ("conservative", False, 385),
-        ("conservative", True, 394)
+        ("conservative", True, 394),
+        ("conservative", 1, 385),
+        ("conservative", 0.5, 388),
+        ("conservative", 0, 394),
         ])
 def test_adaptative_masking(method, adaptative_masking, nvalid):
     dai = ds_in["data4D"].copy()
@@ -563,7 +590,7 @@ def test_adaptative_masking(method, adaptative_masking, nvalid):
     dao = rg(dai, adaptative_masking=adaptative_masking)
     assert int(dao[0, 0, 1:-1, 1:-1].notnull().sum()) == nvalid
 
-    
+
 def test_non_cf_latlon():
     ds_in_noncf = ds_in.copy()
     ds_in_noncf.lon.attrs = {}
@@ -572,3 +599,22 @@ def test_non_cf_latlon():
     xe.Regridder(ds_in_noncf['data'], ds_out, 'bilinear')
     xe.Regridder(ds_in_noncf, ds_out, 'bilinear')
 
+
+@pytest.mark.parametrize(
+    'var_renamer,dim_out',
+    [
+        ({}, 'locations'),
+        ({'lon': {'locations': 'foo'}, 'lat': {'locations': 'foo'}}, 'foo'),
+        ({'lon': {'locations': 'foo'}, 'lat': {'locations': 'bar'}}, 'locations'),
+    ],
+)
+def test_locstream_dim_name(var_renamer, dim_out):
+
+    ds_locs_renamed = ds_locs.copy()
+    for var, renamer in var_renamer.items():
+        ds_locs_renamed[var] = ds_locs_renamed[var].rename(renamer)
+
+    regridder = xe.Regridder(ds_in, ds_locs_renamed, 'bilinear', locstream_out=True)
+    expected = {'lev', 'time', 'x_b', 'y_b', dim_out}
+    actual = set(regridder(ds_in).dims)
+    assert expected == actual

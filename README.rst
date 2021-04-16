@@ -44,8 +44,8 @@ For new users, I also recommend reading `How to ask for help <https://pangeo-xes
    :target: https://github.com/pangeo-data/xESMF/blob/master/LICENSE
    :alt: license
 
-.. |DOI| image:: https://zenodo.org/badge/101709596.svg
-   :target: https://zenodo.org/badge/latestdoi/101709596
+.. |DOI| image:: https://zenodo.org/badge/281126933.svg
+   :target: https://zenodo.org/badge/latestdoi/281126933
    :alt: DOI
 
 .. |Binder| image:: https://mybinder.org/badge_logo.svg

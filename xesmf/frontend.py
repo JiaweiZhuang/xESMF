@@ -66,14 +66,14 @@ def _get_lon_lat_bounds(ds):
             raise KeyError('lon_b')
         lon_name = ds.cf['longitude'].name
         lat_name = ds.cf['latitude'].name
-        ds2 = ds.cf.add_bounds([lon_name, lat_name])
-        lon_bnds = ds2.cf.get_bounds('longitude')
-        lat_bnds = ds2.cf.get_bounds('latitude')
+        ds = ds.cf.add_bounds([lon_name, lat_name])
+        lon_bnds = ds.cf.get_bounds('longitude')
+        lat_bnds = ds.cf.get_bounds('latitude')
 
     # Convert from CF bounds to xESMF bounds.
     # order=None is because we don't want to assume the dimension order for 2D bounds.
-    lon_b = cfxr.bounds_to_vertices(lon_bnds, 'bounds', order=None)
-    lat_b = cfxr.bounds_to_vertices(lat_bnds, 'bounds', order=None)
+    lon_b = cfxr.bounds_to_vertices(lon_bnds, ds.cf.get_bounds_dim_name('longitude'), order=None)
+    lat_b = cfxr.bounds_to_vertices(lat_bnds, ds.cf.get_bounds_dim_name('latitude'), order=None)
     return lon_b, lat_b
 
 
@@ -212,7 +212,8 @@ class BaseRegridder(object):
         Base xESMF regridding class supporting ESMF objects: `Grid`, `Mesh` and `LocStream`.
 
         Create or use existing subclasses to support other types of input objects. See for example `Regridder`
-        to regrid `xarray.DataArray` objects, or `SpatialAverager` to average grids over regions defined by polygons.
+        to regrid `xarray.DataArray` objects, or `SpatialAverager`
+        to average grids over regions defined by polygons.
 
         Parameters
         ----------
@@ -369,9 +370,7 @@ class BaseRegridder(object):
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
         return w
 
-    def __call__(
-            self, indata, keep_attrs=False, adaptative_masking=False,
-            mask_threshold=1e-6):
+    def __call__(self, indata, keep_attrs=False, adaptative_masking=False):
         """
         Apply regridding to input data.
 
@@ -390,25 +389,27 @@ class BaseRegridder(object):
             Either give `input_dims` or transpose your input data
             if the horizontal dimensions are not the rightmost two dimensions
 
+            Variables without the regridded dimensions are silently skipped when passing a Dataset.
+
         keep_attrs : bool, optional
             Keep attributes for xarray DataArrays or Datasets.
             Defaults to False.
 
-        adaptative_masking: bool, optional
+        adaptative_masking: bool, float, optional
             Set it to True to properly handle transient missing values,
             i.e. when the number of missing values varies along dimensions
             other than the horizontal ones.
-
-            .. note:: It will be set to True in futures versions.
-
-        mask_threshold: float, optional
-            When adaptative masking is active, the mask is converted to float
-            with 1. for valid values and 0. for nans. The destination grid
-            point is masked if the interpolated mask is above mask_threshold.
+            In case of a float, the value is interpreted as a threshold.
+            The mask is converted to float with 1 for valid values and 0 for nans.
+            The destination grid
+            point is masked if the interpolated mask is above this threshold.
             A value close to zero means that the destination point is
             masked if all sources points are masked.
-            mask_threshold must be have a vlue within the [0., 1.]
-            interval.
+            The threshold must be have a value within the [0., 1.].
+            When >= 1 or equal to 0, adaptative_masking is set to False, else
+            it is set to True.
+
+            .. note:: It will be set to True in futures versions.
 
         Returns
         -------
@@ -427,25 +428,21 @@ class BaseRegridder(object):
         if isinstance(indata, np.ndarray):
             return self.regrid_numpy(
                 indata,
-                adaptative_masking=adaptative_masking,
-                mask_threshold=mask_threshold)
+                adaptative_masking=adaptative_masking)
         elif isinstance(indata, dask_array_type):
             return self.regrid_dask(
                 indata,
-                adaptative_masking=adaptative_masking,
-                mask_threshold=mask_threshold)
+                adaptative_masking=adaptative_masking)
         elif isinstance(indata, xr.DataArray):
             return self.regrid_dataarray(
                 indata,
                 keep_attrs=keep_attrs,
-                adaptative_masking=adaptative_masking,
-                mask_threshold=mask_threshold)
+                adaptative_masking=adaptative_masking)
         elif isinstance(indata, xr.Dataset):
             return self.regrid_dataset(
                 indata,
                 keep_attrs=keep_attrs,
-                adaptative_masking=adaptative_masking,
-                mask_threshold=mask_threshold)
+                adaptative_masking=adaptative_masking)
         else:
             raise TypeError(
                 'input must be numpy array, dask array, '
@@ -453,25 +450,29 @@ class BaseRegridder(object):
             )
 
     @staticmethod
-    def _regrid_array(
-            indata, *,
-            weights, shape_in, shape_out,
-            sequence_in,
-            adaptative_masking, mask_threshold):
+    def _regrid_array(indata, *, weights, shape_in, shape_out, sequence_in, adaptative_masking):
 
         if sequence_in:
             indata = np.expand_dims(indata, axis=-2)
 
-        # Is there any non-permament missing values?
+        # interpreting adaptative_masking
+        if isinstance(adaptative_masking, bool):
+            mask_threshold = float(not adaptative_masking)
+        elif adaptative_masking >= 1 or adaptative_masking < 0:
+            adaptative_masking = False
+            mask_threshold = 1.
+        else:
+            mask_threshold = float(adaptative_masking)
+            adaptative_masking = True
+
+        # is there any non-permament missing values?
         ndim = np.ndim(indata)
         if ndim > 2:
             inmask = np.isnan(indata)
-            has_non_perm_mask = (
-                np.apply_over_axes(
-                    np.sum, inmask, [-2, -1]).ravel().ptp() != 0)
-            if not has_non_perm_mask:
-                adaptative_masking = False
-            elif not adaptative_masking:
+            many = np.apply_over_axes(np.any, inmask, [-2, -1])
+            mall = np.apply_over_axes(np.all, inmask, [-2, -1])
+            has_non_perm_mask = (many == mall).all()
+            if not adaptative_masking and has_non_perm_mask:
                 warnings.warn(
                     "Your data has transient missing values. "
                     "You should set adaptative_masking to True, "
@@ -483,14 +484,14 @@ class BaseRegridder(object):
         else:
             adaptative_masking = False
 
-        # Apply weights
+        # apply weights
         outdata = apply_weights(weights, indata, shape_in, shape_out)
 
-        # Scale the data
+        # scale the data
         if adaptative_masking:
-            outvalid = apply_weights(
-                weights, (~inmask).astype('d'), shape_in, shape_out)
-            bad = np.isclose(outvalid, 0, atol=mask_threshold)
+            outvalid = apply_weights(weights, (~inmask).astype('d'), shape_in, shape_out)
+            tol = 1e-6
+            bad = outvalid < min(max(mask_threshold, tol), 1-tol)
             outvalid[bad] = 1
             outdata = xr.where(bad, np.nan, outdata / outvalid)
 
@@ -506,17 +507,16 @@ class BaseRegridder(object):
         }
 
     def regrid_numpy(
-            self, indata, adaptative_masking=False, mask_threshold=1e-6):
+            self, indata, adaptative_masking=False):
         """See __call__()."""
         outdata = self._regrid_array(
             indata,
             adaptative_masking=adaptative_masking,
-            mask_threshold=mask_threshold,
             **self._regrid_kwargs)
         return outdata
 
     def regrid_dask(
-            self, indata, adaptative_masking=False, mask_threshold=1e-6):
+            self, indata, adaptative_masking=False):
         """See __call__()."""
 
         extra_chunk_shape = indata.chunksize[0:-2]
@@ -529,22 +529,17 @@ class BaseRegridder(object):
             dtype=float,
             chunks=output_chunk_shape,
             adaptative_masking=adaptative_masking,
-            mask_threshold=mask_threshold,
             **self._regrid_kwargs,
         )
 
         return outdata
 
-    def regrid_dataarray(
-            self, dr_in, keep_attrs=False, adaptative_masking=False,
-            mask_threshold=1e-6):
+    def regrid_dataarray(self, dr_in, keep_attrs=False, adaptative_masking=False):
         """See __call__()."""
 
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(dr_in)
         kwargs = self._regrid_kwargs
-        kwargs.update(
-            adaptative_masking=adaptative_masking,
-            mask_threshold=mask_threshold)
+        kwargs.update(adaptative_masking=adaptative_masking)
         dr_out = xr.apply_ufunc(
             self._regrid_array,
             dr_in,
@@ -562,17 +557,22 @@ class BaseRegridder(object):
 
         return self._format_xroutput(dr_out, temp_horiz_dims)
 
-    def regrid_dataset(self, ds_in, keep_attrs=False,
-                       adaptative_masking=False, mask_threshold=1e-6):
+    def regrid_dataset(self, ds_in, keep_attrs=False, adaptative_masking=False):
         """See __call__()."""
 
         # get the first data variable to infer input_core_dims
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(ds_in)
 
         kwargs = self._regrid_kwargs
-        kwargs.update(
-            adaptative_masking=adaptative_masking,
-            mask_threshold=mask_threshold)
+        kwargs.update(adaptative_masking=adaptative_masking)
+
+        non_regriddable = [
+            name
+            for name, data in ds_in.data_vars.items()
+            if not set(input_horiz_dims).issubset(data.dims)
+        ]
+        ds_in = ds_in.drop_vars(non_regriddable)
+
         ds_out = xr.apply_ufunc(
             self._regrid_array,
             ds_in,
@@ -836,6 +836,8 @@ class Regridder(BaseRegridder):
 
         if self.sequence_out:
             out = out.squeeze(dim='dummy')
+            if self.lon_dim == self.lat_dim:
+                out = out.rename(locations=self.lon_dim)
 
         # Use ds_out coordinates
         out = out.rename(self._coord_names)

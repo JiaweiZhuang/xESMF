@@ -1,6 +1,22 @@
 What's new
 ==========
 
+0.5.3 (04-12-2021)
+------------------
+
+Bug fixes
+~~~~~~~~~
+- Fix regression regarding support for non-CF-compliant coordinate names (:pull:`73`). By `Sam Levang <https://github.com/slevang>`_
+- Infer `bounds` dimension name using cf-xarray (:pull:`78`). By `Pascal Bourgault <https://github.com/aulemahal>`_
+- Do not regrid variables that are not defined over horizontal dimensions (:pull:`79`). By `Pascal Bourgault <https://github.com/aulemahal>`_
+- Ensure locstream dimension name is consistent with `ds_out` (:pull:`81`). By `Mattia Almansi  <https://github.com/malmans2>`_
+
+Documentation
+~~~~~~~~~~~~~
+- Add release instructions (:pull:`75`). By `David Huard <https://github.com/huard>`_
+- Update Zenodo DOI badge
+
+
 0.5.2 (01-20-2021)
 ------------------
 

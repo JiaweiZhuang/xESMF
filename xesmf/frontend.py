@@ -434,7 +434,7 @@ class BaseRegridder(object):
                 indata, keep_attrs=keep_attrs, adaptative_masking=adaptative_masking)
         elif isinstance(indata, xr.Dataset):
             return self.regrid_dataset(
-                indata, eep_attrs=keep_attrs, adaptative_masking=adaptative_masking)
+                indata, keep_attrs=keep_attrs, adaptative_masking=adaptative_masking)
         else:
             raise TypeError(
                 'input must be numpy array, dask array, xarray DataArray or Dataset!'

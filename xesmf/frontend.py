@@ -431,14 +431,14 @@ class BaseRegridder(object):
             return self.regrid_dask(indata, adaptative_masking=adaptative_masking)
         elif isinstance(indata, xr.DataArray):
             return self.regrid_dataarray(
-                indata, keep_attrs=keep_attrs, adaptative_masking=adaptative_masking)
+                indata, keep_attrs=keep_attrs, adaptative_masking=adaptative_masking
+            )
         elif isinstance(indata, xr.Dataset):
             return self.regrid_dataset(
-                indata, keep_attrs=keep_attrs, adaptative_masking=adaptative_masking)
-        else:
-            raise TypeError(
-                'input must be numpy array, dask array, xarray DataArray or Dataset!'
+                indata, keep_attrs=keep_attrs, adaptative_masking=adaptative_masking
             )
+        else:
+            raise TypeError('input must be numpy array, dask array, xarray DataArray or Dataset!')
 
     @staticmethod
     def _regrid_array(indata, *, weights, shape_in, shape_out, sequence_in, adaptative_masking):
@@ -467,7 +467,8 @@ class BaseRegridder(object):
                 warnings.warn(
                     'Your data has transient missing values. '
                     'You should set adaptative_masking to True, '
-                    'which will be the default in future versions.')
+                    'which will be the default in future versions.'
+                )
             if adaptative_masking:
                 inmask = np.isnan(indata)
                 indata = indata.copy()
@@ -500,7 +501,8 @@ class BaseRegridder(object):
     def regrid_numpy(self, indata, adaptative_masking=False):
         """See __call__()."""
         outdata = self._regrid_array(
-            indata, adaptative_masking=adaptative_masking, **self._regrid_kwargs)
+            indata, adaptative_masking=adaptative_masking, **self._regrid_kwargs
+        )
         return outdata
 
     def regrid_dask(self, indata, adaptative_masking=False):

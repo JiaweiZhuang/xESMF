@@ -426,27 +426,18 @@ class BaseRegridder(object):
 
         """
         if isinstance(indata, np.ndarray):
-            return self.regrid_numpy(
-                indata,
-                adaptative_masking=adaptative_masking)
+            return self.regrid_numpy(indata, adaptative_masking=adaptative_masking)
         elif isinstance(indata, dask_array_type):
-            return self.regrid_dask(
-                indata,
-                adaptative_masking=adaptative_masking)
+            return self.regrid_dask(indata, adaptative_masking=adaptative_masking)
         elif isinstance(indata, xr.DataArray):
             return self.regrid_dataarray(
-                indata,
-                keep_attrs=keep_attrs,
-                adaptative_masking=adaptative_masking)
+                indata, keep_attrs=keep_attrs, adaptative_masking=adaptative_masking)
         elif isinstance(indata, xr.Dataset):
             return self.regrid_dataset(
-                indata,
-                keep_attrs=keep_attrs,
-                adaptative_masking=adaptative_masking)
+                indata, eep_attrs=keep_attrs, adaptative_masking=adaptative_masking)
         else:
             raise TypeError(
-                'input must be numpy array, dask array, '
-                'xarray DataArray or Dataset!'
+                'input must be numpy array, dask array, xarray DataArray or Dataset!'
             )
 
     @staticmethod
@@ -460,7 +451,7 @@ class BaseRegridder(object):
             mask_threshold = float(not adaptative_masking)
         elif adaptative_masking >= 1 or adaptative_masking < 0:
             adaptative_masking = False
-            mask_threshold = 1.
+            mask_threshold = 1.0
         else:
             mask_threshold = float(adaptative_masking)
             adaptative_masking = True
@@ -474,9 +465,9 @@ class BaseRegridder(object):
             has_non_perm_mask = (many == mall).all()
             if not adaptative_masking and has_non_perm_mask:
                 warnings.warn(
-                    "Your data has transient missing values. "
-                    "You should set adaptative_masking to True, "
-                    "which will be the default in future versions.")
+                    'Your data has transient missing values. '
+                    'You should set adaptative_masking to True, '
+                    'which will be the default in future versions.')
             if adaptative_masking:
                 inmask = np.isnan(indata)
                 indata = indata.copy()
@@ -491,7 +482,7 @@ class BaseRegridder(object):
         if adaptative_masking:
             outvalid = apply_weights(weights, (~inmask).astype('d'), shape_in, shape_out)
             tol = 1e-6
-            bad = outvalid < min(max(mask_threshold, tol), 1-tol)
+            bad = outvalid < min(max(mask_threshold, tol), 1 - tol)
             outvalid[bad] = 1
             outdata = xr.where(bad, np.nan, outdata / outvalid)
 
@@ -506,17 +497,13 @@ class BaseRegridder(object):
             'shape_out': self.shape_out,
         }
 
-    def regrid_numpy(
-            self, indata, adaptative_masking=False):
+    def regrid_numpy(self, indata, adaptative_masking=False):
         """See __call__()."""
         outdata = self._regrid_array(
-            indata,
-            adaptative_masking=adaptative_masking,
-            **self._regrid_kwargs)
+            indata, adaptative_masking=adaptative_masking, **self._regrid_kwargs)
         return outdata
 
-    def regrid_dask(
-            self, indata, adaptative_masking=False):
+    def regrid_dask(self, indata, adaptative_masking=False):
         """See __call__()."""
 
         extra_chunk_shape = indata.chunksize[0:-2]

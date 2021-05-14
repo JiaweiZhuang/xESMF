@@ -207,6 +207,7 @@ class BaseRegridder(object):
         weights=None,
         ignore_degenerate=None,
         input_dims=None,
+        apply_add_nans_to_weights=True,
     ):
         """
         Base xESMF regridding class supporting ESMF objects: `Grid`, `Mesh` and `LocStream`.
@@ -271,6 +272,11 @@ class BaseRegridder(object):
             If not given or if those are not found on the regridded object, regridding
             uses the two last dimensions of the object (or the last one for input LocStreams and Meshes).
 
+        apply_add_nans_to_weights: boolean, optional
+            If True (default), for other than the 'nearest_*' regridding methods, will execute
+            'add_nans_to_weights' to propagate empty weights as NaNs instead of zeros.
+            Target grid cells lying outside of the source domain will then be masked.
+
         Returns
         -------
         baseregridder : xESMF BaseRegridder object
@@ -314,7 +320,7 @@ class BaseRegridder(object):
         self.weights = read_weights(weights, self.n_in, self.n_out)
 
         # replace zeros by NaN in mask
-        if self.grid_out.mask is not None and self.grid_out.mask[0] is not None:
+        if apply_add_nans_to_weights == True and self.method not in ['nearest_s2d', 'nearest_d2s']:
             self.weights = add_nans_to_weights(self.weights)
 
         # follows legacy logic of writing weights if filename is provided
@@ -668,6 +674,11 @@ class Regridder(BaseRegridder):
             If False (default), raise error if grids contain degenerated cells
             (i.e. triangles or lines, instead of quadrilaterals)
 
+        apply_add_nans_to_weights: boolean, optional
+            If True (default), for other than the 'nearest_*' regridding methods, will execute
+            'add_nans_to_weights' to propagate empty weights as NaNs instead of zeros.
+            Target grid cells lying outside of the source domain will then be masked.
+
         Returns
         -------
         regridder : xESMF regridder object
@@ -885,6 +896,7 @@ class SpatialAverager(BaseRegridder):
             filename=filename,
             reuse_weights=reuse_weights,
             ignore_degenerate=ignore_degenerate,
+            apply_add_nans_to_weights=False,
         )
 
     def _compute_weights(self):
@@ -899,12 +911,20 @@ class SpatialAverager(BaseRegridder):
         # Get weights for single polygons and holes
         # Stack everything together
         reg_ext = BaseRegridder(
-            mesh_ext, self.grid_in, 'conservative', ignore_degenerate=self.ignore_degenerate
+            mesh_ext,
+            self.grid_in,
+            'conservative',
+            ignore_degenerate=self.ignore_degenerate,
+            apply_add_nans_to_weights=False
         )
         if len(holes) > 0 and not self.ignore_holes:
             mesh_holes, shape_holes = polys_to_ESMFmesh(holes)
             reg_holes = BaseRegridder(
-                mesh_holes, self.grid_in, 'conservative', ignore_degenerate=self.ignore_degenerate
+                mesh_holes,
+                self.grid_in,
+                'conservative',
+                ignore_degenerate=self.ignore_degenerate,
+                apply_add_nans_to_weights=False
             )
             w_all = sps.hstack((reg_ext.weights.tocsc(), -reg_holes.weights.tocsc()))
         else:

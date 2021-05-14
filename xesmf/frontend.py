@@ -320,7 +320,10 @@ class BaseRegridder(object):
         self.weights = read_weights(weights, self.n_in, self.n_out)
 
         # replace zeros by NaN in mask
-        if apply_add_nans_to_weights == True and self.method not in ['nearest_s2d', 'nearest_d2s']:
+        if (apply_add_nans_to_weights == True and
+            (self.method not in ['nearest_s2d', 'nearest_d2s'] or
+             (self.grid_out.mask is not None and
+              self.grid_out.mask[0] is not None))):
             self.weights = add_nans_to_weights(self.weights)
 
         # follows legacy logic of writing weights if filename is provided

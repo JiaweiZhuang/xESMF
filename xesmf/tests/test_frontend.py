@@ -4,8 +4,8 @@ import warnings
 import cf_xarray as cfxr
 import dask
 import numpy as np
-import scipy.sparse as sps
 import pytest
+import scipy.sparse as sps
 import xarray as xr
 from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 from shapely.geometry import MultiPolygon, Polygon
@@ -174,7 +174,7 @@ def test_to_netcdf(tmp_path):
     # Let the frontend write the weights to disk
     xfn = tmp_path / 'ESMF_weights.nc'
     method = 'bilinear'
-    regridder = xe.Regridder(ds_in, ds_out, method, apply_add_nans_to_weights=False)
+    regridder = xe.Regridder(ds_in, ds_out, method, default_weights=False)
     regridder.to_netcdf(filename=xfn)
 
     grid_in = Grid.from_xarray(ds_in['lon'].values.T, ds_in['lat'].values.T)
@@ -209,18 +209,15 @@ def test_to_netcdf_nans(tmp_path):
     e = xr.open_dataset(efn)
 
     # Reformat to sparse COO matrix
-    smat = sps.coo_matrix((e.S.values, (e.row.values-1, e.col.values-1)),
-                          shape=[np.prod(ds_out['lon'].shape),
-                                 np.prod(ds_in['lon'].shape)])
+    smat = sps.coo_matrix(
+        (e.S.values, (e.row.values - 1, e.col.values - 1)),
+        shape=[np.prod(ds_out['lon'].shape), np.prod(ds_in['lon'].shape)],
+    )
     # Add NaNs to weights
     smat = xe.smm.add_nans_to_weights(smat)
     # Updating the dataset
     e_nans = xr.Dataset(
-             {
-               "S": (["n_s"], smat.data),
-               "row": (["n_s"], smat.row+1),
-               "col": (["n_s"], smat.col+1)
-             }
+        {'S': (['n_s'], smat.data), 'row': (['n_s'], smat.row + 1), 'col': (['n_s'], smat.col + 1)}
     )
     # Comparison
     xr.testing.assert_identical(x, e_nans)
@@ -241,7 +238,7 @@ def test_build_regridder_from_dict():
 
 def test_regrid_periodic_wrong():
     # not using periodic option
-    regridder = xe.Regridder(ds_in, ds_out, 'bilinear', apply_add_nans_to_weights=False)
+    regridder = xe.Regridder(ds_in, ds_out, 'bilinear', default_weights=False)
 
     dr_out = regridder(ds_in['data'])  # xarray DataArray
 

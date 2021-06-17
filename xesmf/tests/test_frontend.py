@@ -573,16 +573,16 @@ def test_polys_to_ESMFmesh():
 @pytest.mark.parametrize(
     'method, skipna, na_thres, nvalid',
     [
-        ('bilinear', False, 1., 380),
-        ('bilinear', True, 1., 395),
-        ('bilinear', True, 0., 380),
+        ('bilinear', False, 1.0, 380),
+        ('bilinear', True, 1.0, 395),
+        ('bilinear', True, 0.0, 380),
         ('bilinear', True, 0.5, 388),
-        ('bilinear', True, 1., 395),
-        ('conservative', False, 1., 385),
-        ('conservative', True, 1., 394),
-        ('conservative', True, 0., 385),
+        ('bilinear', True, 1.0, 395),
+        ('conservative', False, 1.0, 385),
+        ('conservative', True, 1.0, 394),
+        ('conservative', True, 0.0, 385),
         ('conservative', True, 0.5, 388),
-        ('conservative', True, 1., 394),
+        ('conservative', True, 1.0, 394),
     ],
 )
 def test_skipna(method, skipna, na_thres, nvalid):

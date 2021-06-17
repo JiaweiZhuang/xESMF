@@ -370,7 +370,7 @@ class BaseRegridder(object):
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
         return w
 
-    def __call__(self, indata, keep_attrs=False, skipna=False, na_thres=1.):
+    def __call__(self, indata, keep_attrs=False, skipna=False, na_thres=1.0):
         """
         Apply regridding to input data.
 
@@ -431,35 +431,22 @@ class BaseRegridder(object):
 
         """
         if isinstance(indata, np.ndarray):
-            return self.regrid_numpy(
-                indata,
-                skipna=skipna,
-                na_thres=na_thres)
+            return self.regrid_numpy(indata, skipna=skipna, na_thres=na_thres)
         elif isinstance(indata, dask_array_type):
-            return self.regrid_dask(
-                indata,
-                skipna=skipna,
-                na_thres=na_thres)
+            return self.regrid_dask(indata, skipna=skipna, na_thres=na_thres)
         elif isinstance(indata, xr.DataArray):
             return self.regrid_dataarray(
-                indata,
-                keep_attrs=keep_attrs,
-                skipna=skipna,
-                na_thres=na_thres)
+                indata, keep_attrs=keep_attrs, skipna=skipna, na_thres=na_thres
+            )
         elif isinstance(indata, xr.Dataset):
             return self.regrid_dataset(
-                indata,
-                keep_attrs=keep_attrs,
-                skipna=skipna,
-                na_thres=na_thres)
-        else:
-            raise TypeError(
-                'input must be numpy array, dask array, xarray DataArray or Dataset!'
+                indata, keep_attrs=keep_attrs, skipna=skipna, na_thres=na_thres
             )
+        else:
+            raise TypeError('input must be numpy array, dask array, xarray DataArray or Dataset!')
 
     @staticmethod
-    def _regrid_array(
-            indata, *, weights, shape_in, shape_out, sequence_in, skipna, na_thres):
+    def _regrid_array(indata, *, weights, shape_in, shape_out, sequence_in, skipna, na_thres):
 
         if sequence_in:
             indata = np.expand_dims(indata, axis=-2)
@@ -467,17 +454,16 @@ class BaseRegridder(object):
         # skipna: set missing values to zero
         if skipna:
             missing = np.isnan(indata)
-            indata = np.where(missing, 0., indata)
+            indata = np.where(missing, 0.0, indata)
 
         # apply weights
         outdata = apply_weights(weights, indata, shape_in, shape_out)
 
         # skipna: scale the data
         if skipna:
-            fraction_valid = apply_weights(
-                weights, (~missing).astype('d'), shape_in, shape_out)
+            fraction_valid = apply_weights(weights, (~missing).astype('d'), shape_in, shape_out)
             tol = 1e-6
-            bad = fraction_valid < np.clip(1-na_thres, tol, 1-tol)
+            bad = fraction_valid < np.clip(1 - na_thres, tol, 1 - tol)
             fraction_valid[bad] = 1
             outdata = np.where(bad, np.nan, outdata / fraction_valid)
 
@@ -492,17 +478,14 @@ class BaseRegridder(object):
             'shape_out': self.shape_out,
         }
 
-    def regrid_numpy(self, indata, skipna=False, na_thres=1.):
+    def regrid_numpy(self, indata, skipna=False, na_thres=1.0):
         """See __call__()."""
         outdata = self._regrid_array(
-            indata,
-            skipna=skipna,
-            na_thres=na_thres,
-            **self._regrid_kwargs
+            indata, skipna=skipna, na_thres=na_thres, **self._regrid_kwargs
         )
         return outdata
 
-    def regrid_dask(self, indata, skipna=False, na_thres=1.):
+    def regrid_dask(self, indata, skipna=False, na_thres=1.0):
         """See __call__()."""
 
         extra_chunk_shape = indata.chunksize[0:-2]
@@ -521,7 +504,7 @@ class BaseRegridder(object):
 
         return outdata
 
-    def regrid_dataarray(self, dr_in, keep_attrs=False, skipna=False, na_thres=1.):
+    def regrid_dataarray(self, dr_in, keep_attrs=False, skipna=False, na_thres=1.0):
         """See __call__()."""
 
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(dr_in)
@@ -544,7 +527,7 @@ class BaseRegridder(object):
 
         return self._format_xroutput(dr_out, temp_horiz_dims)
 
-    def regrid_dataset(self, ds_in, keep_attrs=False, skipna=False, na_thres=1.):
+    def regrid_dataset(self, ds_in, keep_attrs=False, skipna=False, na_thres=1.0):
         """See __call__()."""
 
         # get the first data variable to infer input_core_dims

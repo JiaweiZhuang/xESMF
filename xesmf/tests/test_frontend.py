@@ -571,25 +571,25 @@ def test_polys_to_ESMFmesh():
 
 
 @pytest.mark.parametrize(
-    'method, adaptative_masking, nvalid',
+    'method, skipna, na_thres, nvalid',
     [
-        ('bilinear', False, 380),
-        ('bilinear', True, 395),
-        ('bilinear', 1, 380),
-        ('bilinear', 0.5, 388),
-        ('bilinear', 0, 395),
-        ('conservative', False, 385),
-        ('conservative', True, 394),
-        ('conservative', 1, 385),
-        ('conservative', 0.5, 388),
-        ('conservative', 0, 394),
+        ('bilinear', False, 1., 380),
+        ('bilinear', True, 1., 395),
+        ('bilinear', True, 0., 380),
+        ('bilinear', True, 0.5, 388),
+        ('bilinear', True, 1., 395),
+        ('conservative', False, 1., 385),
+        ('conservative', True, 1., 394),
+        ('conservative', True, 0., 385),
+        ('conservative', True, 0.5, 388),
+        ('conservative', True, 1., 394),
     ],
 )
-def test_adaptative_masking(method, adaptative_masking, nvalid):
+def test_skipna(method, skipna, na_thres, nvalid):
     dai = ds_in['data4D'].copy()
     dai[0, 0, 4:6, 4:6] = np.nan
     rg = xe.Regridder(ds_in, ds_out, method)
-    dao = rg(dai, adaptative_masking=adaptative_masking)
+    dao = rg(dai, skipna=skipna, na_thres=na_thres)
     assert int(dao[0, 0, 1:-1, 1:-1].notnull().sum()) == nvalid
 
 

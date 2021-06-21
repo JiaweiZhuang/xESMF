@@ -1,7 +1,7 @@
 xESMF: Universal Regridder for Geospatial Data
 ==============================================
 
-|Binder| |pypi| |Build Status| |codecov| |docs| |license| |DOI|
+|Binder| |conda| |Build Status| |codecov| |docs| |license| |DOI|
 
 xESMF is a Python package for
 `regridding <https://climatedataguide.ucar.edu/climate-data-tools-and-analysis/regridding-overview>`_.
@@ -23,14 +23,12 @@ For new users, I also recommend reading `How to ask for help <https://pangeo-xes
 .. _xarray: http://xarray.pydata.org
 .. _dask: https://dask.org/
 
-.. |pypi| image:: https://badge.fury.io/py/xesmf.svg
-   :target: https://badge.fury.io/py/xesmf
-   :alt: pypi package
+.. |conda| image:: https://img.shields.io/conda/dn/conda-forge/xesmf.svg
+   :target: https://anaconda.org/conda-forge/xesmf
 
 .. |Build Status| image:: https://img.shields.io/github/workflow/status/pangeo-data/xESMF/CI?logo=github
    :target: https://github.com/pangeo-data/xESMF/actions
    :alt: github-ci build status
-
 
 .. |codecov| image:: https://codecov.io/gh/pangeo-data/xESMF/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/pangeo-data/xESMF

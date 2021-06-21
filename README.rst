@@ -23,8 +23,8 @@ For new users, I also recommend reading `How to ask for help <https://pangeo-xes
 .. _xarray: http://xarray.pydata.org
 .. _dask: https://dask.org/
 
-.. |conda| image:: https://img.shields.io/conda/dn/conda-forge/xesmf.svg
-   :target: https://anaconda.org/conda-forge/xesmf
+.. |conda| image:: https://anaconda.org/conda-forge/xesmf/badges/version.svg
+   :target: https://anaconda.org/conda-forge/xesmf/
 
 .. |Build Status| image:: https://img.shields.io/github/workflow/status/pangeo-data/xESMF/CI?logo=github
    :target: https://github.com/pangeo-data/xESMF/actions

@@ -459,7 +459,7 @@ class BaseRegridder(object):
         # apply weights
         outdata = apply_weights(weights, indata, shape_in, shape_out)
 
-        # skipna: scale the data
+        # skipna: Compute the influence of missing data at each interpolation point and filter those not meeting acceptable  threshold. 
         if skipna:
             fraction_valid = apply_weights(weights, (~missing).astype('d'), shape_in, shape_out)
             tol = 1e-6

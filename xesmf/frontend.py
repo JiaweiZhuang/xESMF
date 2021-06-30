@@ -398,7 +398,7 @@ class BaseRegridder(object):
         skipna: bool, optional
             Whether to skip missing values when regridding.
             When set to False, an output value is masked when a single
-            input value that is is missing and no grid mask is provided.
+            input value is missing and no grid mask is provided.
             When set to True, missing values do not contaminate the regridding
             since only valid values are taken into account.
             In this case, a given output point is set to NaN only if the ratio

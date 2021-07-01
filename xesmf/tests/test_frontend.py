@@ -501,8 +501,8 @@ def test_regrid_dataset_to_locstream():
 
 
 def test_build_regridder_with_masks():
-    ds_in['mask'] = xr.DataArray(np.random.randint(2, size=ds_in['data'].shape), dims=('y', 'x'))
-    print(ds_in)
+    dsi = ds_in.copy()
+    dsi['mask'] = xr.DataArray(np.random.randint(2, size=ds_in['data'].shape), dims=('y', 'x'))
     # 'patch' is too slow to test
     for method in [
         'bilinear',
@@ -511,7 +511,7 @@ def test_build_regridder_with_masks():
         'nearest_s2d',
         'nearest_d2s',
     ]:
-        regridder = xe.Regridder(ds_in, ds_out, method)
+        regridder = xe.Regridder(dsi, ds_out, method)
 
         # check screen output
         assert repr(regridder) == str(regridder)
@@ -568,6 +568,29 @@ def test_polys_to_ESMFmesh():
     assert shape == (1, 4)
     assert len(rec) == 1
     assert 'Some passed polygons have holes' in rec[0].message.args[0]
+
+
+@pytest.mark.parametrize(
+    'method, skipna, na_thres, nvalid',
+    [
+        ('bilinear', False, 1.0, 380),
+        ('bilinear', True, 1.0, 395),
+        ('bilinear', True, 0.0, 380),
+        ('bilinear', True, 0.5, 388),
+        ('bilinear', True, 1.0, 395),
+        ('conservative', False, 1.0, 385),
+        ('conservative', True, 1.0, 394),
+        ('conservative', True, 0.0, 385),
+        ('conservative', True, 0.5, 388),
+        ('conservative', True, 1.0, 394),
+    ],
+)
+def test_skipna(method, skipna, na_thres, nvalid):
+    dai = ds_in['data4D'].copy()
+    dai[0, 0, 4:6, 4:6] = np.nan
+    rg = xe.Regridder(ds_in, ds_out, method)
+    dao = rg(dai, skipna=skipna, na_thres=na_thres)
+    assert int(dao[0, 0, 1:-1, 1:-1].notnull().sum()) == nvalid
 
 
 def test_non_cf_latlon():

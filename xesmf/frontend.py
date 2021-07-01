@@ -212,7 +212,8 @@ class BaseRegridder(object):
         Base xESMF regridding class supporting ESMF objects: `Grid`, `Mesh` and `LocStream`.
 
         Create or use existing subclasses to support other types of input objects. See for example `Regridder`
-        to regrid `xarray.DataArray` objects, or `SpatialAverager` to average grids over regions defined by polygons.
+        to regrid `xarray.DataArray` objects, or `SpatialAverager`
+        to average grids over regions defined by polygons.
 
         Parameters
         ----------
@@ -369,7 +370,7 @@ class BaseRegridder(object):
         esmf_regrid_finalize(regrid)  # only need weights, not regrid object
         return w
 
-    def __call__(self, indata, keep_attrs=False):
+    def __call__(self, indata, keep_attrs=False, skipna=False, na_thres=1.0):
         """
         Apply regridding to input data.
 
@@ -394,6 +395,27 @@ class BaseRegridder(object):
             Keep attributes for xarray DataArrays or Datasets.
             Defaults to False.
 
+        skipna: bool, optional
+            Whether to skip missing values when regridding.
+            When set to False, an output value is masked when a single
+            input value is missing and no grid mask is provided.
+            When set to True, missing values do not contaminate the regridding
+            since only valid values are taken into account.
+            In this case, a given output point is set to NaN only if the ratio
+            of missing values exceeds the level set by `na_thres`:
+            for instance, when the center of a cell is computed linearly
+            from its four corners, one of which is missing, the output value
+            is set to NaN if `na_thres` is greater or equal to 0.25.
+
+        na_thres: float, optional
+            A value within the [0., 1.] interval that defines the maximum
+            ratio of missing grid points involved in the regrdding over which
+            the output value is set to NaN. For instance, if `na_thres` is set
+            to 0, the output value is NaN if a single NaN is found in the input
+            values that are used to compute the output value; similarly,
+            if `na_thres` is set to 1, all input values must be missing to
+            mask the output value.
+
         Returns
         -------
         outdata : Data type is the same as input data type.
@@ -409,23 +431,43 @@ class BaseRegridder(object):
 
         """
         if isinstance(indata, np.ndarray):
-            return self.regrid_numpy(indata)
+            return self.regrid_numpy(indata, skipna=skipna, na_thres=na_thres)
         elif isinstance(indata, dask_array_type):
-            return self.regrid_dask(indata)
+            return self.regrid_dask(indata, skipna=skipna, na_thres=na_thres)
         elif isinstance(indata, xr.DataArray):
-            return self.regrid_dataarray(indata, keep_attrs=keep_attrs)
-        elif isinstance(indata, xr.Dataset):
-            return self.regrid_dataset(indata, keep_attrs=keep_attrs)
-        else:
-            raise TypeError(
-                'input must be numpy array, dask array, ' 'xarray DataArray or Dataset!'
+            return self.regrid_dataarray(
+                indata, keep_attrs=keep_attrs, skipna=skipna, na_thres=na_thres
             )
+        elif isinstance(indata, xr.Dataset):
+            return self.regrid_dataset(
+                indata, keep_attrs=keep_attrs, skipna=skipna, na_thres=na_thres
+            )
+        else:
+            raise TypeError('input must be numpy array, dask array, xarray DataArray or Dataset!')
 
     @staticmethod
-    def _regrid_array(indata, *, weights, shape_in, shape_out, sequence_in):
+    def _regrid_array(indata, *, weights, shape_in, shape_out, sequence_in, skipna, na_thres):
+
         if sequence_in:
             indata = np.expand_dims(indata, axis=-2)
-        return apply_weights(weights, indata, shape_in, shape_out)
+
+        # skipna: set missing values to zero
+        if skipna:
+            missing = np.isnan(indata)
+            indata = np.where(missing, 0.0, indata)
+
+        # apply weights
+        outdata = apply_weights(weights, indata, shape_in, shape_out)
+
+        # skipna: Compute the influence of missing data at each interpolation point and filter those not meeting acceptable threshold.
+        if skipna:
+            fraction_valid = apply_weights(weights, (~missing).astype('d'), shape_in, shape_out)
+            tol = 1e-6
+            bad = fraction_valid < np.clip(1 - na_thres, tol, 1 - tol)
+            fraction_valid[bad] = 1
+            outdata = np.where(bad, np.nan, outdata / fraction_valid)
+
+        return outdata
 
     @property
     def _regrid_kwargs(self):
@@ -436,12 +478,14 @@ class BaseRegridder(object):
             'shape_out': self.shape_out,
         }
 
-    def regrid_numpy(self, indata):
+    def regrid_numpy(self, indata, skipna=False, na_thres=1.0):
         """See __call__()."""
-        outdata = self._regrid_array(indata, **self._regrid_kwargs)
+        outdata = self._regrid_array(
+            indata, skipna=skipna, na_thres=na_thres, **self._regrid_kwargs
+        )
         return outdata
 
-    def regrid_dask(self, indata):
+    def regrid_dask(self, indata, skipna=False, na_thres=1.0):
         """See __call__()."""
 
         extra_chunk_shape = indata.chunksize[0:-2]
@@ -453,20 +497,23 @@ class BaseRegridder(object):
             indata,
             dtype=float,
             chunks=output_chunk_shape,
+            skipna=skipna,
+            na_thres=na_thres,
             **self._regrid_kwargs,
         )
 
         return outdata
 
-    def regrid_dataarray(self, dr_in, keep_attrs=False):
+    def regrid_dataarray(self, dr_in, keep_attrs=False, skipna=False, na_thres=1.0):
         """See __call__()."""
 
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(dr_in)
-
+        kwargs = self._regrid_kwargs.copy()
+        kwargs.update(skipna=skipna, na_thres=na_thres)
         dr_out = xr.apply_ufunc(
             self._regrid_array,
             dr_in,
-            kwargs=self._regrid_kwargs,
+            kwargs=kwargs,
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
@@ -480,11 +527,14 @@ class BaseRegridder(object):
 
         return self._format_xroutput(dr_out, temp_horiz_dims)
 
-    def regrid_dataset(self, ds_in, keep_attrs=False):
+    def regrid_dataset(self, ds_in, keep_attrs=False, skipna=False, na_thres=1.0):
         """See __call__()."""
 
         # get the first data variable to infer input_core_dims
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(ds_in)
+
+        kwargs = self._regrid_kwargs.copy()
+        kwargs.update(skipna=skipna, na_thres=na_thres)
 
         non_regriddable = [
             name
@@ -496,7 +546,7 @@ class BaseRegridder(object):
         ds_out = xr.apply_ufunc(
             self._regrid_array,
             ds_in,
-            kwargs=self._regrid_kwargs,
+            kwargs=kwargs,
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',

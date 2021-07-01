@@ -195,7 +195,7 @@ def test_to_netcdf_nans(tmp_path):
     # Let the frontend write the weights to disk
     xfn = tmp_path / 'ESMF_weights_nans.nc'
     method = 'bilinear'
-    regridder = xe.Regridder(ds_in, ds_out, method)
+    regridder = xe.Regridder(ds_in, ds_out, method, default_weights=True)
     regridder.to_netcdf(filename=xfn)
 
     grid_in = Grid.from_xarray(ds_in['lon'].values.T, ds_in['lat'].values.T)

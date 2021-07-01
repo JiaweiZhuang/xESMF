@@ -207,7 +207,7 @@ class BaseRegridder(object):
         weights=None,
         ignore_degenerate=None,
         input_dims=None,
-        default_weights=True,
+        default_weights=False,
     ):
         """
         Base xESMF regridding class supporting ESMF objects: `Grid`, `Mesh` and `LocStream`.
@@ -273,11 +273,12 @@ class BaseRegridder(object):
             uses the two last dimensions of the object (or the last one for input LocStreams and Meshes).
 
         default_weights: boolean, optional
-            Option to select the default value for undefined weights. If True (default), the value will be set to `np.nan`.
+            Option to select the default value for undefined weights. If `True`, the value will be set to `np.nan`.
             If a mask is specified for the target grid, this has the effect to mask the target grid cells accordingly.
             Additionally, this has the effect to mask target grid cells lying outside of the source domain ("unmapped cells")
             for all regridding methods but `nearest_s2d` and `nearest_d2s`, where such a distinction is not readily possible.
-            If set to False, the default value for undefined weights will be zero, which is the default behaviour of ESMF.
+            If set to `False` (current default), the default value for undefined weights will be zero, which is the default
+            behaviour of ESMF. `True` will become the default setting in future releases.
 
         Returns
         -------
@@ -324,6 +325,16 @@ class BaseRegridder(object):
         # replace zeros by NaN in mask
         if default_weights is True:
             self.weights = add_nans_to_weights(self.weights)
+
+        # Warning to be removed when the default value changes in future releases
+        message = (
+            'The default value of the parameter \'default_weights\' will be set to True in future releases.'
+            ' This option is used to select the default value for undefined weights.'
+            ' If True, undefined entries of the weight matrix will be set to np.nan.'
+            ' If False, undefined weights will be set to zero.'
+            ' The SpatialAverager will not be affected by this setting.'
+        )
+        warnings.warn(message, FutureWarning)
 
         # follows legacy logic of writing weights if filename is provided
         if filename is not None and not reuse_weights:
@@ -677,11 +688,12 @@ class Regridder(BaseRegridder):
             (i.e. triangles or lines, instead of quadrilaterals)
 
         default_weights: boolean, optional
-            Option to select the default value for undefined weights. If True (default), the value will be set to `np.nan`.
+            Option to select the default value for undefined weights. If `True`, the value will be set to `np.nan`.
             If a mask is specified for the target grid, this has the effect to mask the target grid cells accordingly.
             Additionally, this has the effect to mask target grid cells lying outside of the source domain ("unmapped cells")
             for all regridding methods but `nearest_s2d` and `nearest_d2s`, where such a distinction is not readily possible.
-            If set to False, the default value for undefined weights will be zero, which is the default behaviour of ESMF.
+            If set to `False` (current default), the default value for undefined weights will be zero, which is the default
+            behaviour of ESMF. `True` will become the default setting in future releases.
 
         Returns
         -------

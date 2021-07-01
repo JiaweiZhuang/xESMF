@@ -413,7 +413,7 @@ class BaseRegridder(object):
             the output value is set to NaN. For instance, if `na_thres` is set
             to 0, the output value is NaN if a single NaN is found in the input
             values that are used to compute the output value; similarly,
-            if `na_thres` is set to 1, all inpput values must be missing to
+            if `na_thres` is set to 1, all input values must be missing to
             mask the output value.
 
         Returns
@@ -459,7 +459,7 @@ class BaseRegridder(object):
         # apply weights
         outdata = apply_weights(weights, indata, shape_in, shape_out)
 
-        # skipna: Compute the influence of missing data at each interpolation point and filter those not meeting acceptable  threshold. 
+        # skipna: Compute the influence of missing data at each interpolation point and filter those not meeting acceptable threshold.
         if skipna:
             fraction_valid = apply_weights(weights, (~missing).astype('d'), shape_in, shape_out)
             tol = 1e-6

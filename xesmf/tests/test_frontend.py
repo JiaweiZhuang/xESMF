@@ -105,22 +105,33 @@ methods_list = ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']
 
 
 @pytest.mark.parametrize(
-    'locstream_in,locstream_out,method',
+    'locstream_in,locstream_out,method,unmapped_to_nan',
     [
-        (False, False, 'conservative'),
-        (False, False, 'bilinear'),
-        (False, True, 'bilinear'),
-        (False, False, 'nearest_s2d'),
-        (False, True, 'nearest_s2d'),
-        (True, False, 'nearest_s2d'),
-        (True, True, 'nearest_s2d'),
-        (False, False, 'nearest_d2s'),
-        (False, True, 'nearest_d2s'),
-        (True, False, 'nearest_d2s'),
-        (True, True, 'nearest_d2s'),
+        (False, False, 'conservative', False),
+        (False, False, 'bilinear', False),
+        (False, True, 'bilinear', False),
+        (False, False, 'nearest_s2d', False),
+        (False, True, 'nearest_s2d', False),
+        (True, False, 'nearest_s2d', False),
+        (True, True, 'nearest_s2d', False),
+        (False, False, 'nearest_d2s', False),
+        (False, True, 'nearest_d2s', False),
+        (True, False, 'nearest_d2s', False),
+        (True, True, 'nearest_d2s', False),
+        (False, False, 'conservative', True),
+        (False, False, 'bilinear', True),
+        (False, True, 'bilinear', True),
+        (False, False, 'nearest_s2d', True),
+        (False, True, 'nearest_s2d', True),
+        (True, False, 'nearest_s2d', True),
+        (True, True, 'nearest_s2d', True),
+        (False, False, 'nearest_d2s', True),
+        (False, True, 'nearest_d2s', True),
+        (True, False, 'nearest_d2s', True),
+        (True, True, 'nearest_d2s', True),
     ],
 )
-def test_build_regridder(method, locstream_in, locstream_out):
+def test_build_regridder(method, locstream_in, locstream_out, unmapped_to_nan):
     din = ds_locs if locstream_in else ds_in
     dout = ds_locs if locstream_out else ds_out
 
@@ -174,7 +185,7 @@ def test_to_netcdf(tmp_path):
     # Let the frontend write the weights to disk
     xfn = tmp_path / 'ESMF_weights.nc'
     method = 'bilinear'
-    regridder = xe.Regridder(ds_in, ds_out, method, default_weights=False)
+    regridder = xe.Regridder(ds_in, ds_out, method, unmapped_to_nan=False)
     regridder.to_netcdf(filename=xfn)
 
     grid_in = Grid.from_xarray(ds_in['lon'].values.T, ds_in['lat'].values.T)
@@ -195,7 +206,7 @@ def test_to_netcdf_nans(tmp_path):
     # Let the frontend write the weights to disk
     xfn = tmp_path / 'ESMF_weights_nans.nc'
     method = 'bilinear'
-    regridder = xe.Regridder(ds_in, ds_out, method, default_weights=True)
+    regridder = xe.Regridder(ds_in, ds_out, method, unmapped_to_nan=True)
     regridder.to_netcdf(filename=xfn)
 
     grid_in = Grid.from_xarray(ds_in['lon'].values.T, ds_in['lat'].values.T)
@@ -238,7 +249,7 @@ def test_build_regridder_from_dict():
 
 def test_regrid_periodic_wrong():
     # not using periodic option
-    regridder = xe.Regridder(ds_in, ds_out, 'bilinear', default_weights=False)
+    regridder = xe.Regridder(ds_in, ds_out, 'bilinear', unmapped_to_nan=False)
 
     dr_out = regridder(ds_in['data'])  # xarray DataArray
 

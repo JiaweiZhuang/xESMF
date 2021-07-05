@@ -327,7 +327,9 @@ class BaseRegridder(object):
         self.weights = read_weights(weights, self.n_in, self.n_out)
 
         # replace zeros by NaN for weight matrix entries of unmapped target cells if specified or a mask is present
-        if ((self.grid_out.mask is not None) and (self.grid_out.mask[0] is not None)) or unmapped_to_nan is True:
+        if (
+            (self.grid_out.mask is not None) and (self.grid_out.mask[0] is not None)
+        ) or unmapped_to_nan is True:
             self.weights = add_nans_to_weights(self.weights)
 
         # follows legacy logic of writing weights if filename is provided

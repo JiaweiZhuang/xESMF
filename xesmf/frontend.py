@@ -207,6 +207,7 @@ class BaseRegridder(object):
         weights=None,
         ignore_degenerate=None,
         input_dims=None,
+        unmapped_to_nan=False,
     ):
         """
         Base xESMF regridding class supporting ESMF objects: `Grid`, `Mesh` and `LocStream`.
@@ -272,6 +273,12 @@ class BaseRegridder(object):
             If not given or if those are not found on the regridded object, regridding
             uses the two last dimensions of the object (or the last one for input LocStreams and Meshes).
 
+        unmapped_to_nan: boolean, optional
+            Set values of unmapped points to `np.nan` instead of zero (ESMF default). This is useful for
+            target cells lying outside of the source domain when no output mask is defined.
+            If an output mask is defined, or regridding method is `nearest_s2d` or `nearest_d2s`,
+            this option has no effect.
+
         Returns
         -------
         baseregridder : xESMF BaseRegridder object
@@ -314,8 +321,10 @@ class BaseRegridder(object):
         # Convert weights, whatever their format, to a sparse coo matrix
         self.weights = read_weights(weights, self.n_in, self.n_out)
 
-        # replace zeros by NaN in mask
-        if self.grid_out.mask is not None and self.grid_out.mask[0] is not None:
+        # replace zeros by NaN for weight matrix entries of unmapped target cells if specified or a mask is present
+        if (
+            (self.grid_out.mask is not None) and (self.grid_out.mask[0] is not None)
+        ) or unmapped_to_nan is True:
             self.weights = add_nans_to_weights(self.weights)
 
         # follows legacy logic of writing weights if filename is provided
@@ -718,6 +727,12 @@ class Regridder(BaseRegridder):
             If False (default), raise error if grids contain degenerated cells
             (i.e. triangles or lines, instead of quadrilaterals)
 
+        unmapped_to_nan: boolean, optional
+            Set values of unmapped points to `np.nan` instead of zero (ESMF default). This is useful for
+            target cells lying outside of the source domain when no output mask is defined.
+            If an output mask is defined, or regridding method is `nearest_s2d` or `nearest_d2s`,
+            this option has no effect.
+
         Returns
         -------
         regridder : xESMF regridder object
@@ -935,6 +950,7 @@ class SpatialAverager(BaseRegridder):
             filename=filename,
             reuse_weights=reuse_weights,
             ignore_degenerate=ignore_degenerate,
+            unmapped_to_nan=False,
         )
 
     def _compute_weights(self):
@@ -949,12 +965,20 @@ class SpatialAverager(BaseRegridder):
         # Get weights for single polygons and holes
         # Stack everything together
         reg_ext = BaseRegridder(
-            mesh_ext, self.grid_in, 'conservative', ignore_degenerate=self.ignore_degenerate
+            mesh_ext,
+            self.grid_in,
+            'conservative',
+            ignore_degenerate=self.ignore_degenerate,
+            unmapped_to_nan=False,
         )
         if len(holes) > 0 and not self.ignore_holes:
             mesh_holes, shape_holes = polys_to_ESMFmesh(holes)
             reg_holes = BaseRegridder(
-                mesh_holes, self.grid_in, 'conservative', ignore_degenerate=self.ignore_degenerate
+                mesh_holes,
+                self.grid_in,
+                'conservative',
+                ignore_degenerate=self.ignore_degenerate,
+                unmapped_to_nan=False,
             )
             w_all = sps.hstack((reg_ext.weights.tocsc(), -reg_holes.weights.tocsc()))
         else:

@@ -5,6 +5,7 @@ import cf_xarray as cfxr
 import dask
 import numpy as np
 import pytest
+import scipy.sparse as sps
 import xarray as xr
 from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 from shapely.geometry import MultiPolygon, Polygon
@@ -104,22 +105,33 @@ methods_list = ['bilinear', 'conservative', 'nearest_s2d', 'nearest_d2s']
 
 
 @pytest.mark.parametrize(
-    'locstream_in,locstream_out,method',
+    'locstream_in,locstream_out,method,unmapped_to_nan',
     [
-        (False, False, 'conservative'),
-        (False, False, 'bilinear'),
-        (False, True, 'bilinear'),
-        (False, False, 'nearest_s2d'),
-        (False, True, 'nearest_s2d'),
-        (True, False, 'nearest_s2d'),
-        (True, True, 'nearest_s2d'),
-        (False, False, 'nearest_d2s'),
-        (False, True, 'nearest_d2s'),
-        (True, False, 'nearest_d2s'),
-        (True, True, 'nearest_d2s'),
+        (False, False, 'conservative', False),
+        (False, False, 'bilinear', False),
+        (False, True, 'bilinear', False),
+        (False, False, 'nearest_s2d', False),
+        (False, True, 'nearest_s2d', False),
+        (True, False, 'nearest_s2d', False),
+        (True, True, 'nearest_s2d', False),
+        (False, False, 'nearest_d2s', False),
+        (False, True, 'nearest_d2s', False),
+        (True, False, 'nearest_d2s', False),
+        (True, True, 'nearest_d2s', False),
+        (False, False, 'conservative', True),
+        (False, False, 'bilinear', True),
+        (False, True, 'bilinear', True),
+        (False, False, 'nearest_s2d', True),
+        (False, True, 'nearest_s2d', True),
+        (True, False, 'nearest_s2d', True),
+        (True, True, 'nearest_s2d', True),
+        (False, False, 'nearest_d2s', True),
+        (False, True, 'nearest_d2s', True),
+        (True, False, 'nearest_d2s', True),
+        (True, True, 'nearest_d2s', True),
     ],
 )
-def test_build_regridder(method, locstream_in, locstream_out):
+def test_build_regridder(method, locstream_in, locstream_out, unmapped_to_nan):
     din = ds_locs if locstream_in else ds_in
     dout = ds_locs if locstream_out else ds_out
 
@@ -173,7 +185,7 @@ def test_to_netcdf(tmp_path):
     # Let the frontend write the weights to disk
     xfn = tmp_path / 'ESMF_weights.nc'
     method = 'bilinear'
-    regridder = xe.Regridder(ds_in, ds_out, method)
+    regridder = xe.Regridder(ds_in, ds_out, method, unmapped_to_nan=False)
     regridder.to_netcdf(filename=xfn)
 
     grid_in = Grid.from_xarray(ds_in['lon'].values.T, ds_in['lat'].values.T)
@@ -186,6 +198,40 @@ def test_to_netcdf(tmp_path):
     x = xr.open_dataset(xfn)
     e = xr.open_dataset(efn)
     xr.testing.assert_identical(x, e)
+
+
+def test_to_netcdf_nans(tmp_path):
+    from xesmf.backend import Grid, esmf_regrid_build
+
+    # Let the frontend write the weights to disk
+    xfn = tmp_path / 'ESMF_weights_nans.nc'
+    method = 'bilinear'
+    regridder = xe.Regridder(ds_in, ds_out, method, unmapped_to_nan=True)
+    regridder.to_netcdf(filename=xfn)
+
+    grid_in = Grid.from_xarray(ds_in['lon'].values.T, ds_in['lat'].values.T)
+    grid_out = Grid.from_xarray(ds_out['lon'].values.T, ds_out['lat'].values.T)
+
+    # Let the ESMPy backend write the weights to disk
+    efn = tmp_path / 'weights_nans.nc'
+    esmf_regrid_build(grid_in, grid_out, method=method, filename=str(efn))
+
+    x = xr.open_dataset(xfn)
+    e = xr.open_dataset(efn)
+
+    # Reformat to sparse COO matrix
+    smat = sps.coo_matrix(
+        (e.S.values, (e.row.values - 1, e.col.values - 1)),
+        shape=[np.prod(ds_out['lon'].shape), np.prod(ds_in['lon'].shape)],
+    )
+    # Add NaNs to weights
+    smat = xe.smm.add_nans_to_weights(smat)
+    # Updating the dataset
+    e_nans = xr.Dataset(
+        {'S': (['n_s'], smat.data), 'row': (['n_s'], smat.row + 1), 'col': (['n_s'], smat.col + 1)}
+    )
+    # Comparison
+    xr.testing.assert_identical(x, e_nans)
 
 
 def test_conservative_without_bounds():
@@ -203,7 +249,7 @@ def test_build_regridder_from_dict():
 
 def test_regrid_periodic_wrong():
     # not using periodic option
-    regridder = xe.Regridder(ds_in, ds_out, 'bilinear')
+    regridder = xe.Regridder(ds_in, ds_out, 'bilinear', unmapped_to_nan=False)
 
     dr_out = regridder(ds_in['data'])  # xarray DataArray
 

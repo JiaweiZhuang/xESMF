@@ -274,15 +274,10 @@ class BaseRegridder(object):
             uses the two last dimensions of the object (or the last one for input LocStreams and Meshes).
 
         unmapped_to_nan: boolean, optional
-            Option to select the default value for undefined weights (weights of unmapped cells).
-            If `True`, the value will be set to `np.nan`. If a mask is specified for the target grid,
-            this has the effect to mask the target grid cells accordingly. Additionally, this has the
-            effect to mask target grid cells lying outside of the source domain for all regridding methods
-            but `nearest_s2d` and `nearest_d2s`, where such a distinction is not readily possible.
-            If a mask is specified for the target grid, `unmapped_to_nan` will be set to `True` by default.
-            Else the default is `False`, causing weight matrix entries of unmapped cells to be zero, which
-            is also the default behaviour of ESMF.
-
+            Set values of unmapped points to `np.nan` instead of zero (ESMF default). This is useful for
+            target cells lying outside of the source domain when no output mask is defined.
+            If an output mask is defined, or regridding method is `nearest_s2d` or `nearest_d2s`,
+            this option has no effect.
 
         Returns
         -------
@@ -733,14 +728,10 @@ class Regridder(BaseRegridder):
             (i.e. triangles or lines, instead of quadrilaterals)
 
         unmapped_to_nan: boolean, optional
-            Option to select the default value for undefined weights (weights of unmapped cells).
-            If `True`, the value will be set to `np.nan`. If a mask is specified for the target grid,
-            this has the effect to mask the target grid cells accordingly. Additionally, this has the
-            effect to mask target grid cells lying outside of the source domain for all regridding methods
-            but `nearest_s2d` and `nearest_d2s`, where such a distinction is not readily possible.
-            If a mask is specified for the target grid, `unmapped_to_nan` will be set to `True` by default.
-            Else the default is `False`, causing weight matrix entries of unmapped cells to be zero, which
-            is also the default behaviour of ESMF.
+            Set values of unmapped points to `np.nan` instead of zero (ESMF default). This is useful for
+            target cells lying outside of the source domain when no output mask is defined.
+            If an output mask is defined, or regridding method is `nearest_s2d` or `nearest_d2s`,
+            this option has no effect.
 
         Returns
         -------

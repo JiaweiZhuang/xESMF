@@ -1,6 +1,19 @@
 What's new
 ==========
 
+0.6.0 (07-07-2021)
+------------------
+
+New features
+~~~~~~~~~~~~
+- Add the ``skipna`` and ``na_threshold`` options to deal with masks over non-spatial dimensions (:pull:`29`). This is useful when, for example, masks vary over time. By `Stéphane Raynaud <https://github.com/stefraynaud>`_
+- Add ``unmapped_to_nan`` argument to regridder frontend. When True, this sets target cells outside the source domain to NaN instead of zero for all regridding methods except nearest neighbour (:pull:`94`). By `Martin Schupfner <https://github.com/sol1105>`_
+
+Bug fixes
+~~~~~~~~~
+- Drop the PyPi badge and replace by a Conda badge (:pull:`97`). By `Ray Bell <https://github.com/raybellwaves>`_
+
+
 0.5.3 (04-12-2021)
 ------------------
 

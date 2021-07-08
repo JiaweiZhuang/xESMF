@@ -6,7 +6,7 @@ What's new
 
 New features
 ~~~~~~~~~~~~
-- Adaptive masking postprocessing to deal with time-dependent masks (:pull:`29`). By `Stéphane Raynaud <https://github.com/stefraynaud>`_
+- Add the ``skipna`` and ``na_threshold`` options to deal with masks over non-spatial dimensions (:pull:`29`). This is useful when, for example, masks vary over time. By `Stéphane Raynaud <https://github.com/stefraynaud>`_
 - Add ``unmapped_to_nan`` argument to regridder frontend. When True, this sets target cells outside the source domain to NaN instead of zero for all regridding methods except nearest neighbour (:pull:`94`). By `Martin Schupfner <https://github.com/sol1105>`_
 
 Bug fixes

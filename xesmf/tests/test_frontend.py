@@ -276,6 +276,28 @@ def ds_2d_to_1d(ds):
     return ds_1d
 
 
+@pytest.mark.parametrize('dtype', ['float32', 'float64'])
+@pytest.mark.parametrize('data_in',
+    [
+        pytest.param(np.array(ds_in['data']), id='np.ndarray'),
+        pytest.param(xr.DataArray(ds_in['data']), id='xr.DataArray input'),
+        pytest.param(xr.Dataset(ds_in[['data']]), id='xr.Dataset input'),
+        pytest.param(ds_in['data'].chunk(), id='da.Array input'),
+    ],
+)
+def test_regridded_respects_input_dtype(dtype, data_in):
+    """Tests regridded output has same dtype as input"""
+    data_in = data_in.astype(dtype)
+    regridder = xe.Regridder(ds_in, ds_out, 'bilinear')  # Make this a fixture?
+    out = regridder(data_in)
+
+    if 'data' in data_in:
+        # When data_in is xr.Dataset, a mapping...
+        assert out['data'].dtype == data_in['data'].dtype
+    else:
+        assert out.dtype == data_in.dtype
+
+
 def test_regrid_with_1d_grid():
     ds_in_1d = ds_2d_to_1d(ds_in)
     ds_out_1d = ds_2d_to_1d(ds_out)

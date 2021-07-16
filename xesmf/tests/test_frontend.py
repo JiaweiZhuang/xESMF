@@ -50,7 +50,7 @@ ds_savg = xr.Dataset(
         'lat_b': (('lat_b',), [0, 1, 2]),
         'lon_b': (('lon_b',), [0, 1, 2, 3]),
     },
-    data_vars={'abc': (('lon', 'lat'), [[1, 2], [3, 4], [2, 4]])},
+    data_vars={'abc': (('lon', 'lat'), [[1.0, 2.0], [3.0, 4.0], [2.0, 4.0]])},
 )
 polys = [
     Polygon([[0.5, 0.5], [0.5, 1.5], [1.5, 0.5]]),  # Simple triangle polygon

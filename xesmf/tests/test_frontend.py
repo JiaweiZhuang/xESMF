@@ -277,7 +277,8 @@ def ds_2d_to_1d(ds):
 
 
 @pytest.mark.parametrize('dtype', ['float32', 'float64'])
-@pytest.mark.parametrize('data_in',
+@pytest.mark.parametrize(
+    'data_in',
     [
         pytest.param(np.array(ds_in['data']), id='np.ndarray'),
         pytest.param(xr.DataArray(ds_in['data']), id='xr.DataArray input'),

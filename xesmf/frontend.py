@@ -557,9 +557,7 @@ class BaseRegridder(object):
         # up/down cast variables when using different dytpes.
         ds_dtypes = set([d.dtype for d in ds_in.data_vars.values()])
         if len(ds_dtypes) > 1:
-            raise ValueError(
-                f'Data variables have multiple dtypes, need single dtype: {ds_dtypes}'
-            )
+            raise ValueError(f'Data variables have multiple dtypes, need single dtype: {ds_dtypes}')
 
         ds_out = xr.apply_ufunc(
             self._regrid_array,

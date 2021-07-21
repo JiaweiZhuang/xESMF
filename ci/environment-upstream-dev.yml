@@ -13,6 +13,7 @@ dependencies:
   - pytest
   - pytest-cov
   - scipy
+  - toml
   - pip:
       - git+https://github.com/pydata/xarray.git
       - git+https://github.com/xarray-contrib/cf-xarray.git

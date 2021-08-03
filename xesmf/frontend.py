@@ -455,7 +455,7 @@ class BaseRegridder(object):
             raise TypeError('input must be numpy array, dask array, xarray DataArray or Dataset!')
 
     @staticmethod
-    def _regrid_array(indata, *, weights, shape_in, shape_out, sequence_in, skipna, na_thres):
+    def _regrid_array(indata, weights, *, shape_in, shape_out, sequence_in, skipna, na_thres):
 
         if sequence_in:
             indata = np.expand_dims(indata, axis=-2)
@@ -481,7 +481,6 @@ class BaseRegridder(object):
     @property
     def _regrid_kwargs(self):
         return {
-            'weights': self.weights,
             'sequence_in': self.sequence_in,
             'shape_in': self.shape_in,
             'shape_out': self.shape_out,
@@ -490,7 +489,7 @@ class BaseRegridder(object):
     def regrid_numpy(self, indata, skipna=False, na_thres=1.0):
         """See __call__()."""
         outdata = self._regrid_array(
-            indata, skipna=skipna, na_thres=na_thres, **self._regrid_kwargs
+            indata, self.weights.data, skipna=skipna, na_thres=na_thres, **self._regrid_kwargs
         )
         return outdata
 
@@ -504,6 +503,7 @@ class BaseRegridder(object):
         outdata = da.map_blocks(
             self._regrid_array,
             indata,
+            self.weights.data,
             dtype=float,
             chunks=output_chunk_shape,
             skipna=skipna,
@@ -522,8 +522,9 @@ class BaseRegridder(object):
         dr_out = xr.apply_ufunc(
             self._regrid_array,
             dr_in,
+            self.weights,
             kwargs=kwargs,
-            input_core_dims=[input_horiz_dims],
+            input_core_dims=[input_horiz_dims, ('out_dim', 'in_dim')],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
             output_dtypes=[float],
@@ -555,8 +556,9 @@ class BaseRegridder(object):
         ds_out = xr.apply_ufunc(
             self._regrid_array,
             ds_in,
+            self.weights,
             kwargs=kwargs,
-            input_core_dims=[input_horiz_dims],
+            input_core_dims=[input_horiz_dims, ('out_dim', 'in_dim')],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
             output_dtypes=[float],
@@ -632,9 +634,11 @@ class BaseRegridder(object):
         """Save weights to disk as a netCDF file."""
         if filename is None:
             filename = self.filename
-        w = self.weights
+        w = self.weights.data
         dim = 'n_s'
-        ds = xr.Dataset({'S': (dim, w.data), 'col': (dim, w.col + 1), 'row': (dim, w.row + 1)})
+        ds = xr.Dataset(
+            {'S': (dim, w.data), 'col': (dim, w.coords[1, :] + 1), 'row': (dim, w.coords[0, :] + 1)}
+        )
         ds.to_netcdf(filename)
         return filename
 
@@ -980,9 +984,9 @@ class SpatialAverager(BaseRegridder):
                 ignore_degenerate=self.ignore_degenerate,
                 unmapped_to_nan=False,
             )
-            w_all = sps.hstack((reg_ext.weights.tocsc(), -reg_holes.weights.tocsc()))
+            w_all = sps.hstack((reg_ext.weights.data.tocsc(), -reg_holes.weights.data.tocsc()))
         else:
-            w_all = reg_ext.weights.tocsc()
+            w_all = reg_ext.weights.data.tocsc()
 
         # Combine weights of same owner and normalize
         weights = _combine_weight_multipoly(w_all, owners)

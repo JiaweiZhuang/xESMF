@@ -6,8 +6,9 @@ import warnings
 from pathlib import Path
 
 import numpy as np
-import scipy.sparse as sps
+import sparse as sps
 import xarray as xr
+from scipy.sparse import coo_matrix, hstack
 
 
 def read_weights(weights, n_in, n_out):
@@ -35,13 +36,27 @@ def read_weights(weights, n_in, n_out):
     scipy.sparse.coo_matrix
       Sparse weights matrix.
     """
-    if isinstance(weights, (str, Path, xr.Dataset)):
-        if not isinstance(weights, xr.Dataset):
-            if not Path(weights).exists():
-                raise IOError(f'Weights file not found on disk.\n{weights}')
-            ds_w = xr.open_dataset(weights)
+    if isinstance(weights, (str, Path, xr.Dataset, dict)):
+        weights = _parse_coords_and_values(weights, n_in, n_out)
+
+    elif isinstance(weights, coo_matrix):
+        weights = sps.COO.from_scipy_sparse(weights)
+
+    elif isinstance(weights, xr.DataArray):
+        return weights
+
+    # else : isinstance(weights, sps.COO):
+    return xr.DataArray(weights, dims=('out_dim', 'in_dim'), name='weights')
+
+
+def _parse_coords_and_values(indata, n_in, n_out):
+    if isinstance(indata, (str, Path, xr.Dataset)):
+        if not isinstance(indata, xr.Dataset):
+            if not Path(indata).exists():
+                raise IOError(f'Weights file not found on disk.\n{indata}')
+            ds_w = xr.open_dataset(indata)
         else:
-            ds_w = weights
+            ds_w = indata
 
         if not set(['col', 'row', 'S']).issubset(ds_w.variables):
             raise ValueError(
@@ -53,20 +68,18 @@ def read_weights(weights, n_in, n_out):
         row = ds_w['row'].values - 1
         S = ds_w['S'].values
 
-    elif isinstance(weights, dict):
-        if not set(['col_src', 'row_dst', 'weights']).issubset(weights.keys()):
+    elif isinstance(indata, dict):
+        if not set(['col_src', 'row_dst', 'weights']).issubset(indata.keys()):
             raise ValueError(
                 'Weights dictionary should have keys `col_src`, `row_dst` and `weights` storing the '
                 'indices and values of weights.'
             )
-        col = weights['col_src'] - 1
-        row = weights['row_dst'] - 1
-        S = weights['weights']
+        col = indata['col_src'] - 1
+        row = indata['row_dst'] - 1
+        S = indata['weights']
 
-    elif isinstance(weights, sps.coo_matrix):
-        return weights
-
-    return sps.coo_matrix((S, (row, col)), shape=[n_out, n_in])
+    crds = np.stack([row, col])
+    return sps.COO(crds, S, (n_out, n_in))
 
 
 def apply_weights(weights, indata, shape_in, shape_out):
@@ -143,14 +156,14 @@ def add_nans_to_weights(weights):
 
     # Taken from @trondkr and adapted by @raphaeldussin to use `lil`.
     # lil matrix is better than CSR when changing sparsity
-    M = weights.tolil()
+    M = weights.data.to_scipy_sparse().tolil()
     # replace empty rows by one NaN value at element 0 (arbitrary)
     # so that remapped element become NaN instead of zero
     for krow in range(len(M.rows)):
         M.rows[krow] = [0] if M.rows[krow] == [] else M.rows[krow]
         M.data[krow] = [np.NaN] if M.data[krow] == [] else M.data[krow]
     # update regridder weights (in COO)
-    weights = sps.coo_matrix(M)
+    weights = weights.copy(data=sps.COO.from_scipy_sparse(M))
     return weights
 
 
@@ -178,4 +191,4 @@ def _combine_weight_multipoly(weights, indexes):
         for j in js[1:]:
             wi = wi + weights[..., j]
         columns.append(wi)
-    return sps.hstack(columns)
+    return hstack(columns)

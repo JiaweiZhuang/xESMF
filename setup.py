@@ -27,6 +27,7 @@ else:
         'scipy',
         'shapely',
         'cf-xarray>=0.5.1',
+        'sparse',
     ]
 
 CLASSIFIERS = [

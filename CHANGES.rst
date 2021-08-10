@@ -1,6 +1,14 @@
 What's new
 ==========
 
+0.6.1 (unreleased)
+------------------
+
+Internal changes
+~~~~~~~~~~~~~~~~
+- Weights are now stored in a ``xr.DataArray`` backed by ``sparse.COO`` (new dependency), which allows to pass them as an argument to the ``xr.apply_ufunc`` and decrease memory usage when using dask.
+
+
 0.6.0 (07-08-2021)
 ------------------
 

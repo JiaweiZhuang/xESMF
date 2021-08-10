@@ -6,7 +6,6 @@ import warnings
 
 import cf_xarray as cfxr
 import numpy as np
-import scipy.sparse as sps
 import xarray as xr
 from xarray import DataArray, Dataset
 
@@ -984,14 +983,16 @@ class SpatialAverager(BaseRegridder):
                 ignore_degenerate=self.ignore_degenerate,
                 unmapped_to_nan=False,
             )
-            w_all = sps.hstack((reg_ext.weights.data.tocsc(), -reg_holes.weights.data.tocsc()))
+            w_all = xr.concat((reg_ext.weights, -reg_holes.weights), 'in_dim')
         else:
-            w_all = reg_ext.weights.data.tocsc()
+            w_all = reg_ext.weights
 
-        # Combine weights of same owner and normalize
+        # Combine weights of same owner
         weights = _combine_weight_multipoly(w_all, owners)
-        weights = weights.multiply(1 / weights.sum(axis=0))
-        return weights.tocoo().T
+        # Normalize weights
+        weights_sum = weights.sum('out_dim')
+        weights = weights / weights_sum.data.todense()
+        return weights
 
     def _get_default_filename(self):
         # e.g. bilinear_400x600_300x400.nc

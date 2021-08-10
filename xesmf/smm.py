@@ -187,11 +187,12 @@ def _combine_weight_multipoly(weights, indexes):
     sparse matrix (CSC)
       Sum of weights from individual geometries.
     """
+    indexes = np.atleast_1d(indexes)
     columns = []
     # The list.append ensures each summed column has the index of the value in `indexes`.
     for i in range(indexes.max() + 1):
         # Sum the colums with the same indexes in `indexes`
-        columns.append(weights.isel(in_dim=(indexes == i)).sum('in_dim'))
+        columns.append(weights.isel(out_dim=(indexes == i)).sum('out_dim'))
 
     # Concat and transpose for coherence with the rest of xesmf.
-    return xr.concat(columns, 'in_dim').transpose('out_dim', 'in_dim')
+    return xr.concat(columns, 'out_dim')

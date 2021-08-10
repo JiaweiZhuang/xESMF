@@ -6,6 +6,7 @@ import warnings
 
 import cf_xarray as cfxr
 import numpy as np
+import sparse as sps
 import xarray as xr
 from xarray import DataArray, Dataset
 
@@ -987,12 +988,20 @@ class SpatialAverager(BaseRegridder):
         else:
             w_all = reg_ext.weights
 
+        # "Transpose" the data, weights generated before are mesh -> grid, we want grid -> mesh
+        w_all = w_all.rename(in_dim='out_dim', out_dim='in_dim')
+
         # Combine weights of same owner
         weights = _combine_weight_multipoly(w_all, owners)
         # Normalize weights
-        weights_sum = weights.sum('out_dim')
-        weights = weights / weights_sum.data.todense()
-        return weights
+        wsum = weights.sum('in_dim')
+        # All this only to change the fill_value...
+        wsum = wsum.copy(
+            data=sps.COO(wsum.data.coords, wsum.data.data, shape=wsum.data.shape, fill_value=1)
+        )
+        weights = weights / wsum
+        # Transpose to fit with the rest of xesmf.
+        return weights.transpose('out_dim', 'in_dim')
 
     def _get_default_filename(self):
         # e.g. bilinear_400x600_300x400.nc

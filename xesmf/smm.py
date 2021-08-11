@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 import sparse as sps
 import xarray as xr
-from scipy.sparse import coo_matrix
 
 
 def read_weights(weights, n_in, n_out):
@@ -40,9 +39,6 @@ def read_weights(weights, n_in, n_out):
     """
     if isinstance(weights, (str, Path, xr.Dataset, dict)):
         weights = _parse_coords_and_values(weights, n_in, n_out)
-
-    elif isinstance(weights, coo_matrix):
-        weights = sps.COO.from_scipy_sparse(weights)
 
     elif isinstance(weights, xr.DataArray):
         return weights

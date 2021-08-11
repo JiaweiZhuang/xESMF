@@ -6,7 +6,8 @@ What's new
 
 Internal changes
 ~~~~~~~~~~~~~~~~
-- Weights are now stored in a ``xr.DataArray`` backed by ``sparse.COO`` (new dependency), which allows to pass them as an argument to the ``xr.apply_ufunc`` and decrease memory usage when using dask.
+- Weights are now stored in a ``xr.DataArray`` backed by ``sparse.COO``, which allows to pass them as an argument to the ``xr.apply_ufunc`` and decrease memory usage when using dask. By `Pascal Bourgault <https://github.com/aulemahal>`_
+- New dependency `sparse <https://sparse.pydata.org>`_ replacing ``scipy``.
 
 
 0.6.0 (07-08-2021)

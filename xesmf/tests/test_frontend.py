@@ -32,6 +32,7 @@ ds_out['data_ref'] = xe.data.wave_smooth(ds_out['lon'], ds_out['lat'])
 ds_in.coords['time'] = np.arange(7) + 1
 ds_in.coords['lev'] = np.arange(11) + 1
 ds_in['data4D'] = ds_in['time'] * ds_in['lev'] * ds_in['data']
+ds_in['data4D_f4'] = ds_in['data4D'].astype('f4')
 ds_out['data4D_ref'] = ds_in['time'] * ds_in['lev'] * ds_out['data_ref']
 
 # use non-divisible chunk size to catch edge cases
@@ -550,6 +551,9 @@ def test_regrid_dataset():
         ds_result['data4D'].values.mean(axis=(2, 3)),
         decimal=10,
     )
+
+    assert ds_result['data4D'].dtype == np.dtype('f8')
+    assert ds_result['data4D_f4'].dtype == np.dtype('f4')
 
     # check metadata
     xr.testing.assert_identical(ds_result['time'], ds_in['time'])

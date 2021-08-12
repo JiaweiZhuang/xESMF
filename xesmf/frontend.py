@@ -552,12 +552,7 @@ class BaseRegridder(object):
         ]
         ds_in = ds_in.drop_vars(non_regriddable)
 
-        # Being cautious as input data might have deliberate dtype precision
-        # that we don't want to blindly clobber. Instead let user decide to subset, or
-        # up/down cast variables when using different dytpes.
-        ds_dtypes = set([d.dtype for d in ds_in.data_vars.values()])
-        if len(ds_dtypes) > 1:
-            raise ValueError(f'Data variables have multiple dtypes, need single dtype: {ds_dtypes}')
+        ds_dtypes = [d.dtype for d in ds_in.data_vars.values()]
 
         ds_out = xr.apply_ufunc(
             self._regrid_array,
@@ -566,7 +561,7 @@ class BaseRegridder(object):
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
-            output_dtypes=list(ds_dtypes),
+            output_dtypes=ds_dtypes,
             output_sizes={
                 temp_horiz_dims[0]: self.shape_out[0],
                 temp_horiz_dims[1]: self.shape_out[1],

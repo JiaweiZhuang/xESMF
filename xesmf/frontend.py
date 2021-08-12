@@ -527,9 +527,11 @@ class BaseRegridder(object):
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
             output_dtypes=[dr_in.dtype],
-            output_sizes={
-                temp_horiz_dims[0]: self.shape_out[0],
-                temp_horiz_dims[1]: self.shape_out[1],
+            dask_gufunc_kwargs={
+                'output_sizes': {
+                    temp_horiz_dims[0]: self.shape_out[0],
+                    temp_horiz_dims[1]: self.shape_out[1],
+                },
             },
             keep_attrs=keep_attrs,
         )
@@ -562,9 +564,11 @@ class BaseRegridder(object):
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
             output_dtypes=ds_dtypes,
-            output_sizes={
-                temp_horiz_dims[0]: self.shape_out[0],
-                temp_horiz_dims[1]: self.shape_out[1],
+            dask_gufunc_kwargs={
+                'output_sizes': {
+                    temp_horiz_dims[0]: self.shape_out[0],
+                    temp_horiz_dims[1]: self.shape_out[1],
+                },
             },
             keep_attrs=keep_attrs,
         )

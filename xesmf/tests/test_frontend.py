@@ -32,6 +32,7 @@ ds_out['data_ref'] = xe.data.wave_smooth(ds_out['lon'], ds_out['lat'])
 ds_in.coords['time'] = np.arange(7) + 1
 ds_in.coords['lev'] = np.arange(11) + 1
 ds_in['data4D'] = ds_in['time'] * ds_in['lev'] * ds_in['data']
+ds_in['data4D_f4'] = ds_in['data4D'].astype('f4')
 ds_out['data4D_ref'] = ds_in['time'] * ds_in['lev'] * ds_out['data_ref']
 
 # use non-divisible chunk size to catch edge cases
@@ -50,7 +51,7 @@ ds_savg = xr.Dataset(
         'lat_b': (('lat_b',), [0, 1, 2]),
         'lon_b': (('lon_b',), [0, 1, 2, 3]),
     },
-    data_vars={'abc': (('lon', 'lat'), [[1, 2], [3, 4], [2, 4]])},
+    data_vars={'abc': (('lon', 'lat'), [[1.0, 2.0], [3.0, 4.0], [2.0, 4.0]])},
 )
 polys = [
     Polygon([[0.5, 0.5], [0.5, 1.5], [1.5, 0.5]]),  # Simple triangle polygon
@@ -274,6 +275,29 @@ def ds_2d_to_1d(ds):
     ds_1d.coords['lon'] = ds_1d['lon']
     ds_1d.coords['lat'] = ds_1d['lat']
     return ds_1d
+
+
+@pytest.mark.parametrize('dtype', ['float32', 'float64'])
+@pytest.mark.parametrize(
+    'data_in',
+    [
+        pytest.param(np.array(ds_in['data']), id='np.ndarray'),
+        pytest.param(xr.DataArray(ds_in['data']), id='xr.DataArray input'),
+        pytest.param(xr.Dataset(ds_in[['data']]), id='xr.Dataset input'),
+        pytest.param(ds_in['data'].chunk(), id='da.Array input'),
+    ],
+)
+def test_regridded_respects_input_dtype(dtype, data_in):
+    """Tests regridded output has same dtype as input"""
+    data_in = data_in.astype(dtype)
+    regridder = xe.Regridder(ds_in, ds_out, 'bilinear')  # Make this a fixture?
+    out = regridder(data_in)
+
+    if 'data' in data_in:
+        # When data_in is xr.Dataset, a mapping...
+        assert out['data'].dtype == data_in['data'].dtype
+    else:
+        assert out.dtype == data_in.dtype
 
 
 def test_regrid_with_1d_grid():
@@ -527,6 +551,9 @@ def test_regrid_dataset():
         ds_result['data4D'].values.mean(axis=(2, 3)),
         decimal=10,
     )
+
+    assert ds_result['data4D'].dtype == np.dtype('f8')
+    assert ds_result['data4D_f4'].dtype == np.dtype('f4')
 
     # check metadata
     xr.testing.assert_identical(ds_result['time'], ds_in['time'])

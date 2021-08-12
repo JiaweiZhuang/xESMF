@@ -5,7 +5,7 @@ import xesmf as xe
 
 
 def test_add_nans_to_weights():
-    """ testing adding Nans to empty rows in sparse matrix """
+    """testing adding Nans to empty rows in sparse matrix"""
     # create input sparse matrix with one empty row (j=2)
     row = np.array([0, 3, 1, 0])
     col = np.array([0, 3, 1, 2])

@@ -118,6 +118,8 @@ def apply_weights(weights, indata, shape_in, shape_out):
     indata_flat = indata.reshape(-1, shape_in[0] * shape_in[1])
     outdata_flat = weights.dot(indata_flat.T).T
 
+    outdata_flat = outdata_flat.astype(indata_flat.dtype)
+
     # unflattened output array
     outdata = outdata_flat.reshape([*extra_shape, shape_out[0], shape_out[1]])
     return outdata

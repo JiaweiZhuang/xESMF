@@ -15,4 +15,4 @@ dependencies:
   - pytest-cov
   - scipy
   - shapely
-  - xarray
+  - xarray>=0.17.0

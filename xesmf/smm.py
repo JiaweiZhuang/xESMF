@@ -40,14 +40,34 @@ def read_weights(weights, n_in, n_out):
     if isinstance(weights, (str, Path, xr.Dataset, dict)):
         weights = _parse_coords_and_values(weights, n_in, n_out)
 
-    elif isinstance(weights, xr.DataArray):
-        return weights
+    elif isinstance(weights, sps.COO):
+        weights = xr.DataArray(weights, dims=('out_dim', 'in_dim'), name='weights')
 
-    # else : isinstance(weights, sps.COO):
-    return xr.DataArray(weights, dims=('out_dim', 'in_dim'), name='weights')
+    elif not isinstance(weights, xr.DataArray):
+        raise ValueError(f'Weights of type {type(weights)} not understood.')
+
+    return weights
 
 
 def _parse_coords_and_values(indata, n_in, n_out):
+    """Creates a sparse.COO array from weights stored in a dict-like fashion.
+
+    Parameters
+    ----------
+    indata: str, Path, xr.Dataset or dict
+      A dictionary as returned by ESMF.Regrid.get_weights_dict
+      or an xarray Dataset (or its path) as saved by xESMF.
+    n_in : int
+      The number of points in the input grid.
+    n_out : int
+      The number of points in the output grid.
+
+    Returns
+    -------
+    sparse.COO
+      Sparse array in the COO format.
+    """
+
     if isinstance(indata, (str, Path, xr.Dataset)):
         if not isinstance(indata, xr.Dataset):
             if not Path(indata).exists():
@@ -77,7 +97,7 @@ def _parse_coords_and_values(indata, n_in, n_out):
         S = indata['weights']
 
     crds = np.stack([row, col])
-    return sps.COO(crds, S, (n_out, n_in))
+    return xr.DataArray(sps.COO(crds, S, (n_out, n_in)), dims=('out_dim', 'in_dim'), name='weights')
 
 
 def apply_weights(weights, indata, shape_in, shape_out):

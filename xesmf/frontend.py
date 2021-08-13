@@ -504,7 +504,7 @@ class BaseRegridder(object):
         outdata = da.map_blocks(
             self._regrid_array,
             indata,
-            dtype=float,
+            dtype=indata.dtype,
             chunks=output_chunk_shape,
             skipna=skipna,
             na_thres=na_thres,
@@ -526,10 +526,12 @@ class BaseRegridder(object):
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
-            output_dtypes=[float],
-            output_sizes={
-                temp_horiz_dims[0]: self.shape_out[0],
-                temp_horiz_dims[1]: self.shape_out[1],
+            output_dtypes=[dr_in.dtype],
+            dask_gufunc_kwargs={
+                'output_sizes': {
+                    temp_horiz_dims[0]: self.shape_out[0],
+                    temp_horiz_dims[1]: self.shape_out[1],
+                },
             },
             keep_attrs=keep_attrs,
         )
@@ -552,6 +554,8 @@ class BaseRegridder(object):
         ]
         ds_in = ds_in.drop_vars(non_regriddable)
 
+        ds_dtypes = [d.dtype for d in ds_in.data_vars.values()]
+
         ds_out = xr.apply_ufunc(
             self._regrid_array,
             ds_in,
@@ -559,10 +563,12 @@ class BaseRegridder(object):
             input_core_dims=[input_horiz_dims],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
-            output_dtypes=[float],
-            output_sizes={
-                temp_horiz_dims[0]: self.shape_out[0],
-                temp_horiz_dims[1]: self.shape_out[1],
+            output_dtypes=ds_dtypes,
+            dask_gufunc_kwargs={
+                'output_sizes': {
+                    temp_horiz_dims[0]: self.shape_out[0],
+                    temp_horiz_dims[1]: self.shape_out[1],
+                },
             },
             keep_attrs=keep_attrs,
         )

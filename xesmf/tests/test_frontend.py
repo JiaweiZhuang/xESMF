@@ -5,7 +5,6 @@ import cf_xarray as cfxr
 import dask
 import numpy as np
 import pytest
-import scipy.sparse as sps
 import xarray as xr
 from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 from shapely.geometry import MultiPolygon, Polygon
@@ -221,15 +220,16 @@ def test_to_netcdf_nans(tmp_path):
     e = xr.open_dataset(efn)
 
     # Reformat to sparse COO matrix
-    smat = sps.coo_matrix(
-        (e.S.values, (e.row.values - 1, e.col.values - 1)),
-        shape=[np.prod(ds_out['lon'].shape), np.prod(ds_in['lon'].shape)],
-    )
+    smat = xe.smm.read_weights(e, np.prod(ds_in['lon'].shape), np.prod(ds_out['lon'].shape))
     # Add NaNs to weights
     smat = xe.smm.add_nans_to_weights(smat)
     # Updating the dataset
     e_nans = xr.Dataset(
-        {'S': (['n_s'], smat.data), 'row': (['n_s'], smat.row + 1), 'col': (['n_s'], smat.col + 1)}
+        {
+            'S': (['n_s'], smat.data.data),
+            'row': (['n_s'], smat.data.coords[0, :] + 1),
+            'col': (['n_s'], smat.data.coords[1, :] + 1),
+        }
     )
     # Comparison
     xr.testing.assert_identical(x, e_nans)

@@ -13,6 +13,6 @@ dependencies:
   - pydap
   - pytest
   - pytest-cov
-  - scipy
   - shapely
+  - sparse
   - xarray>=0.17.0

@@ -174,7 +174,7 @@ def test_regrid():
     assert np.max(np.abs(rel_err)) < 0.05
 
     # apply regridding using scipy
-    weights = read_weights(filename, lon_in.size, lon_out.size)
+    weights = read_weights(filename, lon_in.size, lon_out.size).data
     shape_in = lon_in.shape
     shape_out = lon_out.shape
     data_out_scipy = apply_weights(weights, data_in, shape_in, shape_out)
@@ -267,21 +267,21 @@ def test_read_weights(tmp_path):
 
     # Test Path and string to netCDF file against weights dictionary
     np.testing.assert_array_equal(
-        read_weights(fn, lon_in.size, lon_out.size).todense(), sm.todense()
+        read_weights(fn, lon_in.size, lon_out.size).data.todense(), sm.data.todense()
     )
     np.testing.assert_array_equal(
-        read_weights(str(fn), lon_in.size, lon_out.size).todense(), sm.todense()
+        read_weights(str(fn), lon_in.size, lon_out.size).data.todense(), sm.data.todense()
     )
 
     # Test xr.Dataset
     np.testing.assert_array_equal(
-        read_weights(xr.open_dataset(fn), lon_in.size, lon_out.size).todense(),
-        sm.todense(),
+        read_weights(xr.open_dataset(fn), lon_in.size, lon_out.size).data.todense(),
+        sm.data.todense(),
     )
 
     # Test COO matrix
     np.testing.assert_array_equal(
-        read_weights(sm, lon_in.size, lon_out.size).todense(), sm.todense()
+        read_weights(sm, lon_in.size, lon_out.size).data.todense(), sm.data.todense()
     )
 
     # Test failures

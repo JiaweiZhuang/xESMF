@@ -1,7 +1,7 @@
 What's new
 ==========
 
-0.6.1 (unreleased)
+0.6.1 (23-09-2021)
 ------------------
 
 Internal changes

@@ -81,7 +81,7 @@ def test_mom6like_to_5x5():
 
 @pytest.mark.testcases
 def test_mom6_to_1x1():
-    """ check regridding of MOM6 to regular lon/lat """
+    """check regridding of MOM6 to regular lon/lat"""
 
     dataurl = 'http://35.188.34.63:8080/thredds/dodsC/OM4p5/'
     mom6 = xr.open_dataset(

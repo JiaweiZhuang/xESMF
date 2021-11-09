@@ -59,11 +59,11 @@ polys = [
             Polygon([[0.25, 1.25], [0.25, 1.75], [0.75, 1.75], [0.75, 1.25]]),
             Polygon([[1.25, 1.25], [1.25, 1.75], [1.75, 1.75], [1.75, 1.25]]),
         ]
-    ),  # Multipolygon on 3 and 4
+    ),  # Multipolygon on 2 and 4
     Polygon(
         [[0, 0], [0, 1], [2, 1], [2, 0]],
         holes=[[[0.5, 0.25], [0.5, 0.75], [1.0, 0.75], [1.0, 0.25]]],
-    ),  # Simple polygon covering 1 and 2 with hole spanning on both
+    ),  # Simple polygon covering 1 and 3 with hole over 1
     Polygon([[1, 1], [1, 3], [3, 3], [3, 1]]),  # Polygon partially outside, covering a part of 4
     Polygon([[3, 3], [3, 4], [4, 4], [4, 3]]),  # Polygon totally outside
     Polygon(
@@ -80,8 +80,17 @@ polys = [
             [2, 0],
         ]
     ),  # Long multifaceted polygon
+    [
+        Polygon([[0.5, 0.5], [0.5, 1.5], [1.5, 0.5]]),
+        MultiPolygon(
+            [
+                Polygon([[0.25, 1.25], [0.25, 1.75], [0.75, 1.75], [0.75, 1.25]]),
+                Polygon([[1, 1], [1, 2], [2, 2], [2, 1]]),
+            ]
+        ),
+    ],  # Combination of Polygon and MultiPolygon with two different areas
 ]
-exps_polys = [1.75, 3, 2.1429, 4, 0, 2.5]
+exps_polys = [1.75, 3, 2.1429, 4, 0, 2.5, [1.75, 3.6]]
 
 
 def test_as_2d_mesh():
@@ -154,11 +163,11 @@ def test_existing_weights():
     # make sure we can reuse weights
     assert os.path.exists(fn)
     regridder_reuse = xe.Regridder(ds_in, ds_out, method, weights=fn)
-    assert regridder_reuse.A.shape == regridder.A.shape
+    assert regridder_reuse.weights.shape == regridder.weights.shape
 
     # this should also work with reuse_weights=True
     regridder_reuse = xe.Regridder(ds_in, ds_out, method, reuse_weights=True, weights=fn)
-    assert regridder_reuse.A.shape == regridder.A.shape
+    assert regridder_reuse.weights.shape == regridder.weights.shape
 
     # or can also overwrite it
     xe.Regridder(ds_in, ds_out, method)
@@ -166,7 +175,7 @@ def test_existing_weights():
     # check legacy args still work
     regridder = xe.Regridder(ds_in, ds_out, method, filename='wgts.nc')
     regridder_reuse = xe.Regridder(ds_in, ds_out, method, reuse_weights=True, filename='wgts.nc')
-    assert regridder_reuse.A.shape == regridder.A.shape
+    assert regridder_reuse.weights.shape == regridder.weights.shape
 
     # check fails on non-existent file
     with pytest.raises(OSError):
@@ -621,11 +630,62 @@ def test_ds_to_ESMFlocstream():
 
 @pytest.mark.parametrize('poly,exp', list(zip(polys, exps_polys)))
 def test_spatial_averager(poly, exp):
-    savg = xe.SpatialAverager(ds_savg, [poly], geom_dim_name='my_geom')
+    if isinstance(poly, (Polygon, MultiPolygon)):
+        poly = [poly]
+    savg = xe.SpatialAverager(ds_savg, poly, geom_dim_name='my_geom')
     out = savg(ds_savg.abc)
     assert_allclose(out, exp, rtol=1e-3)
 
     assert 'my_geom' in out.dims
+
+
+def test_compare_weights_from_poly_and_grid():
+    """Confirm that the weights are identical when they are computed from a grid->grid and grid->poly."""
+
+    # Global grid
+    ds = xe.util.grid_global(20, 12, cf=True)
+
+    # A single destination tile
+    tile = xe.util.cf_grid_2d(-40, -80, -40, 0, 80, 80)
+    ds['a'] = xr.DataArray(
+        np.ones((ds.lon.size, ds.lat.size)),
+        coords={'lat': ds.lat, 'lon': ds.lon},
+        dims=('lon', 'lat'),
+    )
+
+    # Create polygon from tile corners
+    x1, x2 = tile.lon_bounds
+    y1, y2 = tile.lat_bounds
+    poly = Polygon([(x1, y1), (x2, y1), (x2, y2), (x1, y2)])
+
+    # Regrid using two identical destination grids (in theory)
+    rgrid = xe.Regridder(ds, tile, method='conservative')
+    rpoly = xe.SpatialAverager(ds, [poly])
+
+    # Normally, weights should be identical, but this fails
+    np.testing.assert_array_almost_equal(rgrid.weights.data.todense(), rpoly.weights.data.todense())
+
+    # Visualize the weights
+    wg = np.reshape(rgrid.weights.data.todense(), ds.a.T.shape)
+    wp = np.reshape(rpoly.weights.data.todense(), ds.a.T.shape)
+
+    ds['wg'] = (('lat', 'lon'), wg)
+    ds['wp'] = (('lat', 'lon'), wp)
+
+    # Figure of weights in two cases
+    # from matplotlib import pyplot as plt
+    # fig, (ax1, ax2) = plt.subplots(1, 2)
+    # ds.wg.plot(ax=ax1); ds.wp.plot(ax=ax2)
+    # ax1.set_title("Regridder weights")
+    # ax2.set_title("SpatialAverager weights")
+    # plt.show()
+
+    # Check that source area affects weights
+    i = ds.indexes['lon'].get_loc(-55, method='nearest')
+    j1 = ds.indexes['lat'].get_loc(12, method='nearest')
+    j2 = ds.indexes['lat'].get_loc(72, method='nearest')
+    assert ds.wg.isel(lon=i, lat=j1) > ds.wg.isel(lon=i, lat=j2)
+    assert ds.wp.isel(lon=i, lat=j1).data > ds.wp.isel(lon=i, lat=j2).data  # Fails
 
 
 def test_polys_to_ESMFmesh():

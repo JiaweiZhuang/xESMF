@@ -1,6 +1,14 @@
 What's new
 ==========
 
+0.6.2 (unreleased)
+------------------
+
+Bug fixes
+~~~~~~~~~
+- SpatialAverager did not compute the same weights as Regridder when source cell areas were not uniform (:pull:`128`). By `David Huard <https://github.com/huard>`_
+
+
 0.6.1 (23-09-2021)
 ------------------
 

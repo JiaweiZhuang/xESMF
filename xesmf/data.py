@@ -6,7 +6,7 @@ import numpy as np
 
 
 def wave_smooth(lon, lat):
-    """
+    r"""
     Spherical harmonic with low frequency.
 
     Parameters

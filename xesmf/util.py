@@ -72,17 +72,68 @@ def grid_2d(lon0_b, lon1_b, d_lon, lat0_b, lat1_b, d_lat):
     return ds
 
 
-def grid_global(d_lon, d_lat):
+def cf_grid_2d(lon0_b, lon1_b, d_lon, lat0_b, lat1_b, d_lat):
+    """
+    CF compliant 2D rectilinear grid centers and bounds.
+
+    Parameters
+    ----------
+    lon0_b, lon1_b : float
+        Longitude bounds
+
+    d_lon : float
+        Longitude step size, i.e. grid resolution
+
+    lat0_b, lat1_b : float
+        Latitude bounds
+
+    d_lat : float
+        Latitude step size, i.e. grid resolution
+
+    Returns
+    -------
+    ds : xarray.DataSet with coordinate values
+
+    """
+    from cf_xarray import vertices_to_bounds
+
+    lon_1d, lon_b_1d = _grid_1d(lon0_b, lon1_b, d_lon)
+    lat_1d, lat_b_1d = _grid_1d(lat0_b, lat1_b, d_lat)
+
+    ds = xr.Dataset(
+        coords={
+            'lon': (
+                'lon',
+                lon_1d,
+                {'standard_name': 'longitude', 'units': 'degrees_east', 'bounds': 'lon_bounds'},
+            ),
+            'lat': (
+                'lat',
+                lat_1d,
+                {'standard_name': 'latitude', 'units': 'degrees_north', 'bounds': 'lat_bounds'},
+            ),
+        },
+        data_vars={
+            'lon_bounds': vertices_to_bounds(lon_b_1d, ('bound', 'lon')),
+            'lat_bounds': vertices_to_bounds(lat_b_1d, ('bound', 'lat')),
+        },
+    )
+
+    return ds
+
+
+def grid_global(d_lon, d_lat, cf=False):
     """
     Global 2D rectilinear grid centers and bounds
 
     Parameters
     ----------
     d_lon : float
-        Longitude step size, i.e. grid resolution
-
+      Longitude step size, i.e. grid resolution
     d_lat : float
-        Latitude step size, i.e. grid resolution
+      Latitude step size, i.e. grid resolution
+    cf : bool
+      Return a CF compliant grid.
 
     Returns
     -------
@@ -102,6 +153,9 @@ def grid_global(d_lon, d_lat):
             'might not cover the globe uniformally'.format(d_lat)
         )
 
+    if cf:
+        return cf_grid_2d(-180, 180, d_lon, -90, 90, d_lat)
+
     return grid_2d(-180, 180, d_lon, -90, 90, d_lat)
 
 
@@ -109,7 +163,7 @@ def _flatten_poly_list(polys):
     """Iterator flattening MultiPolygons."""
     for i, poly in enumerate(polys):
         if isinstance(poly, MultiPolygon):
-            for sub_poly in poly:
+            for sub_poly in poly.geoms:
                 yield (i, sub_poly)
         else:
             yield (i, poly)

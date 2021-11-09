@@ -1,8 +1,10 @@
 build:
   image: latest
 
-python:
-  version: 3.6
-  setup_py_install: true
+version: 2
 
-requirements_file: doc/requirements.txt
+python:
+  install:
+    - requirements: doc/requirements.txt
+    - method: pip
+      path: .

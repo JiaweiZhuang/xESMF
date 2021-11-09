@@ -4,6 +4,7 @@ descartes
 ipython
 Pygments>=2.6
 nbsphinx
-sphinx==3.2.1
+sphinx
 sphinx_rtd_theme
 cf_xarray
+docutils!=0.18

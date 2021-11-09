@@ -21,7 +21,7 @@ def read_weights(weights, n_in, n_out):
         a dictionary created by `ESMPy.api.Regrid.get_weights_dict` or directly the sparse
         array as returned by this function.
 
-    N_in, N_out : integers
+    n_in, n_out : integers
         ``(N_out, N_in)`` will be the shape of the returning sparse matrix.
         They are the total number of grid boxes in input and output grids::
 
@@ -76,7 +76,7 @@ def _parse_coords_and_values(indata, n_in, n_out):
         else:
             ds_w = indata
 
-        if not set(['col', 'row', 'S']).issubset(ds_w.variables):
+        if not {'col', 'row', 'S'}.issubset(ds_w.variables):
             raise ValueError(
                 'Weights dataset should have variables `col`, `row` and `S` storing the indices and '
                 'values of weights.'
@@ -84,20 +84,20 @@ def _parse_coords_and_values(indata, n_in, n_out):
 
         col = ds_w['col'].values - 1  # Python starts with 0
         row = ds_w['row'].values - 1
-        S = ds_w['S'].values
+        s = ds_w['S'].values
 
     elif isinstance(indata, dict):
-        if not set(['col_src', 'row_dst', 'weights']).issubset(indata.keys()):
+        if not {'col_src', 'row_dst', 'weights'}.issubset(indata.keys()):
             raise ValueError(
                 'Weights dictionary should have keys `col_src`, `row_dst` and `weights` storing the '
                 'indices and values of weights.'
             )
         col = indata['col_src'] - 1
         row = indata['row_dst'] - 1
-        S = indata['weights']
+        s = indata['weights']
 
     crds = np.stack([row, col])
-    return xr.DataArray(sps.COO(crds, S, (n_out, n_in)), dims=('out_dim', 'in_dim'), name='weights')
+    return xr.DataArray(sps.COO(crds, s, (n_out, n_in)), dims=('out_dim', 'in_dim'), name='weights')
 
 
 def apply_weights(weights, indata, shape_in, shape_out):
@@ -106,11 +106,10 @@ def apply_weights(weights, indata, shape_in, shape_out):
 
     Parameters
     ----------
-    A : sparse COO matrix
-
+    weights : sparse COO matrix
+      Regridding weights.
     indata : numpy array of shape ``(..., n_lat, n_lon)`` or ``(..., n_y, n_x)``.
         Should be C-ordered. Will be then tranposed to F-ordered.
-
     shape_in, shape_out : tuple of two integers
         Input/output data shape for unflatten operation.
         For rectilinear grid, it is just ``(n_lat, n_lon)``.
@@ -176,18 +175,18 @@ def add_nans_to_weights(weights):
 
     # Taken from @trondkr and adapted by @raphaeldussin to use `lil`.
     # lil matrix is better than CSR when changing sparsity
-    M = weights.data.to_scipy_sparse().tolil()
+    m = weights.data.to_scipy_sparse().tolil()
     # replace empty rows by one NaN value at element 0 (arbitrary)
     # so that remapped element become NaN instead of zero
-    for krow in range(len(M.rows)):
-        M.rows[krow] = [0] if M.rows[krow] == [] else M.rows[krow]
-        M.data[krow] = [np.NaN] if M.data[krow] == [] else M.data[krow]
+    for krow in range(len(m.rows)):
+        m.rows[krow] = [0] if m.rows[krow] == [] else m.rows[krow]
+        m.data[krow] = [np.NaN] if m.data[krow] == [] else m.data[krow]
     # update regridder weights (in COO)
-    weights = weights.copy(data=sps.COO.from_scipy_sparse(M))
+    weights = weights.copy(data=sps.COO.from_scipy_sparse(m))
     return weights
 
 
-def _combine_weight_multipoly(weights, indexes):
+def _combine_weight_multipoly(weights, areas, indexes):
     """Reduce a weight sparse matrix (csc format) by combining (adding) columns.
 
     This is used to sum individual weight matrices from multi-part geometries.
@@ -196,6 +195,8 @@ def _combine_weight_multipoly(weights, indexes):
     ----------
     weights : DataArray
       Usually backed by a sparse.COO array, with dims ('out_dim', 'in_dim')
+    areas : np.array
+      Array of destination areas, following same order as weights.
     indexes : array of integers
       Columns with the same "index" will be summed into a single column at this
       index in the output matrix.
@@ -205,12 +206,28 @@ def _combine_weight_multipoly(weights, indexes):
     sparse matrix (CSC)
       Sum of weights from individual geometries.
     """
-    indexes = np.atleast_1d(indexes)
-    columns = []
-    # The list.append ensures each summed column has the index of the value in `indexes`.
-    for i in range(indexes.max() + 1):
-        # Sum the colums with the same indexes in `indexes`
-        columns.append(weights.isel(out_dim=(indexes == i)).sum('out_dim'))
 
-    # Concat and transpose for coherence with the rest of xesmf.
-    return xr.concat(columns, 'out_dim')
+    sub_weights = weights.rename(out_dim='subgeometries')
+
+    # Create a sparse DataArray with the mesh areas
+    # This ties the `out_dim` (the dimension for the original geometries) to the
+    # subgeometries dimension (the exploded polygon exteriors and interiors).
+    crds = np.stack([indexes, np.arange(len(indexes))])
+    a = xr.DataArray(
+        sps.COO(crds, areas, (indexes.max() + 1, len(indexes)), fill_value=0),
+        dims=('out_dim', 'subgeometries'),
+        name='area',
+    )
+
+    # Weight the regridding weights by the area of the destination polygon and sum over sub-geometries
+    out = (sub_weights * a).sum(dim='subgeometries')
+
+    # Renormalize weights along in_dim
+    wsum = out.sum('in_dim')
+
+    # Change the fill_value to 1
+    wsum = wsum.copy(
+        data=sps.COO(wsum.data.coords, wsum.data.data, shape=wsum.data.shape, fill_value=1)
+    )
+
+    return out / wsum

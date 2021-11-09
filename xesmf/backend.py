@@ -250,7 +250,7 @@ class Mesh(ESMF.Mesh):
         """
         node_num = sum(e.exterior.coords.array_interface()['shape'][0] - 1 for e in polys)
         elem_num = len(polys)
-        # Pre alloc arrays. Special stucture for coords makes the code faster.
+        # Pre alloc arrays. Special structure for coords makes the code faster.
         crd_dt = np.dtype([('x', np.float32), ('y', np.float32)])
         node_coords = np.empty(node_num, dtype=crd_dt)
         node_coords[:] = (np.nan, np.nan)  # Fill with impossible values

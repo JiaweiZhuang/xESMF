@@ -753,3 +753,23 @@ def test_locstream_dim_name(var_renamer, dim_out):
     expected = {'lev', 'time', 'x_b', 'y_b', dim_out}
     actual = set(regridder(ds_in).dims)
     assert expected == actual
+
+
+def test_spatial_averager_mask():
+    poly = Polygon([[0.5, 0.5], [1.5, 0.5], [1.5, 1.5], [0.5, 1.5]])
+    ds = ds_savg.copy(deep=True)
+    ds.abc[1, 1] = np.nan
+    savg = xe.SpatialAverager(ds, [poly], geom_dim_name='my_geom')
+
+    # Without mask, we expect NaNs to propagate
+    out = savg(ds.abc)
+    assert out.isnull()
+
+    # With masking, the NaN should be ignored.
+    mask = ds.abc.notnull()
+    dsm = ds.assign(
+        mask=mask.T
+    )  # TODO: open an issue about the fact that this fails without a transpose.
+    savg = xe.SpatialAverager(dsm, [poly], geom_dim_name='my_geom')
+    out = savg(dsm.abc)
+    assert_allclose(out, 2, rtol=1e-3)

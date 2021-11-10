@@ -432,7 +432,7 @@ class BaseRegridder(object):
 
         Returns
         -------
-        outdata : Data type is the same as input data type.
+        outdata : Data type is the same as input data type, except for datasets.
             On the same horizontal grid as ``ds_out``,
             with extra dims in ``dr_in``.
 
@@ -442,6 +442,10 @@ class BaseRegridder(object):
             - (n_y_out, n_x_out), if ``dr_in`` is 2D
             - (n_time, n_lev, n_y_out, n_x_out), if ``dr_in`` has shape
               (n_time, n_lev, n_y, n_x)
+
+            Datasets with dask-backed variables will have modified dtypes.
+            If all input variables are 'float32', all output will be 'float32',
+            for any other case, all outputs will be 'float64'.
 
         """
         if isinstance(indata, np.ndarray):
@@ -560,7 +564,15 @@ class BaseRegridder(object):
         ]
         ds_in = ds_in.drop_vars(non_regriddable)
 
-        ds_dtypes = [d.dtype for d in ds_in.data_vars.values()]
+        # Select dtype (only relevant for dask-backed arrays, this has no effect otherwise)
+        dtypes = set(da.dtype for da in ds_in.data_vars.values())
+        if len(dtypes) == 1:
+            out_dtype = dtypes.pop()
+        else:
+            size = 1  # init to 1 byte
+            for d in dtypes:
+                size = max(size, d.itemsize)  # use max number of bytes found in dtypes
+                out_dtype = np.dtype(f'f{size}')
 
         ds_out = xr.apply_ufunc(
             self._regrid_array,
@@ -570,7 +582,7 @@ class BaseRegridder(object):
             input_core_dims=[input_horiz_dims, ('out_dim', 'in_dim')],
             output_core_dims=[temp_horiz_dims],
             dask='parallelized',
-            output_dtypes=ds_dtypes,
+            output_dtypes=[out_dtype],
             dask_gufunc_kwargs={
                 'output_sizes': {
                     temp_horiz_dims[0]: self.shape_out[0],
@@ -579,6 +591,13 @@ class BaseRegridder(object):
             },
             keep_attrs=keep_attrs,
         )
+
+        # For dask-backed, we force the dtype to fit the input's
+        # (numpy-backed variables already have been handled in `apply_weights`)
+        for name, data in ds_out.data_vars.items():
+            indtype = ds_in[name].dtype
+            if xr.core.common.is_duck_dask_array(data.data) and data.dtype != indtype:
+                ds_out[name] = data.astype(indtype, keep_attrs=True)
 
         return self._format_xroutput(ds_out, temp_horiz_dims)
 

@@ -411,6 +411,19 @@ def test_regrid_dataarray(use_cfxr):
         xr.testing.assert_identical(dr_out, dr_out_rn)
 
 
+def test_regrid_dataarray_endianess():
+    # xarray.DataArray containing in-memory numpy array
+    regridder = xe.Regridder(ds_in, ds_out, 'conservative')
+
+    exp = regridder(ds_in['data'])  # Normal (little-endian)
+    with pytest.warns(UserWarning, match='Input array has a dtype not supported'):
+        out = regridder(ds_in['data'].astype('>f8'))  # big endian
+
+    # Results should be the same
+    assert_equal(exp.values, out.values)
+    assert out.dtype == '>f8'
+
+
 def test_regrid_dataarray_to_locstream():
     # xarray.DataArray containing in-memory numpy array
 

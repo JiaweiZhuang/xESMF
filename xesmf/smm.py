@@ -5,6 +5,7 @@ Sparse matrix multiplication (SMM) using scipy.sparse library.
 import warnings
 from pathlib import Path
 
+import numba as nb
 import numpy as np
 import sparse as sps
 import xarray as xr
@@ -120,6 +121,15 @@ def apply_weights(weights, indata, shape_in, shape_out):
         Extra dimensions are the same as `indata`.
         If input data is C-ordered, output will also be C-ordered.
     """
+    # Limitation from numba : some big-endian dtypes are not supported.
+    try:
+        nb.from_dtype(indata.dtype)
+        nb.from_dtype(weights.dtype)
+    except NotImplementedError:
+        warnings.warn(
+            'Input array has a dtype not supported by sparse and numba. Falling back to scipy.'
+        )
+        weights = weights.to_scipy_sparse()
 
     # COO matrix is fast with F-ordered array but slow with C-array, so we
     # take in a C-ordered and then transpose)

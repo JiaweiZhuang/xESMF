@@ -15,6 +15,7 @@ from .smm import (
     _parse_coords_and_values,
     add_nans_to_weights,
     apply_weights,
+    check_shapes,
     read_weights,
 )
 from .util import split_polygons_and_holes
@@ -448,10 +449,8 @@ class BaseRegridder(object):
             for any other case, all outputs will be 'float64'.
 
         """
-        if isinstance(indata, np.ndarray):
-            return self.regrid_numpy(indata, skipna=skipna, na_thres=na_thres)
-        elif isinstance(indata, dask_array_type):
-            return self.regrid_dask(indata, skipna=skipna, na_thres=na_thres)
+        if isinstance(indata, dask_array_type + (np.ndarray,)):
+            return self.regrid_array(indata, self.weights.data, skipna=skipna, na_thres=na_thres)
         elif isinstance(indata, xr.DataArray):
             return self.regrid_dataarray(
                 indata, keep_attrs=keep_attrs, skipna=skipna, na_thres=na_thres
@@ -464,11 +463,7 @@ class BaseRegridder(object):
             raise TypeError('input must be numpy array, dask array, xarray DataArray or Dataset!')
 
     @staticmethod
-    def _regrid_array(indata, weights, *, shape_in, shape_out, sequence_in, skipna, na_thres):
-
-        if sequence_in:
-            indata = np.expand_dims(indata, axis=-2)
-
+    def _regrid(indata, weights, *, shape_in, shape_out, skipna, na_thres):
         # skipna: set missing values to zero
         if skipna:
             missing = np.isnan(indata)
@@ -487,62 +482,64 @@ class BaseRegridder(object):
 
         return outdata
 
-    @property
-    def _regrid_kwargs(self):
-        return {
-            'sequence_in': self.sequence_in,
+    def regrid_array(self, indata, weights, skipna=False, na_thres=1.0):
+        """See __call__()."""
+        if self.sequence_in:
+            indata = np.reshape(indata, (*indata.shape[:-1], 1, indata.shape[-1]))
+
+        kwargs = {
             'shape_in': self.shape_in,
             'shape_out': self.shape_out,
         }
 
-    def regrid_numpy(self, indata, skipna=False, na_thres=1.0):
-        """See __call__()."""
-        outdata = self._regrid_array(
-            indata, self.weights.data, skipna=skipna, na_thres=na_thres, **self._regrid_kwargs
-        )
+        check_shapes(indata, weights, **kwargs)
+
+        kwargs.update(skipna=skipna, na_thres=na_thres)
+
+        if isinstance(indata, dask_array_type):  # dask
+            weights = da.from_array(weights, chunks=weights.shape)
+            output_chunks = indata.chunks[:-2] + ((self.shape_out[0],), (self.shape_out[1],))
+
+            outdata = da.map_blocks(
+                self._regrid,
+                indata,
+                weights,
+                dtype=indata.dtype,
+                chunks=output_chunks,
+                meta=np.array((), dtype=indata.dtype),
+                **kwargs,
+            )
+        else:  # numpy
+            outdata = self._regrid(indata, weights, **kwargs)
         return outdata
 
-    def regrid_dask(self, indata, skipna=False, na_thres=1.0):
-        """See __call__()."""
-
-        extra_chunk_shape = indata.chunksize[0:-2]
-
-        output_chunk_shape = extra_chunk_shape + self.shape_out
-
-        outdata = da.map_blocks(
-            self._regrid_array,
-            indata,
-            self.weights.data,
-            dtype=indata.dtype,
-            chunks=output_chunk_shape,
-            skipna=skipna,
-            na_thres=na_thres,
-            **self._regrid_kwargs,
+    def regrid_numpy(self, indata, **kwargs):
+        warnings.warn(
+            '`regrid_numpy()` will be removed in xESMF 0.7, please use `regrid_array` instead.',
+            category=FutureWarning,
         )
+        return self.regrid_array(indata, self.weights.data, **kwargs)
 
-        return outdata
+    def regrid_dask(self, indata, **kwargs):
+        warnings.warn(
+            '`regrid_dask()` will be removed in xESMF 0.7, please use `regrid_array` instead.',
+            category=FutureWarning,
+        )
+        return self.regrid_array(indata, self.weights.data, **kwargs)
 
     def regrid_dataarray(self, dr_in, keep_attrs=False, skipna=False, na_thres=1.0):
         """See __call__()."""
 
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(dr_in)
-        kwargs = self._regrid_kwargs.copy()
-        kwargs.update(skipna=skipna, na_thres=na_thres)
+        kwargs = dict(skipna=skipna, na_thres=na_thres)
         dr_out = xr.apply_ufunc(
-            self._regrid_array,
+            self.regrid_array,
             dr_in,
             self.weights,
             kwargs=kwargs,
             input_core_dims=[input_horiz_dims, ('out_dim', 'in_dim')],
             output_core_dims=[temp_horiz_dims],
-            dask='parallelized',
-            output_dtypes=[dr_in.dtype],
-            dask_gufunc_kwargs={
-                'output_sizes': {
-                    temp_horiz_dims[0]: self.shape_out[0],
-                    temp_horiz_dims[1]: self.shape_out[1],
-                },
-            },
+            dask='allowed',
             keep_attrs=keep_attrs,
         )
 
@@ -554,8 +551,7 @@ class BaseRegridder(object):
         # get the first data variable to infer input_core_dims
         input_horiz_dims, temp_horiz_dims = self._parse_xrinput(ds_in)
 
-        kwargs = self._regrid_kwargs.copy()
-        kwargs.update(skipna=skipna, na_thres=na_thres)
+        kwargs = dict(skipna=skipna, na_thres=na_thres)
 
         non_regriddable = [
             name
@@ -564,40 +560,16 @@ class BaseRegridder(object):
         ]
         ds_in = ds_in.drop_vars(non_regriddable)
 
-        # Select dtype (only relevant for dask-backed arrays, this has no effect otherwise)
-        dtypes = set(da.dtype for da in ds_in.data_vars.values())
-        if len(dtypes) == 1:
-            out_dtype = dtypes.pop()
-        else:
-            size = 1  # init to 1 byte
-            for d in dtypes:
-                size = max(size, d.itemsize)  # use max number of bytes found in dtypes
-                out_dtype = np.dtype(f'f{size}')
-
         ds_out = xr.apply_ufunc(
-            self._regrid_array,
+            self.regrid_array,
             ds_in,
             self.weights,
             kwargs=kwargs,
             input_core_dims=[input_horiz_dims, ('out_dim', 'in_dim')],
             output_core_dims=[temp_horiz_dims],
-            dask='parallelized',
-            output_dtypes=[out_dtype],
-            dask_gufunc_kwargs={
-                'output_sizes': {
-                    temp_horiz_dims[0]: self.shape_out[0],
-                    temp_horiz_dims[1]: self.shape_out[1],
-                },
-            },
+            dask='allowed',
             keep_attrs=keep_attrs,
         )
-
-        # For dask-backed, we force the dtype to fit the input's
-        # (numpy-backed variables already have been handled in `apply_weights`)
-        for name, data in ds_out.data_vars.items():
-            indtype = ds_in[name].dtype
-            if xr.core.common.is_duck_dask_array(data.data) and data.dtype != indtype:
-                ds_out[name] = data.astype(indtype, keep_attrs=True)
 
         return self._format_xroutput(ds_out, temp_horiz_dims)
 

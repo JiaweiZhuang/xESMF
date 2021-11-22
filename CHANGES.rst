@@ -7,8 +7,12 @@ What's new
 Bug fixes
 ~~~~~~~~~
 - The introduction of `sparse`, with `numba` under the hood, restricted input data to little-endian dtypes. In those cases, xESMF switches back to using scipy (:pull:`125`). By `Pascal Bourgault <https://github.com/aulemahal>`_
-- Regridding datasets with dask-backed variables is fixed. Dtype of the outputs is changed for this specific case. By `Pascal Bourgault <https://github.com/aulemahal>`_
 - SpatialAverager did not compute the same weights as Regridder when source cell areas were not uniform (:pull:`128`). By `David Huard <https://github.com/huard>`_
+- Refactor of how the regridding is called internally, to fix a bug with dask and sparse (:pull:`135`). By `Pascal Bourgault <https://github.com/aulemahal>`_
+
+Internal changes
+~~~~~~~~~~~~~~~~
+- Deprecation of ``regrid_numpy`` and ``regrid_dask`` is scheduled for 0.7.0. All checks on shape, array layout and numba support are now done at call time, rather then at computation time (:pull:`135`).
 
 0.6.1 (23-09-2021)
 ------------------

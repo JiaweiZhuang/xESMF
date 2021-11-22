@@ -1,7 +1,6 @@
 """
 Sparse matrix multiplication (SMM) using scipy.sparse library.
 """
-
 import warnings
 from pathlib import Path
 
@@ -101,6 +100,61 @@ def _parse_coords_and_values(indata, n_in, n_out):
     return xr.DataArray(sps.COO(crds, s, (n_out, n_in)), dims=('out_dim', 'in_dim'), name='weights')
 
 
+def check_shapes(indata, weights, shape_in, shape_out):
+    """Compare the shapes of the input array, the weights and the regridder and raises
+    potential errors.
+
+    Parameters
+    ----------
+    indata : array
+      Input array with the two spatial dimensions at the end,
+      which should fit shape_in.
+    weights : array
+      Weights 2D array of shape (out_dim, in_dim).
+      First element should be the product of shape_out.
+      Second element should be the product of shape_in.
+    shape_in : 2-tuple of int
+      Shape of the input of the Regridder.
+    shape_out : 2-tuple of int
+      Shape of the output of the Regridder.
+
+    Raises
+    ------
+    ValueError
+      If any of the conditions is not respected.
+    """
+    # COO matrix is fast with F-ordered array but slow with C-array, so we
+    # take in a C-ordered and then transpose)
+    # (CSR or CRS matrix is fast with C-ordered array but slow with F-array)
+    if hasattr(indata, 'flags') and not indata.flags['C_CONTIGUOUS']:
+        warnings.warn('Input array is not C_CONTIGUOUS. ' 'Will affect performance.')
+
+    # Limitation from numba : some big-endian dtypes are not supported.
+    try:
+        nb.from_dtype(indata.dtype)
+        nb.from_dtype(weights.dtype)
+    except NotImplementedError:
+        warnings.warn(
+            'Input array has a dtype not supported by sparse and numba.'
+            'Computation will fall back to scipy.'
+        )
+
+    # get input shape information
+    shape_horiz = indata.shape[-2:]
+
+    if shape_horiz != shape_in:
+        raise ValueError(
+            f'The horizontal shape of input data is {shape_horiz}, different from that '
+            f'of the regridder {shape_in}!'
+        )
+
+    if shape_in[0] * shape_in[1] != weights.shape[1]:
+        raise ValueError('ny_in * nx_in should equal to weights.shape[1]')
+
+    if shape_out[0] * shape_out[1] != weights.shape[0]:
+        raise ValueError('ny_out * nx_out should equal to weights.shape[0]')
+
+
 def apply_weights(weights, indata, shape_in, shape_out):
     """
     Apply regridding weights to data.
@@ -121,47 +175,26 @@ def apply_weights(weights, indata, shape_in, shape_out):
         Extra dimensions are the same as `indata`.
         If input data is C-ordered, output will also be C-ordered.
     """
+    extra_shape = indata.shape[0:-2]
+
+    # use flattened array for dot operation
+    indata_flat = indata.reshape(-1, shape_in[0] * shape_in[1])
+
     # Limitation from numba : some big-endian dtypes are not supported.
     try:
         nb.from_dtype(indata.dtype)
         nb.from_dtype(weights.dtype)
     except NotImplementedError:
-        warnings.warn(
-            'Input array has a dtype not supported by sparse and numba. Falling back to scipy.'
-        )
         weights = weights.to_scipy_sparse()
 
-    # COO matrix is fast with F-ordered array but slow with C-array, so we
-    # take in a C-ordered and then transpose)
-    # (CSR or CRS matrix is fast with C-ordered array but slow with F-array)
-    if not indata.flags['C_CONTIGUOUS']:
-        warnings.warn('Input array is not C_CONTIGUOUS. ' 'Will affect performance.')
-
-    # get input shape information
-    shape_horiz = indata.shape[-2:]
-    extra_shape = indata.shape[0:-2]
-
-    assert shape_horiz == shape_in, (
-        'The horizontal shape of input data is {}, different from that of'
-        'the regridder {}!'.format(shape_horiz, shape_in)
-    )
-
-    assert (
-        shape_in[0] * shape_in[1] == weights.shape[1]
-    ), 'ny_in * nx_in should equal to weights.shape[1]'
-
-    assert (
-        shape_out[0] * shape_out[1] == weights.shape[0]
-    ), 'ny_out * nx_out should equal to weights.shape[0]'
-
-    # use flattened array for dot operation
-    indata_flat = indata.reshape(-1, shape_in[0] * shape_in[1])
+    # Dot product
     outdata_flat = weights.dot(indata_flat.T).T
 
-    outdata_flat = outdata_flat.astype(indata_flat.dtype)
+    # Ensure same dtype as the input.
+    outdata_flat = outdata_flat.astype(indata.dtype)
 
     # unflattened output array
-    outdata = outdata_flat.reshape([*extra_shape, shape_out[0], shape_out[1]])
+    outdata = outdata_flat.reshape(*extra_shape, shape_out[0], shape_out[1])
     return outdata
 
 

@@ -411,13 +411,20 @@ def test_regrid_dataarray(use_cfxr):
         xr.testing.assert_identical(dr_out, dr_out_rn)
 
 
-def test_regrid_dataarray_endianess():
+@pytest.mark.parametrize('use_dask', [True, False])
+def test_regrid_dataarray_endianess(use_dask):
     # xarray.DataArray containing in-memory numpy array
     regridder = xe.Regridder(ds_in, ds_out, 'conservative')
 
     exp = regridder(ds_in['data'])  # Normal (little-endian)
-    with pytest.warns(UserWarning, match='Input array has a dtype not supported'):
-        out = regridder(ds_in['data'].astype('>f8'))  # big endian
+    # with pytest.warns(UserWarning, match='Input array has a dtype not supported'):
+
+    if use_dask:
+        indata = ds_in.data.astype('>f8').chunk()
+    else:
+        indata = ds_in.data.astype('>f8')
+
+    out = regridder(indata)  # big endian
 
     # Results should be the same
     assert_equal(exp.values, out.values)
@@ -470,13 +477,20 @@ def test_regrid_dask(request, scheduler):
     regridder = xe.Regridder(ds_in, ds_out, 'conservative')
 
     indata = ds_in_chunked['data4D'].data
-    outdata = regridder(indata)
+    # Use ridiculous small chunk size value to be sure it _isn't_ impacting computation.
+    with dask.config.set({'array.chunk-size': '1MiB'}):
+        outdata = regridder(indata)
 
     assert dask.is_dask_collection(outdata)
 
     # lazy dask arrays have incorrect shape attribute due to last chunk
-    assert outdata.compute().shape == indata.shape[:-2] + horiz_shape_out
+    assert outdata.shape == indata.shape[:-2] + horiz_shape_out
     assert outdata.chunksize == indata.chunksize[:-2] + horiz_shape_out
+
+    # Check that the number of tasks hasn't exploded.
+    n_task_in = len(indata.__dask_graph__().keys())
+    n_task_out = len(outdata.__dask_graph__().keys())
+    assert (n_task_out / n_task_in) < 3
 
     outdata_ref = ds_out['data4D_ref'].values
     rel_err = (outdata.compute() - outdata_ref) / outdata_ref

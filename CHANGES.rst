@@ -1,13 +1,13 @@
 What's new
 ==========
 
-0.6.2 (unreleased)
+0.6.2 (23-11-2021)
 ------------------
 
 Bug fixes
 ~~~~~~~~~
-- The introduction of `sparse`, with `numba` under the hood, restricted input data to little-endian dtypes. In those cases, xESMF switches back to using scipy (:pull:`125`). By `Pascal Bourgault <https://github.com/aulemahal>`_
-- SpatialAverager did not compute the same weights as Regridder when source cell areas were not uniform (:pull:`128`). By `David Huard <https://github.com/huard>`_
+- The introduction of `sparse`, with `numba` under the hood, restricted input data to little-endian dtypes. For big-endian dtypes, xESMF will convert to little-endian, regrid and convert back (:pull:`135`). By `Pascal Bourgault <https://github.com/aulemahal>`_
+- ``SpatialAverager`` did not compute the same weights as ``Regridder`` when source cell areas were not uniform (:pull:`128`). By `David Huard <https://github.com/huard>`_
 - Refactor of how the regridding is called internally, to fix a bug with dask and sparse (:pull:`135`). By `Pascal Bourgault <https://github.com/aulemahal>`_
 
 Internal changes
@@ -16,6 +16,7 @@ Internal changes
 
 0.6.1 (23-09-2021)
 ------------------
+Note that this version creates very large dask task graphs that can affect performance for large grids.
 
 Internal changes
 ~~~~~~~~~~~~~~~~
